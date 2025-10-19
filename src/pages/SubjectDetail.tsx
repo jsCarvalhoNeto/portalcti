@@ -20,6 +20,7 @@ import {
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
 import { Subject } from '@/types/subject';
+import api from '@/services/api';
 
 interface Content {
   id: string;
@@ -65,13 +66,8 @@ export default function SubjectDetail() {
     
     setLoadingContent(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/content/${id}/content`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Falha ao buscar conteúdo');
-      }
-      const contentData = await response.json();
+      const response = await api.get(`/content/${id}/content`);
+      const contentData = response.data;
       
       // Agrupar conteúdo por tipo de seção
       const groupedContent: Record<string, Content[]> = {};
@@ -83,8 +79,9 @@ export default function SubjectDetail() {
       });
       
       setContent(groupedContent);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching content:', error);
+      throw new Error(error.response?.data?.error || 'Falha ao buscar conteúdo');
     } finally {
       setLoadingContent(false);
     }
@@ -94,20 +91,16 @@ export default function SubjectDetail() {
     if (!id || content[section]) return;
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/content/${id}/content/${section}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error(`Falha ao buscar conteúdo da seção ${section}`);
-      }
-      const sectionContent = await response.json();
+      const response = await api.get(`/content/${id}/content/${section}`);
+      const sectionContent = response.data;
       
       setContent(prev => ({
         ...prev,
         [section]: sectionContent
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching section content:', error);
+      throw new Error(error.response?.data?.error || `Falha ao buscar conteúdo da seção ${section}`);
     }
   };
 
