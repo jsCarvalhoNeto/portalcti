@@ -13,63 +13,63 @@ import {
 const NewsEventsSection = () => {
   const news = [
     {
-      title: "Nova Especialização em Inteligência Artificial",
-      excerpt: "O curso técnico agora oferece módulos especializados em IA e Machine Learning para preparar alunos para o futuro.",
-      date: "2024-01-15",
-      category: "Educação",
+      title: "IA Generativa Revoluciona Desenvolvimento de Software",
+      excerpt: "Novas ferramentas de IA estão transformando a forma como desenvolvedores criam e testam código, aumentando a produtividade em até 40%.",
+      date: "2025-10-19",
+      category: "Tecnologia",
+      readTime: "4 min"
+    },
+    {
+      title: "Lançamento do Novo Framework React 19",
+      excerpt: "O React 19 traz melhorias significativas no desempenho e novas APIs que simplificam o desenvolvimento de aplicações complexas.",
+      date: "2025-10-18",
+      category: "Desenvolvimento",
       readTime: "3 min"
     },
     {
-      title: "Parceria com Empresas de Tecnologia",
-      excerpt: "Firmamos novas parcerias que garantem estágios e oportunidades de emprego para nossos estudantes.",
-      date: "2024-01-10",
-      category: "Oportunidades",
-      readTime: "2 min"
-    },
-    {
-      title: "Laboratório de Desenvolvimento Atualizado",
-      excerpt: "Novos equipamentos e software de última geração chegaram para melhorar a experiência prática dos alunos.",
-      date: "2024-01-05",
-      category: "Infraestrutura",
-      readTime: "4 min"
+      title: "Segurança em Aplicações Web: Novas Tendências",
+      excerpt: "Com o aumento de ataques cibernéticos, as melhores práticas de segurança estão evoluindo para proteger aplicações modernas contra ameaças emergentes.",
+      date: "2025-10-17",
+      category: "Segurança",
+      readTime: "5 min"
     }
-  ];
+ ];
 
-  const events = [
+const events = [
     {
-      title: "Workshop: Desenvolvimento Mobile com React Native",
-      date: "2024-02-15",
+      title: "Workshop: Desenvolvimento com TypeScript Avançado",
+      date: "2025-10-25",
       time: "14:00",
       location: "Lab 3 - Informática",
-      attendees: 25,
+      attendees: 30,
       type: "Workshop",
-      description: "Aprenda a criar aplicativos mobile multiplataforma."
+      description: "Aprenda técnicas avançadas de tipagem e melhores práticas em TypeScript para projetos escaláveis."
     },
     {
-      title: "Hackathon: Soluções para Smart Cities",
-      date: "2024-02-20",
-      time: "08:00",
+      title: "Hackathon: Inteligência Artificial Aplicada",
+      date: "2025-11-02",
+      time: "09:00",
       location: "Auditório Principal",
-      attendees: 50,
+      attendees: 40,
       type: "Competição",
-      description: "48 horas de programação intensa para criar soluções inovadoras."
+      description: "Desafio de 24 horas para criar soluções inovadoras usando IA generativa e machine learning."
     },
     {
-      title: "Palestra: Carreira em Cibersegurança",
-      date: "2024-02-25",
+      title: "Palestra: Carreira em Engenharia de Software",
+      date: "2025-11-08",
       time: "19:00",
       location: "Online",
-      attendees: 100,
+      attendees: 150,
       type: "Palestra",
-      description: "Profissionais da área compartilham experiências e dicas."
+      description: "Profissionais sênior compartilham insights sobre carreira, tendências e oportunidades no mercado tech."
     }
   ];
 
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
-      "Educação": "bg-blue-100 text-blue-700",
-      "Oportunidades": "bg-green-100 text-green-700",
-      "Infraestrutura": "bg-purple-100 text-purple-700"
+      "Tecnologia": "bg-blue-10 text-blue-700",
+      "Desenvolvimento": "bg-green-100 text-green-700",
+      "Segurança": "bg-purple-100 text-purple-700"
     };
     return colors[category] || "bg-gray-100 text-gray-700";
   };
