@@ -18,7 +18,7 @@ import { getAllUsers } from '@/services/userService';
 import { getAllTeachers } from '@/services/teacherService';
 
 import { subjectService } from '@/services/subjectService';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 
 interface User {
   id: string;
@@ -424,16 +424,16 @@ export default function AdminDashboard() {
             {/* Menu mobile - Sheet (hamburger) */}
             <div className="md:hidden">
               <div className="w-full">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
+                <SwipeableSheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SwipeableSheetTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
                       <span className="flex items-center gap-2">
                         {getTabLabel(activeTab)}
                       </span>
                       <Menu className="w-4 h-4 ml-2" />
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="p-0">
+                  </SwipeableSheetTrigger>
+                  <SwipeableSheetContent side="bottom" className="p-0" onSwipeUp={() => setIsMobileMenuOpen(false)}>
                     <div className="p-4">
                       <h3 className="font-semibold mb-4">Navegação</h3>
                       <div className="space-y-2">
@@ -505,8 +505,8 @@ export default function AdminDashboard() {
                         </Button>
                       </div>
                     </div>
-                  </SheetContent>
-                </Sheet>
+                  </SwipeableSheetContent>
+                </SwipeableSheet>
               </div>
             </div>
           </div>
