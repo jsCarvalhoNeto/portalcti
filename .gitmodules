@@ -1,0 +1,6 @@
+[submodule "cursotecnicoinfobva-backend"]
+        path = cursotecnicoinfobva-backend
+        url = https://github.com/jsCarvalhoNeto/cursotecnicoinfobva-backend.git
+[submodule "cursotecnicoinfobva-frontend"]
+        path = cursotecnicoinfobva-fronted
+        url = https://github.com/jsCarvalhoNeto/cursotecnicoinfobva-frontend.git
