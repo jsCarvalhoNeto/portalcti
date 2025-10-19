@@ -101,10 +101,22 @@ export default function ResponsiveTabMenu({
                 </div>
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="p-0">
-              <div className="p-4">
-                <h3 className="font-semibold mb-4">Navegação</h3>
-                <div className="space-y-2">
+            <SheetContent side="bottom" className="p-0 h-[80vh] max-h-[80vh]">
+              <div className="p-4 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold">Navegação</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar" style={{ maxHeight: 'calc(80vh - 60px)' }}>
                   {menuItems.map((item) => {
                     const Icon = item.icon || getIconForTab(item.value);
                     return (
