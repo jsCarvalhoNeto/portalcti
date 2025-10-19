@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock, BookOpen, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
+import ResponsiveTabMenu from '@/components/ResponsiveTabMenu';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
@@ -225,14 +226,18 @@ export default function StudentDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto mb-8 gap-3">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
-            <TabsTrigger value="activities">Atividades</TabsTrigger>
-            <TabsTrigger value="grades">Notas & Desempenho</TabsTrigger>
-            <TabsTrigger value="calendar">Calendário</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          <ResponsiveTabMenu
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            menuItems={[
+              { value: "overview", label: "Visão Geral", icon: Home },
+              { value: "subjects", label: "Minhas Disciplinas", icon: BookOpen },
+              { value: "activities", label: "Atividades", icon: FileText },
+              { value: "grades", label: "Notas & Desempenho", icon: BarChart3 },
+              { value: "calendar", label: "Calendário", icon: Calendar },
+              { value: "settings", label: "Configurações", icon: Settings }
+            ]}
+          />
 
           <TabsContent value="overview" className="space-y-8">
             {/* Stats Cards */}

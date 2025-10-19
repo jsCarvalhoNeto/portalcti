@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { BookOpen, LogOut, Home, Edit, Users, BarChart3, Settings, Calendar, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import ResponsiveTabMenu from '@/components/ResponsiveTabMenu';
 
 interface TeacherDashboardLayoutProps {
   children: React.ReactNode;
@@ -68,14 +69,18 @@ export default function TeacherDashboardLayout({
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto mb-8 gap-3">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
-            <TabsTrigger value="students">Meus Alunos</TabsTrigger>
-            <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
-            <TabsTrigger value="calendar">Calendário</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          <ResponsiveTabMenu
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            menuItems={[
+              { value: "overview", label: "Visão Geral", icon: Home },
+              { value: "subjects", label: "Minhas Disciplinas", icon: BookOpen },
+              { value: "students", label: "Meus Alunos", icon: Users },
+              { value: "grades", label: "Atividades & Notas", icon: BarChart3 },
+              { value: "calendar", label: "Calendário", icon: Calendar },
+              { value: "settings", label: "Configurações", icon: Settings }
+            ]}
+          />
 
           <TabsContent value="overview" className="space-y-8">
             <div className="space-y-8">

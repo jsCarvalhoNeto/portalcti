@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,7 @@ import { getAllUsers } from '@/services/userService';
 import { getAllTeachers } from '@/services/teacherService';
 
 import { subjectService } from '@/services/subjectService';
+import ResponsiveTabMenu from '@/components/ResponsiveTabMenu';
 
 interface User {
   id: string;
@@ -396,14 +397,18 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 max-w-xl mx-auto">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="students">Estudantes</TabsTrigger>
-            <TabsTrigger value="teachers">Professores</TabsTrigger>
-            <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          <ResponsiveTabMenu
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            menuItems={[
+              { value: "overview", label: "Visão Geral", icon: Home },
+              { value: "users", label: "Usuários", icon: Users },
+              { value: "students", label: "Estudantes", icon: Users },
+              { value: "teachers", label: "Professores", icon: BookOpen },
+              { value: "subjects", label: "Disciplinas", icon: BookOpen },
+              { value: "settings", label: "Configurações", icon: Settings }
+            ]}
+          />
 
           <TabsContent value="overview" className="space-y-8">
             {/* Stats Cards */}
