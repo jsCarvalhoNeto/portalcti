@@ -11,7 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    allowedHosts: ["all", "ctibva.up.railway.app", "cursotecnicoinfobva-frontend-production.up.railway.app", "cursotecnicobva.up.railway.app", "cursotecnicoinfobva.up.railway.app"],
+    allowedHosts: ["all", "ctifrontend-production.up.railway.app", "ctibva.up.railway.app", "cursotecnicoinfobva-frontend-production.up.railway.app", "cursotecnicobva.up.railway.app", "cursotecnicoinfobva.up.railway.app"],
     host: "0.0.0.0",
     port: 8080,
   },
