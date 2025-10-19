@@ -71,7 +71,7 @@ export default function ResponsiveTabMenu({
         <div className="max-w-4xl mx-auto mb-8">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
+              <Button variant="outline" className="w-full justify-between bg-card/80 backdrop-blur-sm border-border/50 hover:bg-card/100 transition-all duration-200">
                 <span className="flex items-center gap-2">
                   {menuItems.find(item => item.value === activeTab) ? (
                     <>
@@ -80,16 +80,25 @@ export default function ResponsiveTabMenu({
                         const IconComponent = item?.icon || getIconForTab(activeTab);
                         return <IconComponent className="w-4 h-4" />;
                       })()}
-                      {menuItems.find(item => item.value === activeTab)?.label}
+                      <span className="font-medium">{menuItems.find(item => item.value === activeTab)?.label}</span>
                     </>
                   ) : (
                     <>
                       <Menu className="w-4 h-4" />
-                      Menu
+                      <span className="font-medium">Menu</span>
                     </>
                   )}
                 </span>
-                <Menu className="w-4 h-4 ml-2" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full min-w-[24px] text-center font-mono">
+                    {menuItems.length}
+                  </span>
+                  <div className="flex flex-col gap-1 transition-transform duration-200">
+                    <div className="w-4 h-0.5 bg-current rounded-full"></div>
+                    <div className="w-4 h-0.5 bg-current rounded-full"></div>
+                    <div className="w-4 h-0.5 bg-current rounded-full"></div>
+                  </div>
+                </div>
               </Button>
             </SheetTrigger>
             <SheetContent side="bottom" className="p-0">
