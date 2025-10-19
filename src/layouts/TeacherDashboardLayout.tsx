@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Edit, Users, BarChart3, Settings, Calendar, GraduationCap } from 'lucide-react';
+import { BookOpen, LogOut, Home, Edit, Users, BarChart3, Settings, Calendar, GraduationCap, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface TeacherDashboardLayoutProps {
   children: React.ReactNode;
@@ -27,6 +28,19 @@ export default function TeacherDashboardLayout({
   setActiveTab 
 }: TeacherDashboardLayoutProps) {
   const { user, profile, signOut } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const getTabLabel = (tabValue: string) => {
+    const labels: Record<string, string> = {
+      overview: 'Visão Geral',
+      subjects: 'Minhas Disciplinas',
+      students: 'Meus Alunos',
+      grades: 'Atividades & Notas',
+      calendar: 'Calendário',
+      settings: 'Configurações'
+    };
+    return labels[tabValue] || tabValue;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,14 +82,106 @@ export default function TeacherDashboardLayout({
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto mb-8 gap-3">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
-            <TabsTrigger value="students">Meus Alunos</TabsTrigger>
-            <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
-            <TabsTrigger value="calendar">Calendário</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
+          <div className="max-w-4xl mx-auto mb-8">
+            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
+              <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+              <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
+              <TabsTrigger value="students">Meus Alunos</TabsTrigger>
+              <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
+              <TabsTrigger value="calendar">Calendário</TabsTrigger>
+              <TabsTrigger value="settings">Configurações</TabsTrigger>
+            </TabsList>
+            
+            {/* Menu mobile - Sheet (hamburger) */}
+            <div className="md:hidden">
+              <div className="w-full">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        {getTabLabel(activeTab)}
+                      </span>
+                      <Menu className="w-4 h-4 ml-2" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="p-0">
+                    <div className="p-4">
+                      <h3 className="font-semibold mb-4">Navegação</h3>
+                      <div className="space-y-2">
+                        <Button
+                          variant={activeTab === 'overview' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('overview');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Home className="w-4 h-4 mr-2" />
+                          Visão Geral
+                        </Button>
+                        <Button
+                          variant={activeTab === 'subjects' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('subjects');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Minhas Disciplinas
+                        </Button>
+                        <Button
+                          variant={activeTab === 'students' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('students');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Meus Alunos
+                        </Button>
+                        <Button
+                          variant={activeTab === 'grades' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('grades');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Atividades & Notas
+                        </Button>
+                        <Button
+                          variant={activeTab === 'calendar' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('calendar');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Calendário
+                        </Button>
+                        <Button
+                          variant={activeTab === 'settings' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('settings');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Configurações
+                        </Button>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-8">
             <div className="space-y-8">

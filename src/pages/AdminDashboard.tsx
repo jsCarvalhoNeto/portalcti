@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import SubjectModal from '@/components/SubjectModal';
@@ -18,6 +18,7 @@ import { getAllUsers } from '@/services/userService';
 import { getAllTeachers } from '@/services/teacherService';
 
 import { subjectService } from '@/services/subjectService';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface User {
   id: string;
@@ -55,11 +56,12 @@ interface AdminSubject {
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
+ const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [totalStudents, setTotalStudents] = useState(0);
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
@@ -71,7 +73,19 @@ export default function AdminDashboard() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<AdminSubject | null>(null);
-  const { toast } = useToast();
+ const { toast } = useToast();
+
+  const getTabLabel = (tabValue: string) => {
+    const labels: Record<string, string> = {
+      overview: 'Visão Geral',
+      users: 'Usuários',
+      students: 'Estudantes',
+      teachers: 'Professores',
+      subjects: 'Disciplinas',
+      settings: 'Configurações'
+    };
+    return labels[tabValue] || tabValue;
+  };
 
   useEffect(() => {
     if (user && isAdmin) {
@@ -396,14 +410,106 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 max-w-xl mx-auto">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="students">Estudantes</TabsTrigger>
-            <TabsTrigger value="teachers">Professores</TabsTrigger>
-            <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
+          <div className="max-w-xl mx-auto mb-8">
+            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
+              <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+              <TabsTrigger value="users">Usuários</TabsTrigger>
+              <TabsTrigger value="students">Estudantes</TabsTrigger>
+              <TabsTrigger value="teachers">Professores</TabsTrigger>
+              <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
+              <TabsTrigger value="settings">Configurações</TabsTrigger>
+            </TabsList>
+            
+            {/* Menu mobile - Sheet (hamburger) */}
+            <div className="md:hidden">
+              <div className="w-full">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        {getTabLabel(activeTab)}
+                      </span>
+                      <Menu className="w-4 h-4 ml-2" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="p-0">
+                    <div className="p-4">
+                      <h3 className="font-semibold mb-4">Navegação</h3>
+                      <div className="space-y-2">
+                        <Button
+                          variant={activeTab === 'overview' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('overview');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Home className="w-4 h-4 mr-2" />
+                          Visão Geral
+                        </Button>
+                        <Button
+                          variant={activeTab === 'users' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('users');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Usuários
+                        </Button>
+                        <Button
+                          variant={activeTab === 'students' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('students');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Estudantes
+                        </Button>
+                        <Button
+                          variant={activeTab === 'teachers' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('teachers');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Professores
+                        </Button>
+                        <Button
+                          variant={activeTab === 'subjects' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('subjects');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Disciplinas
+                        </Button>
+                        <Button
+                          variant={activeTab === 'settings' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('settings');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Configurações
+                        </Button>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-8">
             {/* Stats Cards */}
