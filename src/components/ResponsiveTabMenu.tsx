@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Home, BookOpen, Users, BarChart3, Settings, Calendar, GraduationCap, FileText, Shield, Eye, Edit, Trash2, Plus } from 'lucide-react';
+import { Menu, Home, BookOpen, Users, BarChart3, Settings, Calendar, GraduationCap, FileText } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MenuItem {
