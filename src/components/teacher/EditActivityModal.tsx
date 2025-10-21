@@ -40,7 +40,29 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
   const [selectedGrade, setSelectedGrade] = useState('');
  const [activityType, setActivityType] = useState<'individual' | 'team'>('individual');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState('');
+   const [deadline, setDeadline] = useState('');
+
+  // Função para formatar data para o formato datetime-local (YYYY-MM-DDTHH:mm)
+  const formatDateTimeLocal = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) return '';
+    // Formatar para YYYY-MM-DDTHH:mm
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Função para converter datetime-local para ISO string (formato que o backend espera)
+  const convertToISO = (datetimeLocal: string): string => {
+    if (!datetimeLocal) return '';
+    const date = new Date(datetimeLocal);
+    return date.toISOString();
+  };
  const [period, setPeriod] = useState('');
   const [evaluationType, setEvaluationType] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -56,7 +78,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
       setSelectedGrade(activity.grade || '');
       setActivityType(activity.type || 'individual');
       setDescription(activity.description || '');
-      setDeadline(activity.deadline || '');
+      setDeadline(activity.deadline ? formatDateTimeLocal(activity.deadline) : '');
       setPeriod(activity.period || '');
       setEvaluationType(activity.evaluation_type || '');
       if (activity.file_name) {
@@ -156,7 +178,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
         formData.append('type', activityType);
         formData.append('description', description);
         if (deadline) {
-          formData.append('deadline', deadline);
+          formData.append('deadline', convertToISO(deadline));
         }
         if (period) {
           formData.append('period', period);
