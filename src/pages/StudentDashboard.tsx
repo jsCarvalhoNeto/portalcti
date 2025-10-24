@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
+import StudentCalendarTab from '@/components/student/StudentCalendarTab';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
@@ -533,41 +534,7 @@ export default function StudentDashboard() {
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold">Calendário Acadêmico</h2>
-              <p className="text-muted-foreground">Datas importantes e prazos acadêmicos</p>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Eventos Próximos</CardTitle>
-                <CardDescription>Próximos eventos e prazos importantes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {subjects.length > 0 ? (
-                    subjects.map((subject) => (
-                      <div key={subject.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{subject.name}</p>
-                            <p className="text-sm text-muted-foreground">Próximo evento: -</p>
-                          </div>
-                        </div>
-                        <Badge variant="outline">{subject.schedule || 'Sem agenda'}</Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum evento agendado
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <StudentCalendarTab />
           </TabsContent>
 
           <TabsContent value="activities" className="space-y-8">

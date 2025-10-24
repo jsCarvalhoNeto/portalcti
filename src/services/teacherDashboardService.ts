@@ -63,6 +63,7 @@ export interface CalendarEvent {
   subject_id?: number;
   subject_name?: string;
   description?: string;
+  image_path?: string;
 }
 
 export interface UserProfile {
@@ -169,10 +170,109 @@ export async function getPendingActivities(teacherId: string): Promise<Activity[
  */
 export async function getTeacherCalendarEvents(teacherId: string): Promise<CalendarEvent[]> {
   try {
-    const response = await api.get(`/teachers/${teacherId}/calendar`);
-    return response.data;
+    const response = await api.get(`/calendar-events/user/me`);
+    return response.data.data;
   } catch (error) {
     console.error('Erro ao buscar eventos do calendário:', error);
+    throw error;
+  }
+}
+
+/**
+ * Busca todos os eventos do calendário (públicos)
+ */
+export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
+  try {
+    const response = await api.get(`/calendar-events`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Erro ao buscar todos os eventos do calendário:', error);
+    throw error;
+  }
+}
+
+/**
+ * Busca eventos do calendário por intervalo de datas
+ */
+export async function getCalendarEventsByDateRange(startDate: string, endDate: string): Promise<CalendarEvent[]> {
+  try {
+    const response = await api.get(`/calendar-events/date-range`, {
+      params: { startDate, endDate }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Erro ao buscar eventos por data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Cria um novo evento de calendário
+ */
+export async function createCalendarEvent(eventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> {
+  try {
+    const formData = new FormData();
+    Object.keys(eventData).forEach(key => {
+      const value = (eventData as any)[key];
+      if (value !== null && value !== undefined) {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else if (key !== 'image') {
+          formData.append(key, value.toString());
+        }
+      }
+    });
+
+    const response = await api.post(`/calendar-events`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Erro ao criar evento de calendário:', error);
+    throw error;
+  }
+}
+
+/**
+ * Atualiza um evento de calendário existente
+ */
+export async function updateCalendarEvent(eventId: string, eventData: Partial<CalendarEvent>): Promise<CalendarEvent> {
+  try {
+    const formData = new FormData();
+    Object.keys(eventData).forEach(key => {
+      const value = (eventData as any)[key];
+      if (value !== null && value !== undefined) {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else if (key !== 'image') {
+          formData.append(key, value.toString());
+        }
+      }
+    });
+
+    const response = await api.put(`/calendar-events/${eventId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Erro ao atualizar evento de calendário:', error);
+    throw error;
+  }
+}
+
+/**
+ * Deleta um evento de calendário
+ */
+export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
+  try {
+    await api.delete(`/calendar-events/${eventId}`);
+    return true;
+  } catch (error) {
+    console.error('Erro ao deletar evento de calendário:', error);
     throw error;
   }
 }

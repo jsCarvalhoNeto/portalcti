@@ -48,6 +48,7 @@ export interface CalendarEvent {
   subject_id?: number;
   subject_name?: string;
   description?: string;
+  image_path?: string;
 }
 
 interface TeacherDashboardContextType {
@@ -107,7 +108,12 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
     students: null,
     activities: null,
     calendar: null
- });
+ } as {
+    subjects: string | null;
+    students: string | null;
+    activities: string | null;
+    calendar: string | null;
+  });
   const [editingProfile, setEditingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
