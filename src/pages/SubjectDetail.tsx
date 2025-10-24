@@ -172,7 +172,7 @@ export default function SubjectDetail() {
   const getSectionLabel = (section: string) => {
     const labels: Record<string, string> = {
       'content': 'Conteúdo',
-      'material': 'Material',
+      'material': 'Cronograma',
       'activities': 'Atividades',
       'exercises': 'Exercícios',
       'projects': 'Projetos',

@@ -182,7 +182,7 @@ export default function TeacherSubjectEditor() {
       
       const sectionLabels: Record<string, string> = {
         'content': 'Conteúdo',
-        'material': 'Material',
+        'material': 'Cronograma',
         'activities': 'Atividades',
         'exercises': 'Exercícios',
         'projects': 'Projetos',
@@ -258,7 +258,7 @@ export default function TeacherSubjectEditor() {
 
  const navItems = [
     { value: 'conteudo', label: 'Conteúdo', icon: FileText },
-    { value: 'material', label: 'Material', icon: BookOpen },
+    { value: 'material', label: 'Cronograma', icon: BookOpen },
     { value: 'atividades', label: 'Atividades', icon: Activity },
     { value: 'exercicios', label: 'Exercícios', icon: PenTool },
     { value: 'projetos', label: 'Projetos', icon: FolderOpen },
