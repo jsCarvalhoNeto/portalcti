@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,14 +34,57 @@ interface Content {
   updated_at: string;
 }
 
+interface QuickAccessItem {
+  icon: any;
+  title: string;
+  description: string;
+  color: string;
+  bgColor: string;
+  onClick?: () => void;
+}
+
 export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, isStudent, loading } = useAuth();
+  const navigate = useNavigate();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [content, setContent] = useState<Record<string, Content[]>>({});
   const [loadingSubject, setLoadingSubject] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
   const [activeTab, setActiveTab] = useState('inicio');
+
+  // Definir quickAccessItems no início do componente
+  const quickAccessItems: QuickAccessItem[] = [
+    {
+      icon: Gamepad2,
+      title: 'Atividades Interativas',
+      description: 'Jogos e simuladores educativos',
+      color: 'text-purple-400', // Corrigido o typo
+      bgColor: 'bg-gray-800',
+      onClick: () => navigate(`/disciplinas/${id}/interactive-activities`)
+    },
+    {
+      icon: BookOpen,
+      title: 'Material Didático',
+      description: 'Slides, apostilas e PDFs',
+      color: 'text-blue-400',
+      bgColor: 'bg-gray-800'
+    },
+    {
+      icon: PenTool,
+      title: 'Exercícios',
+      description: 'Listas de exercícios práticos',
+      color: 'text-orange-400',
+      bgColor: 'bg-gray-800'
+    },
+    {
+      icon: Wrench,
+      title: 'Projetos',
+      description: 'Projetos práticos para desenvolver',
+      color: 'text-gray-400',
+      bgColor: 'bg-gray-800'
+    }
+  ];
 
   useEffect(() => {
     if (id) {
@@ -125,7 +168,7 @@ export default function SubjectDetail() {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!subject) {
+   if (!subject) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -138,36 +181,7 @@ export default function SubjectDetail() {
     );
   }
 
-  const quickAccessItems = [
-    {
-      icon: Gamepad2,
-      title: 'Atividades Interativas',
-      description: 'Jogos e simuladores educativos',
-      color: 'text-purple-40',
-      bgColor: 'bg-gray-800'
-    },
-    {
-      icon: BookOpen,
-      title: 'Material Didático',
-      description: 'Slides, apostilas e PDFs',
-      color: 'text-blue-400',
-      bgColor: 'bg-gray-800'
-    },
-    {
-      icon: PenTool,
-      title: 'Exercícios',
-      description: 'Listas de exercícios práticos',
-      color: 'text-orange-400',
-      bgColor: 'bg-gray-800'
-    },
-    {
-      icon: Wrench,
-      title: 'Projetos',
-      description: 'Projetos práticos para desenvolver',
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-800'
-    }
-  ];
+  // quickAccessItems já foi definido no início do componente
 
   const getSectionLabel = (section: string) => {
     const labels: Record<string, string> = {
@@ -303,17 +317,21 @@ export default function SubjectDetail() {
               {/* Quick Access */}
               <div>
                 <h3 className="text-2xl font-semibold mb-6 text-foreground">Acesso Rápido</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {quickAccessItems.map((item, index) => (
-                    <Card key={index} className="bg-card border hover:bg-accent transition-all duration-300 cursor-pointer">
-                      <CardContent className="p-6">
-                        <item.icon className={`w-7 h-7 mb-4 ${item.color}`} />
-                        <h4 className="font-semibold text-lg mb-1 text-card-foreground">{item.title}</h4>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {quickAccessItems.map((item: QuickAccessItem, index: number) => (
+                  <Card 
+                    key={index} 
+                    className="bg-card border hover:bg-accent transition-all duration-300 cursor-pointer"
+                    onClick={item.onClick}
+                  >
+                    <CardContent className="p-6">
+                      <item.icon className={`w-7 h-7 mb-4 ${item.color}`} />
+                      <h4 className="font-semibold text-lg mb-1 text-card-foreground">{item.title}</h4>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
               </div>
 
               {/* Important Announcements */}
