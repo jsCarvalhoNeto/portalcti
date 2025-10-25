@@ -62,7 +62,7 @@ export default function InteractiveActivities() {
       const mockActivities: InteractiveActivity[] = [
         {
           id: '1',
-          title: 'Jogo de Lógica de Programação',
+          title: 'Jogo da Memória - Lógica de Programação',
           description: 'Desafios interativos para aprender lógica de programação',
           type: 'game',
           duration: '30 min',
@@ -264,7 +264,18 @@ export default function InteractiveActivities() {
                       </div>
                     )}
                     
-                    <Button className="w-full mt-4">
+                    <Button className="w-full mt-4" onClick={() => {
+                      if (activity.id === '1') {
+                        // Mapear difficulty para o nível correspondente
+                        const levelMap: Record<string, string> = {
+                          'beginner': 'iniciante',
+                          'intermediate': 'intermediario',
+                          'advanced': 'avancado'
+                        };
+                        const gameLevel = levelMap[activity.difficulty] || 'iniciante';
+                        navigate(`/disciplinas/${id}/interactive-activities/memory-game/${gameLevel}`);
+                      }
+                    }}>
                       <Play className="w-4 h-4 mr-2" />
                       {activity.status === 'completed' ? 'Revisar' : 'Iniciar'}
                     </Button>

@@ -13,6 +13,7 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
 import InteractiveActivities from "./pages/InteractiveActivities";
+import MemoryGame from "./pages/logic-programming/MemoryGame";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,8 @@ const App = () => (
             <Route path="/disciplinas" element={<Subjects />} />
             <Route path="/disciplinas/:id" element={<SubjectDetail />} />
             <Route path="/disciplinas/:id/interactive-activities" element={<InteractiveActivities />} />
+            <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
+            <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
