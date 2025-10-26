@@ -1,29 +1,20 @@
-import { useState, useEffect } from 'react';
+import { } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import { BookOpen, Users, BarChart3, GraduationCap } from 'lucide-react';
-import SubjectModal from '@/components/SubjectModal';
+// SubjectModal is not required here; subject details are handled in the subjects tab
 import { TeacherDashboardProvider, useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
-import { Subject } from '@/services/teacherDashboardService';
 import TeacherSubjectsTab from '@/components/teacher/TeacherSubjectsTab';
 import TeacherStudentsTab from '@/components/teacher/TeacherStudentsTab';
 import TeacherGradesActivitiesTab from '@/components/teacher/TeacherGradesActivitiesTab';
 import TeacherCalendarTab from '@/components/teacher/TeacherCalendarTab';
+import TeacherGamificacaoTab from '@/components/teacher/TeacherGamificacaoTab';
 import TeacherSettingsTab from '@/components/teacher/TeacherSettingsTab';
 import TeacherDashboardLayout from '@/layouts/TeacherDashboardLayout';
 
 function TeacherDashboardContent() {
-  const { user, profile, isTeacher, signOut, loading: authLoading } = useAuth();
-  const { subjects, students, loading: subjectsLoading, error, refetch, editingProfile, setEditingProfile, setActiveTab, activeTab } = useTeacherDashboard();
-  const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
-  const { toast } = useToast();
-
-  const openSubjectModal = (subject?: Subject) => {
-    setEditingSubject(subject || null);
-    setShowSubjectModal(true);
-  };
+  const { user, isTeacher, loading: authLoading } = useAuth();
+  const { subjects, students, setActiveTab, activeTab } = useTeacherDashboard();
 
   // Stats data for teacher dashboard
   const stats = [
@@ -52,12 +43,10 @@ function TeacherDashboardContent() {
       setActiveTab={setActiveTab}
     >
       {[
-        <TeacherSubjectsTab 
-          key="subjects"
-          openSubjectModal={openSubjectModal}
-        />,
+        <TeacherSubjectsTab key="subjects" />,
         <TeacherStudentsTab key="students" />,
         <TeacherGradesActivitiesTab key="grades" />,
+        <TeacherGamificacaoTab key="gamificacao" />,
         <TeacherCalendarTab key="calendar" />,
         <TeacherSettingsTab 
           key="settings"

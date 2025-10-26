@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock, BookOpen, FileText, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { updateStudentProfile, changeStudentPassword } from '@/services/studentProfileService';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
+import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
@@ -26,6 +28,8 @@ export default function StudentDashboard() {
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [pendingActivities, setPendingActivities] = useState(0);
+  const [totalPoints, setTotalPoints] = useState<number>(0);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     full_name: '',
@@ -58,8 +62,25 @@ export default function StudentDashboard() {
       fetchSubjects();
       fetchNotifications();
       loadProfileData();
+      fetchGamification();
     }
   }, [user, isStudent]);
+
+  const fetchGamification = async () => {
+    if (!user) return;
+    try {
+      const data = await gamificationService.getStudentGamification(user.id);
+      const total = Number(data?.total?.total_points || 0);
+      setTotalPoints(total);
+  const badges = data?.badges || [];
+  const nextBadge = badges && badges.length > 0 ? badges.slice().sort((a:any,b:any)=> (a.threshold_points||0)-(b.threshold_points||0)).find((b:any)=> (b.threshold_points||0) > total) : null;
+      const nextThreshold = nextBadge?.threshold_points || Math.ceil((total + 100)/100)*100;
+      const progress = nextThreshold ? Math.min(100, Math.round((total / nextThreshold) * 100)) : 0;
+      setProgressPercent(progress);
+    } catch (e) {
+      console.error('Erro ao buscar gamification:', e);
+    }
+  };
 
   const loadProfileData = async () => {
     if (user && profile) {
@@ -208,6 +229,8 @@ export default function StudentDashboard() {
                 </p>
               </div>
             </div>
+
+            {/* Nota: o resumo de gamificação foi integrado ao card 'Progresso Geral' acima */}
             <div className="flex items-center gap-3">
               <Badge variant="default" className="flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
@@ -344,21 +367,57 @@ export default function StudentDashboard() {
           <TabsContent value="overview" className="space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => (
-                <Card key={index} className="hover:shadow-glow transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold">{stat.value}</p>
-                        <p className="text-sm text-muted-foreground">{stat.title}</p>
+              {stats.map((stat, index) => {
+                if (stat.title === 'Progresso Geral') {
+                  return (
+                    <Tooltip key={index}>
+                      <TooltipTrigger asChild>
+                        <Link to="/gamification" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer">
+                          <Card className="hover:shadow-glow transition-all duration-300 hover:scale-[1.01]">
+                            <CardContent className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-2xl font-bold">{totalPoints}</p>
+                                  <p className="text-sm text-muted-foreground">Pontos acumulados</p>
+                                </div>
+                                <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                                  <GraduationCap className={`w-6 h-6 ${stat.color}`} />
+                                </div>
+                              </div>
+
+                              <div className="mt-3">
+                                <div className="text-xs text-muted-foreground">Progresso para próximo troféu</div>
+                                <div className="w-full bg-muted rounded-full h-2 mt-1 overflow-hidden">
+                                  <div className="bg-primary h-2" style={{ width: `${progressPercent}%` }} />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Ver histórico de pontos
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+
+                return (
+                  <Card key={index} className="hover:shadow-glow transition-all duration-300">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-2xl font-bold">{stat.value}</p>
+                          <p className="text-sm text-muted-foreground">{stat.title}</p>
+                        </div>
+                        <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
                       </div>
-                      <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                        <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {/* Quick Actions */}

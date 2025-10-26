@@ -45,6 +45,7 @@ export interface ActivityGrade {
 export interface StudentActivity {
   id: number;
   name: string;
+  subject_id?: number;
   subject_name: string;
   teacher_name: string;
   type: 'individual' | 'team';

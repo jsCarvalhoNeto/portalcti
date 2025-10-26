@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Edit, Users, BarChart3, Settings, Calendar, GraduationCap, Menu } from 'lucide-react';
+import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
@@ -31,11 +31,12 @@ export default function TeacherDashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const getTabLabel = (tabValue: string) => {
-    const labels: Record<string, string> = {
+      const labels: Record<string, string> = {
       overview: 'Visão Geral',
       subjects: 'Minhas Disciplinas',
       students: 'Meus Alunos',
       grades: 'Atividades & Notas',
+      gamificacao: 'Gamificação',
       calendar: 'Calendário',
       settings: 'Configurações'
     };
@@ -84,11 +85,12 @@ export default function TeacherDashboardLayout({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-4xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
+            <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
+              <TabsTrigger value="gamificacao">Gamificação</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
@@ -152,6 +154,17 @@ export default function TeacherDashboardLayout({
                         >
                           <BarChart3 className="w-4 h-4 mr-2" />
                           Atividades & Notas
+                        </Button>
+                        <Button
+                          variant={activeTab === 'gamificacao' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('gamificacao');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <GraduationCap className="w-4 h-4 mr-2" />
+                          Gamificação
                         </Button>
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
@@ -298,11 +311,14 @@ export default function TeacherDashboardLayout({
           <TabsContent value="grades" className="space-y-8">
             {children && Array.isArray(children) ? children[2] : null}
           </TabsContent>
-          <TabsContent value="calendar" className="space-y-8">
+          <TabsContent value="gamificacao" className="space-y-8">
             {children && Array.isArray(children) ? children[3] : null}
           </TabsContent>
-          <TabsContent value="settings" className="space-y-8">
+          <TabsContent value="calendar" className="space-y-8">
             {children && Array.isArray(children) ? children[4] : null}
+          </TabsContent>
+          <TabsContent value="settings" className="space-y-8">
+            {children && Array.isArray(children) ? children[5] : null}
           </TabsContent>
         </Tabs>
       </main>

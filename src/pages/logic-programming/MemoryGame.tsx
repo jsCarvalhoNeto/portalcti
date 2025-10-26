@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import * as gamificationService from '@/services/gamificationService';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Clock, 
   Trophy,
   RotateCcw,
   Lightbulb,
-  Volume2,
   Pause,
   Play
 } from 'lucide-react';
@@ -49,6 +50,8 @@ const MemoryGame = () => {
   const [timerActive, setTimerActive] = useState(false);
   const [combo, setCombo] = useState(0);
   const [showHint, setShowHint] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Configuração dos níveis
   const levels: Record<string, LevelConfig> = {
@@ -279,15 +282,20 @@ const MemoryGame = () => {
     setCombo(0);
     setTimerActive(true);
     setGameState('playing');
+
+    // Resetar flag de vitória por segurança (permitir nova finalização nesta sessão)
+    try { (window as any).__memoryGameVictoryHandled = false; } catch (e) { /* noop */ }
   };
 
   // Timer
   useEffect(() => {
     let interval: number | null = null;
+    // Agora contamos tempo em segundos (1000 ms). Anteriormente era 100ms,
+    // o que causava inconsistência no cálculo de bônus por tempo.
     if (timerActive && gameState === 'playing') {
       interval = window.setInterval(() => {
         setTime(prev => prev + 1);
-      }, 100);
+      }, 1000);
     }
     return () => {
       if (interval !== null) {
@@ -342,15 +350,86 @@ const MemoryGame = () => {
   useEffect(() => {
     const config = levels[currentLevel];
     if (matches === config.pairs) {
+      // Garantir que finalização seja executada apenas uma vez
+      // (evita loop causado por depender de `score` e chamar setScore dentro deste effect)
+      if ((window as any).__memoryGameVictoryHandled) return;
+      (window as any).__memoryGameVictoryHandled = true;
+
       setTimerActive(false);
       setGameState('victory');
-      // Calcular pontuação final
+
+      // Calcular pontuação final usando o valor anterior de score
       const timeBonus = Math.max(0, 300 - time); // Bônus por tempo
       const moveBonus = Math.max(0, 100 - moves); // Bônus por tentativas
-      const finalScore = score + timeBonus + moveBonus + (combo * 10);
-      setScore(finalScore);
+
+      setScore(prevScore => {
+        const finalScore = prevScore + timeBonus + moveBonus + (combo * 10);
+
+        // Contagem de quantas partidas já deram premiação para este usuário, por jogo.
+        // Agora persistimos por jogo (ex.: memory_game_iniciante) usando localStorage.
+        try {
+          if (user && user.id) {
+            const gameKey = `memory_game_${currentLevel}`; // identifica este jogo/nível
+            const key = `gamify_game_count_${user.id}_${gameKey}`;
+            const raw = localStorage.getItem(key);
+            const played = raw ? parseInt(raw, 10) || 0 : 0;
+
+              if (played < 5) {
+              // Incrementar contador imediatamente para evitar race/abuso
+              try { localStorage.setItem(key, String(played + 1)); } catch (e) { /* noop */ }
+
+              // Enviar pontos para gamificação (não bloquear UI)
+              // Passar o id da disciplina (route param `id`) quando disponível
+              const subjectIdForGamify = id || undefined;
+              gamificationService.awardGame(user.id, finalScore, gameKey, subjectIdForGamify).then((res) => {
+                if (res && (res as any).awarded) {
+                  toast({ title: 'Parabéns!', description: `Você ganhou ${(res as any).awarded} pontos no jogo!` });
+                }
+              }).catch(err => {
+                console.error('Erro ao enviar pontos do jogo para gamificação:', err);
+              });
+            } else {
+              // Já atingiu o limite de premiações para este jogo/nível
+              try {
+                toast({ title: 'Limite de premiação atingido', description: 'Você já recebeu pontos por 5 jogos neste nível — este jogo não concederá pontos.' });
+              } catch (e) { /* noop */ }
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao acessar localStorage para contagem de jogos gamificados:', e);
+          // Em caso de erro com storage, ainda tentamos enviar a premiação (fallback)
+          if (user && user.id) {
+            gamificationService.awardGame(user.id, finalScore).catch(err => console.error(err));
+          }
+        }
+
+        return finalScore;
+      });
     }
   }, [matches, currentLevel, time, moves, score, combo]);
+
+  // Registrar acesso ao iniciar o jogo (cada acesso vale +10) — evitar duplicidade na mesma sessão
+  useEffect(() => {
+    if (gameState === 'playing' && user && user.id) {
+      try {
+        const key = `gamify_access_${user.id}_${currentLevel}`;
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, '1');
+          // Passar o id da disciplina para registrar acesso por disciplina
+          const subjectIdForAccess = id || undefined;
+          gamificationService.awardAccess(user.id, subjectIdForAccess).then((res) => {
+            if (res && (res as any).awarded) {
+              toast({ title: 'Acesso registrado', description: `+${(res as any).awarded} pontos por acessar o jogo` });
+            }
+          }).catch(err => {
+            console.error('Erro ao registrar acesso gamification:', err);
+          });
+        }
+      } catch (e) {
+        console.error('Erro no efeito de registro de acesso (gamification):', e);
+      }
+    }
+  }, [gameState, currentLevel, user]);
 
   // Virar carta
   const flipCard = (cardId: string) => {
@@ -379,7 +458,18 @@ const MemoryGame = () => {
       const randomCard = unmatchedCards[0];
       setShowHint(randomCard.pairId);
       setHints(prev => prev - 1);
-      
+
+      // Penalidade por usar dica: perder 40 pontos. Se o jogador
+      // não tiver 40 pontos, zera a pontuação.
+      setScore(prev => (prev < 40 ? 0 : prev - 40));
+
+      // Informar jogador sobre a penalidade
+      try {
+        toast({ title: 'Dica usada', description: '-40 pontos por usar uma dica' });
+      } catch (e) {
+        // noop
+      }
+
       setTimeout(() => setShowHint(null), 2000);
     }
   };

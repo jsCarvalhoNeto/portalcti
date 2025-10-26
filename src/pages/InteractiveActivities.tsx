@@ -5,24 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
- Gamepad2, 
+  Gamepad2, 
   Play, 
- Clock, 
+  Clock, 
   Users, 
   Trophy,
   ArrowLeft,
-  BookOpen,
-  FileText,
   Activity,
-  PenTool,
-  FolderOpen,
-  ClipboardList,
-  Settings
+  PenTool
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
 import { Subject } from '@/types/subject';
-import api from '@/services/api';
 
 interface InteractiveActivity {
   id: string;

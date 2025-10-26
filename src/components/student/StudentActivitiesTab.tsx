@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Download, FileText, Search } from 'lucide-react';
 import { StudentActivity, getStudentActivities, submitStudentActivity } from '@/services/activityService';
+import * as gamificationService from '@/services/gamificationService';
 
 interface SubmissionData {
   activity_id: number;
@@ -176,6 +177,21 @@ export default function StudentActivitiesTab() {
         title: "Sucesso!",
         description: "Atividade enviada com sucesso.",
       });
+
+      // Registrar pontos de gamificação para submissão de atividade (+100)
+      try {
+        if (user && selectedActivity) {
+          // Tentar enviar subject/discipline identificador quando disponível.
+          // A API de atividades retorna `subject_name`; se você tiver subject_id disponível no payload do backend, prefira passá-lo.
+          const subjectIdForGamify = (selectedActivity as any).subject_id || selectedActivity.subject_name || undefined;
+          const res = await gamificationService.awardSubmission(user.id, selectedActivity.id.toString(), subjectIdForGamify);
+          if (res && (res as any).awarded) {
+            toast({ title: 'Pontos recebidos', description: `+${(res as any).awarded} pontos por envio de atividade` });
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao disparar gamification awardSubmission:', e);
+      }
 
       // Atualizar o status da atividade selecionada para 'submitted'
       setActivities(prevActivities => 
