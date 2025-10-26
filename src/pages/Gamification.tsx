@@ -29,6 +29,23 @@ export default function Gamification() {
     fetch();
   }, [user]);
 
+  // Atualizar quando houver evento global de gamificação
+  useEffect(() => {
+    const handler = async () => {
+      if (!user) return;
+      try {
+        const data = await gamificationService.getStudentGamification(user.id);
+        setTotal(Number(data?.total?.total_points || 0));
+        setHistory(data?.history || []);
+        setBadges(data?.badges || []);
+      } catch (e) {
+        console.error('Erro ao atualizar gamification via evento:', e);
+      }
+    };
+    (window as any).addEventListener && (window as any).addEventListener('gamification:update', handler);
+    return () => { (window as any).removeEventListener && (window as any).removeEventListener('gamification:update', handler); };
+  }, [user]);
+
   if (!user || !isStudent) return <div className="p-6">Acesse como estudante para ver seu painel de gamificação.</div>;
 
   return (

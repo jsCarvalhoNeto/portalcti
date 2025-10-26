@@ -11,6 +11,7 @@ export async function awardAccess(userId: string, subjectId?: string | number): 
     const payload: any = { userId };
     if (subjectId !== undefined) payload.subject_id = subjectId;
     const resp = await api.post('/gamification/award-access', payload);
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: resp.data })); } catch (e) { /* noop */ }
     return resp.data;
   } catch (err) {
     console.error('gamificationService.awardAccess error', err);
@@ -24,6 +25,7 @@ export async function awardGame(userId: string, points: number, gameId?: string,
     if (gameId !== undefined) payload.gameId = gameId;
     if (subjectId !== undefined) payload.subject_id = subjectId;
     const resp = await api.post('/gamification/award-game', payload);
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: resp.data })); } catch (e) { /* noop */ }
     return resp.data;
   } catch (err) {
     console.error('gamificationService.awardGame error', err);
@@ -36,6 +38,7 @@ export async function awardSubmission(userId: string, activityId: string, subjec
     const payload: any = { userId, activityId };
     if (subjectId !== undefined) payload.subject_id = subjectId;
     const resp = await api.post('/gamification/award-submission', payload);
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: resp.data })); } catch (e) { /* noop */ }
     return resp.data;
   } catch (err) {
     console.error('gamificationService.awardSubmission error', err);

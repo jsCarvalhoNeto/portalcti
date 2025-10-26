@@ -40,6 +40,24 @@ export default function GamificationWidget() {
     fetch();
   }, [user]);
 
+  // Recarregar quando houver atualização global de gamificação
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        if (!user) return;
+        const data = await gamificationService.getStudentGamification(user.id);
+        setHistory(data?.history || []);
+        setTotalPoints(Number(data?.total?.total_points || 0));
+        setBadges(data?.badges || []);
+      } catch (e) {
+        console.error('Erro ao atualizar gamification via evento:', e);
+      }
+    };
+
+    (window as any).addEventListener && (window as any).addEventListener('gamification:update', handler);
+    return () => { (window as any).removeEventListener && (window as any).removeEventListener('gamification:update', handler); };
+  }, [user]);
+
   // Calcular próximo badge simples (pegar menor threshold > totalPoints)
   const nextBadge = badges && badges.length > 0 ? badges.slice().sort((a,b)=> (a.threshold_points||0)-(b.threshold_points||0)).find(b=> (b.threshold_points||0) > totalPoints) : null;
   const nextThreshold = nextBadge?.threshold_points || Math.ceil((totalPoints + 100)/100)*100;

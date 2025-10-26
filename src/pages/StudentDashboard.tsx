@@ -66,6 +66,15 @@ export default function StudentDashboard() {
     }
   }, [user, isStudent]);
 
+  // Escuta evento global de atualização de gamificação para recarregar os dados
+  useEffect(() => {
+    const handler = () => {
+      try { fetchGamification(); } catch (e) { console.error('Erro ao atualizar gamification via evento:', e); }
+    };
+    (window as any).addEventListener && (window as any).addEventListener('gamification:update', handler);
+    return () => { (window as any).removeEventListener && (window as any).removeEventListener('gamification:update', handler); };
+  }, [user]);
+
   const fetchGamification = async () => {
     if (!user) return;
     try {
