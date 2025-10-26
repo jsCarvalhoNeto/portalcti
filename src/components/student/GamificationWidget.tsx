@@ -62,7 +62,6 @@ export default function GamificationWidget() {
   const nextBadge = badges && badges.length > 0 ? badges.slice().sort((a,b)=> (a.threshold_points||0)-(b.threshold_points||0)).find(b=> (b.threshold_points||0) > totalPoints) : null;
   const nextThreshold = nextBadge?.threshold_points || Math.ceil((totalPoints + 100)/100)*100;
   const progress = nextThreshold ? Math.min(100, Math.round((totalPoints / nextThreshold) * 100)) : 0;
-
   return (
     <Card className="hover:shadow-glow transition-all duration-300">
       <CardHeader>
@@ -70,46 +69,64 @@ export default function GamificationWidget() {
         <CardDescription>Seus pontos, conquistas e evolução</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-3xl font-bold">{loading ? '...' : totalPoints}</p>
-            <p className="text-sm text-muted-foreground">Pontos acumulados</p>
-          </div>
-          <div className="w-48">
-            <div className="text-xs text-muted-foreground mb-1">Progresso para: {nextBadge ? nextBadge.name : `${nextThreshold} pts`}</div>
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div className="bg-primary h-2" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">{progress}%</div>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Troféus / Medalhas</h4>
-          <div className="flex gap-2 flex-wrap">
-            {badges && badges.length > 0 ? badges.map((b) => (
-              <div key={b.id || b.key} className="flex items-center gap-2 px-2 py-1 border rounded-md">
-                <img src={b.icon ? `${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}` : ''} alt="icon" className="w-6 h-6 object-contain" />
-                <div className="text-sm">{b.name}</div>
+        <div className="flex items-center gap-4">
+          {/* Left: total and progress */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-3xl md:text-4xl font-extrabold">{loading ? '...' : totalPoints}</p>
+                <p className="text-sm text-muted-foreground">Pontos acumulados</p>
               </div>
-            )) : (
-              <div className="text-sm text-muted-foreground">Nenhuma medalha conquistada ainda</div>
-            )}
-          </div>
-        </div>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground mb-1">Progresso: {progress}%</div>
+                <div className="w-36 bg-muted rounded-full h-2 overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-600 to-blue-500 h-2" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            </div>
 
-        <div className="mt-4 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={async () => {
-            try {
-              if (!user) return;
-              const data = await gamificationService.getStudentGamification(user.id);
-              setHistory(data?.history || []);
-              setTotalPoints(Number(data?.total?.total_points || 0));
-              setBadges(data?.badges || []);
-            } catch (e) {
-              console.error(e);
-            }
-          }}>Ver histórico</Button>
+            <div className="mt-3 flex items-center gap-2">
+              <Button size="sm" onClick={async () => {
+                if (!user) return;
+                setLoading(true);
+                try {
+                  const data = await gamificationService.getStudentGamification(user.id);
+                  setHistory(data?.history || []);
+                  setTotalPoints(Number(data?.total?.total_points || 0));
+                  setBadges(data?.badges || []);
+                } catch (e) {
+                  console.error(e);
+                } finally { setLoading(false); }
+              }}>Atualizar</Button>
+              <Button variant="ghost" size="sm" onClick={() => window.location.href = '/gamification'}>Abrir painel</Button>
+            </div>
+          </div>
+
+          {/* Right: compact history + medals */}
+          <div className="w-48">
+            <div className="text-xs font-medium mb-2">Últimos lançamentos</div>
+            <div className="flex flex-col gap-2">
+              {history && history.length > 0 ? history.slice(0,3).map(h => (
+                <div key={h.id || `${h.created_at}-${h.points}`} className="flex items-center justify-between text-sm">
+                  <div className="capitalize text-muted-foreground">{h.source}</div>
+                  <div className={`font-semibold ${h.points >= 0 ? 'text-green-700' : 'text-red-600'}`}>{h.points >= 0 ? `+${h.points}` : h.points}</div>
+                </div>
+              )) : (
+                <div className="text-xs text-muted-foreground">Sem lançamentos</div>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <div className="text-xs font-medium mb-2">Medalhas</div>
+              <div className="flex gap-2 flex-wrap">
+                {badges && badges.length > 0 ? badges.slice(0,3).map(b => (
+                  <div key={b.id || b.key} className="w-9 h-9 rounded-md bg-yellow-50 flex items-center justify-center text-lg">{b.icon ? <img src={`${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className="w-6 h-6" /> : '🏅'}</div>
+                )) : (
+                  <div className="text-xs text-muted-foreground">—</div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

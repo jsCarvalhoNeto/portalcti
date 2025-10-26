@@ -46,9 +46,19 @@ export async function awardSubmission(userId: string, activityId: string, subjec
   }
 }
 
-export async function getStudentGamification(userId: string) {
+export async function getStudentGamification(userId: string, params?: { subject?: string; grade?: string; semester?: string; period?: string; from?: string; to?: string }) {
   try {
-    const resp = await api.get(`/gamification/student/${userId}`);
+    const queryParts: string[] = [];
+    if (params) {
+      if (params.subject) queryParts.push(`subject=${encodeURIComponent(params.subject)}`);
+      if (params.grade) queryParts.push(`grade=${encodeURIComponent(params.grade)}`);
+      if (params.semester) queryParts.push(`semester=${encodeURIComponent(params.semester)}`);
+      if (params.period) queryParts.push(`period=${encodeURIComponent(params.period)}`);
+      if (params.from) queryParts.push(`from=${encodeURIComponent(params.from)}`);
+      if (params.to) queryParts.push(`to=${encodeURIComponent(params.to)}`);
+    }
+    const query = queryParts.length ? `?${queryParts.join('&')}` : '';
+    const resp = await api.get(`/gamification/student/${userId}${query}`);
     return resp.data;
   } catch (err) {
     console.error('gamificationService.getStudentGamification error', err);
@@ -73,5 +83,15 @@ export async function teacherReport(params?: { subject?: string; grade?: string;
     console.error('gamificationService.teacherReport error', err);
     const status = err?.response?.status;
     return { error: true, status };
+  }
+}
+
+export async function teacherAdjust(payload: { user_id?: string; userId?: string; points: number; subject_id?: string | number; reason: string }) {
+  try {
+    const resp = await api.post('/gamification/teacher/adjust', payload);
+    return resp.data;
+  } catch (err) {
+    console.error('gamificationService.teacherAdjust error', err);
+    return { error: true, status: (err as any)?.response?.status };
   }
 }

@@ -5,6 +5,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { GraduationCap, Filter, RefreshCw } from 'lucide-react';
 
 export default function TeacherGamificacaoTab() {
@@ -21,6 +25,13 @@ export default function TeacherGamificacaoTab() {
   const [isLoadingReport, setIsLoadingReport] = useState<boolean>(false);
 
   const [unauthorized, setUnauthorized] = useState<boolean>(false);
+
+  // Adjustment dialog state
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState<boolean>(false);
+  const [adjustTarget, setAdjustTarget] = useState<{ id: string; name?: string } | null>(null);
+  const [adjustPoints, setAdjustPoints] = useState<string>('');
+  const [adjustReason, setAdjustReason] = useState<string>('');
+  const [adjustSubject, setAdjustSubject] = useState<string>('');
 
   const fetchReport = async (opts?: { subject?: string }) => {
     setIsLoadingReport(true);
@@ -118,6 +129,46 @@ export default function TeacherGamificacaoTab() {
       return [];
     }
   }, [reportRows, students, selectedGrade, scores]);
+
+  const openAdjustFor = (id: string, name?: string) => {
+    setAdjustTarget({ id, name });
+    setAdjustPoints('');
+    setAdjustReason('');
+    setAdjustSubject(selectedSubject !== 'all' ? selectedSubject : '');
+    setAdjustDialogOpen(true);
+  };
+
+  const submitAdjust = async () => {
+    if (!adjustTarget) return;
+    const pts = parseInt(adjustPoints, 10);
+    if (Number.isNaN(pts) || pts === 0) {
+      toast({ title: 'Erro', description: 'Informe um valor de pontos válido (não zero).', variant: 'destructive' });
+      return;
+    }
+    if (!adjustReason || String(adjustReason).trim().length === 0) {
+      toast({ title: 'Erro', description: 'Motivo é obrigatório.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setIsLoadingReport(true);
+      const payload: any = { user_id: adjustTarget.id, points: pts, reason: adjustReason };
+      if (adjustSubject && adjustSubject !== 'all') payload.subject_id = adjustSubject;
+      const resp = await gamificationService.teacherAdjust(payload);
+      if ((resp as any)?.error) {
+        toast({ title: 'Erro', description: 'Falha ao aplicar ajuste.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Sucesso', description: 'Ajuste realizado.', variant: 'default' });
+        setAdjustDialogOpen(false);
+        // refresh report
+        fetchReport(selectedSubject !== 'all' ? { subject: selectedSubject } : undefined);
+      }
+    } catch (e) {
+      console.error('submitAdjust error', e);
+      toast({ title: 'Erro', description: 'Falha ao aplicar ajuste.', variant: 'destructive' });
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -253,6 +304,54 @@ export default function TeacherGamificacaoTab() {
         </div>
       )}
 
+      {/* Adjustment dialog */}
+      <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajustar Pontuação</DialogTitle>
+            <DialogDescription>
+              Aplicar pontos/penalidade para o aluno selecionado. Motivo obrigatório.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <Label>Aluno</Label>
+              <div className="text-sm font-medium">{adjustTarget?.name || adjustTarget?.id}</div>
+            </div>
+            <div>
+              <Label>Pontos (use negativo para penalidade)</Label>
+              <Input value={adjustPoints} onChange={(e:any)=>setAdjustPoints(e.target.value)} type="number" />
+            </div>
+            <div>
+              <Label>Disciplina (opcional)</Label>
+              <Select value={adjustSubject || 'all'} onValueChange={setAdjustSubject}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Associar a uma disciplina (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Nenhuma</SelectItem>
+                  {Array.isArray(subjects) && subjects.map((sub:any)=> (
+                    <SelectItem key={String(sub.id)} value={String(sub.id)}>{sub.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Motivo</Label>
+              <Textarea value={adjustReason} onChange={(e:any)=>setAdjustReason(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <div className="flex items-center gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button onClick={submitAdjust}>Aplicar Ajuste</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Pontuação dos Alunos</CardTitle>
@@ -281,7 +380,10 @@ export default function TeacherGamificacaoTab() {
                         <td className="p-2">{s.full_name}</td>
                         <td className="p-2 text-sm text-muted-foreground">{s.email}</td>
                         <td className="p-2 text-sm">{s.grade || '-'}</td>
-                        <td className="p-2 font-medium">{Number(s.total_points ?? 0)}</td>
+                        <td className="p-2 font-medium flex items-center justify-between">
+                          <span>{Number(s.total_points ?? 0)}</span>
+                          <Button size="sm" variant="ghost" onClick={() => openAdjustFor(s.id, s.full_name)}>Ajustar</Button>
+                        </td>
                       </tr>
                     ))
                   ) : (

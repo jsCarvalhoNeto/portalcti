@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock, BookOpen, FileText, Menu } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -218,7 +218,7 @@ export default function StudentDashboard() {
     { title: 'Minhas Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Atividades Pendentes', value: pendingActivities.toString(), icon: BarChart3, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
     { title: 'Notificações', value: notifications.length.toString(), icon: Users, color: 'text-accent', bgColor: 'bg-accent/10' },
-    { title: 'Progresso Geral', value: '0%', icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
+  { title: 'Progresso Geral', value: '0%', icon: Gamepad, color: 'text-green-500', bgColor: 'bg-green-500/10' }
   ];
 
   return (
@@ -253,6 +253,12 @@ export default function StudentDashboard() {
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Atualizar
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/gamification">
+                  <Gamepad className="w-4 h-4 mr-2" />
+                  Gamificação
+                </Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/">
@@ -333,6 +339,18 @@ export default function StudentDashboard() {
                           Atividades
                         </Button>
                         <Button
+                          variant={"ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            // navigate to gamification page
+                            window.location.href = '/gamification';
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Gamepad className="w-4 h-4 mr-2" />
+                          Gamificação
+                        </Button>
+                        <Button
                           variant={activeTab === 'grades' ? "secondary" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => {
@@ -390,7 +408,7 @@ export default function StudentDashboard() {
                                   <p className="text-sm text-muted-foreground">Pontos acumulados</p>
                                 </div>
                                 <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                                  <GraduationCap className={`w-6 h-6 ${stat.color}`} />
+                                  <Gamepad className={`w-6 h-6 ${stat.color}`} />
                                 </div>
                               </div>
 
@@ -509,7 +527,7 @@ export default function StudentDashboard() {
                     <div className="space-y-4">
                       {[
                         { action: 'Nova atividade lançada na disciplina Desenvolvimento Web', time: 'Hoje às 14:30', icon: BookOpen, color: 'text-green-600' },
-                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: GraduationCap, color: 'text-blue-600' },
+                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: Gamepad, color: 'text-blue-600' },
                         { action: 'Novo material de aula disponível para Programação', time: '2 dias atrás', icon: BookOpen, color: 'text-orange-600' }
                       ].map((activity, index) => (
                         <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -572,7 +590,7 @@ export default function StudentDashboard() {
                               Conteúdo
                             </Button>
                             <Button size="sm" variant="outline" className="flex items-center gap-1">
-                              <GraduationCap className="w-4 h-4" />
+                              <Gamepad className="w-4 h-4" />
                               Notas
                             </Button>
                             <Button size="sm" variant="outline" className="flex items-center gap-1" onClick={(e) => {
