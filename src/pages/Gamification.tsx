@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { BookOpen, BarChart3, Home, LogOut, Menu } from 'lucide-react';
+import BadgeGrid from '@/components/badges/BadgeGrid';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 
 export default function Gamification() {
@@ -17,30 +18,66 @@ export default function Gamification() {
   const [total, setTotal] = useState<number>(0);
   const [history, setHistory] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
+  const [unlockedBadges, setUnlockedBadges] = useState<any[]>([]);
+  const [unlockedBySubject, setUnlockedBySubject] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [subjectNamesMap, setSubjectNamesMap] = useState<Record<string,string>>({});
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+
+  // carregar lista de subjects (reutilizável)
+  const fetchSubjects = async () => {
+    try {
+      const subs = await subjectService.getAll();
+      const list = Array.isArray(subs) ? subs : [];
+      setSubjects(list);
+      try {
+        const map = Object.fromEntries((list || []).map((s: any) => [String(s.id), s.name || '']));
+        setSubjectNamesMap(map);
+      } catch (e) {
+        console.warn('Erro ao popular subjectNamesMap em Gamification', e);
+      }
+    } catch (e) {
+      console.error('Erro ao buscar disciplinas:', e);
+    }
+  };
+
+  // Quando houver unlockedBySubject, busque nomes faltantes por id
+  useEffect(() => {
+    if (!unlockedBySubject || unlockedBySubject.length === 0) return;
+    const missing = (unlockedBySubject || []).map((s:any) => String(s.subject_id)).filter((id:string) => !subjectNamesMap[id]);
+    if (missing.length === 0) return;
+
+    (async () => {
+      const updates: Record<string,string> = {};
+      await Promise.all(missing.map(async (id:string) => {
+        try {
+          const subj = await subjectService.getById(id);
+          if (subj && subj.name) updates[id] = subj.name;
+        } catch (err) {
+          console.warn('Erro ao buscar disciplina por id (gamification):', id, err);
+        }
+      }));
+      if (Object.keys(updates).length > 0) setSubjectNamesMap(prev => ({ ...prev, ...updates }));
+    })();
+  }, [unlockedBySubject, subjectNamesMap]);
 
   // Fetch initial data and subjects list
   useEffect(() => {
     const fetch = async () => {
       if (!user) return;
       setLoading(true);
-      try {
-        const subs = await subjectService.getAll();
-        setSubjects(Array.isArray(subs) ? subs : []);
-      } catch (e) {
-        console.error('Erro ao buscar disciplinas:', e);
-      }
-
+      await fetchSubjects();
       try {
         // initial fetch without filters
         const data = await gamificationService.getStudentGamification(user.id);
         setTotal(Number(data?.total?.total_points || 0));
         setHistory(data?.history || []);
         setBadges(data?.badges || []);
+        setUnlockedBadges(data?.unlocked_badges || []);
+        setUnlockedBySubject(data?.unlocked_by_subject || []);
       } catch (e) {
         console.error('Erro ao buscar dados de gamificação:', e);
       } finally {
@@ -49,6 +86,21 @@ export default function Gamification() {
     };
     fetch();
   }, [user]);
+
+  // Caso os badges por disciplina cheguem antes da lista de subjects,
+  // re-consulta subjects para garantir que possamos resolver o nome real.
+  useEffect(() => {
+    if (unlockedBySubject && unlockedBySubject.length > 0 && subjects.length === 0) {
+      fetchSubjects();
+    }
+  }, [unlockedBySubject]);
+
+  const resolveSubjectName = (subjectId: any, subjectNameFromApi?: string) => {
+    if (subjectNameFromApi && String(subjectNameFromApi).trim().length > 0) return subjectNameFromApi;
+    const found = subjects.find((s: any) => String(s.id) === String(subjectId));
+    if (found && found.name) return found.name;
+    return subjectId ? `Disciplina ${subjectId}` : 'Disciplina';
+  };
 
   // Atualizar quando houver evento global de gamificação
   useEffect(() => {
@@ -63,7 +115,9 @@ export default function Gamification() {
         const data = await gamificationService.getStudentGamification(user.id, Object.keys(params).length ? params : undefined);
         setTotal(Number(data?.total?.total_points || 0));
         setHistory(data?.history || []);
-        setBadges(data?.badges || []);
+  setBadges(data?.badges || []);
+  setUnlockedBadges(data?.unlocked_badges || []);
+  setUnlockedBySubject(data?.unlocked_by_subject || []);
       } catch (e) {
         console.error('Erro ao atualizar gamification via evento:', e);
       }
@@ -385,30 +439,37 @@ export default function Gamification() {
                 <CardDescription>Conquistas adquiridas</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-3">
-                  {badges.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
-                  ) : (
-                    badges.map((b:any) => (
-                      <div key={b.awarded_id || b.id} className="flex items-center gap-3 p-2 rounded-lg border">
-                        <div className="w-12 h-12 flex items-center justify-center rounded-md bg-gradient-to-br from-yellow-100 to-orange-50">
-                          {b.icon ? (
-                            // show image if available
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={`${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className="w-8 h-8 object-contain" />
+                <BadgeGrid badges={(unlockedBadges && unlockedBadges.length) ? unlockedBadges : badges || []} cols={3} />
+              </CardContent>
+            </Card>
+            {/* Badges per subject */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Medalhas por Disciplina</CardTitle>
+                <CardDescription>Conquistas por disciplina</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {unlockedBySubject && unlockedBySubject.length > 0 ? (
+                  <div className="space-y-4">
+                    {unlockedBySubject.map((s:any) => (
+                      <div key={s.subject_id} className="p-2 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-medium">{resolveSubjectName(s.subject_id, s.subject_name) || subjectNamesMap[String(s.subject_id)] || `Disciplina ${s.subject_id}`}</div>
+                          <div className="text-sm text-muted-foreground">{s.total_points} pts</div>
+                        </div>
+                        <div className="mt-2">
+                          {s.unlocked_badges && s.unlocked_badges.length > 0 ? (
+                            <BadgeGrid badges={s.unlocked_badges} cols={6} compact subjectName={resolveSubjectName(s.subject_id, s.subject_name)} subjectId={s.subject_id} />
                           ) : (
-                            <span className="text-2xl">🏅</span>
+                            <div className="text-sm text-muted-foreground">Nenhuma conquista nesta disciplina</div>
                           )}
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium">{b.name}</div>
-                          {b.description && <div className="text-xs text-muted-foreground">{b.description}</div>}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{b.threshold_points ? `${b.threshold_points} pts` : ''}</div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Nenhuma conquista por disciplina encontrada.</div>
+                )}
               </CardContent>
             </Card>
           </div>

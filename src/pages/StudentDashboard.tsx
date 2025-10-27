@@ -19,6 +19,7 @@ import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
+import BadgeGrid from '@/components/badges/BadgeGrid';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
@@ -26,10 +27,13 @@ export default function StudentDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [subjectNamesMap, setSubjectNamesMap] = useState<Record<string, string>>({});
   const [notifications, setNotifications] = useState<any[]>([]);
   const [pendingActivities, setPendingActivities] = useState(0);
   const [totalPoints, setTotalPoints] = useState<number>(0);
   const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [unlockedBadges, setUnlockedBadges] = useState<any[]>([]);
+  const [unlockedBySubject, setUnlockedBySubject] = useState<any[]>([]);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     full_name: '',
@@ -57,6 +61,52 @@ export default function StudentDashboard() {
     return labels[tabValue] || tabValue;
   };
 
+  // Small helper component to display subject name reliably and fetch missing names on demand.
+  function SubjectName({ subjectId, subjectNameFromApi }: { subjectId: any; subjectNameFromApi?: string }) {
+    const [localName, setLocalName] = useState<string | null>(null);
+    const [loadingName, setLoadingName] = useState(false);
+
+    useEffect(() => {
+      let mounted = true;
+      const initial = resolveSubjectName(subjectId, subjectNameFromApi);
+      // If the resolved name is the default placeholder, try to fetch a better name
+      if (initial && !String(initial).startsWith('Disciplina')) {
+        setLocalName(initial);
+        return;
+      }
+
+      // try fast lookup first
+      const mapped = subjectNamesMap && subjectNamesMap[String(subjectId)];
+      if (mapped) {
+        setLocalName(mapped);
+        return;
+      }
+
+      // otherwise fetch by id
+      (async () => {
+        setLoadingName(true);
+        try {
+          const subj = await subjectService.getById(String(subjectId));
+          if (!mounted) return;
+          if (subj && subj.name) {
+            setLocalName(subj.name);
+            setSubjectNamesMap(prev => ({ ...prev, [String(subjectId)]: subj.name }));
+            return;
+          }
+        } catch (e) {
+          // ignore
+        } finally {
+          if (mounted) setLoadingName(false);
+        }
+      })();
+
+      return () => { mounted = false; };
+    }, [subjectId, subjectNameFromApi]);
+
+    if (loadingName) return <div className="animate-pulse text-sm text-muted-foreground">Carregando...</div>;
+    return <div className="font-medium">{localName || resolveSubjectName(subjectId, subjectNameFromApi)}</div>;
+  }
+
   useEffect(() => {
     if (user && isStudent) {
       fetchSubjects();
@@ -65,6 +115,52 @@ export default function StudentDashboard() {
       fetchGamification();
     }
   }, [user, isStudent]);
+
+  // If unlockedBySubject arrives before subjects list is loaded, re-fetch subjects
+  useEffect(() => {
+    if (unlockedBySubject && unlockedBySubject.length > 0 && subjects.length === 0) {
+      fetchSubjects();
+    }
+  }, [unlockedBySubject]);
+
+  // If we have unlocked badges grouped by subject, ensure we have human-friendly names for each subject.
+  // This fetches any missing subject names individually and updates the subjectNamesMap.
+  useEffect(() => {
+    if (!unlockedBySubject || unlockedBySubject.length === 0) return;
+    const missing = (unlockedBySubject || [])
+      .map((s: any) => String(s.subject_id))
+      .filter((id: string) => !subjectNamesMap[id]);
+    if (missing.length === 0) return;
+
+    (async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(missing.map(async (id: string) => {
+        try {
+          const subj = await subjectService.getById(id);
+          if (subj && subj.name) updates[String(id)] = subj.name;
+        } catch (e) {
+          // ignore individual failures, we'll keep placeholder
+          console.warn('Erro ao buscar disciplina por id', id, e);
+        }
+      }));
+      if (Object.keys(updates).length > 0) {
+        setSubjectNamesMap(prev => ({ ...prev, ...updates }));
+      }
+    })();
+  }, [unlockedBySubject, subjectNamesMap]);
+
+  const resolveSubjectName = (subjectId: any, subjectNameFromApi?: string) => {
+    // Prefer explicit name provided by the gamification API
+    if (subjectNameFromApi && String(subjectNameFromApi).trim().length > 0) return subjectNameFromApi;
+    // Then check the local fast lookup map
+    const mapped = subjectNamesMap && subjectNamesMap[String(subjectId)];
+    if (mapped && String(mapped).trim().length > 0) return mapped;
+    // Fallback to the subjects array (if already loaded)
+    const found = subjects.find((s: any) => String(s.id) === String(subjectId));
+    if (found && found.name) return found.name;
+    // Last resort: generic placeholder with id
+    return subjectId ? `Disciplina ${subjectId}` : 'Disciplina';
+  };
 
   // Escuta evento global de atualização de gamificação para recarregar os dados
   useEffect(() => {
@@ -86,6 +182,8 @@ export default function StudentDashboard() {
       const nextThreshold = nextBadge?.threshold_points || Math.ceil((total + 100)/100)*100;
       const progress = nextThreshold ? Math.min(100, Math.round((total / nextThreshold) * 100)) : 0;
       setProgressPercent(progress);
+      setUnlockedBadges(data?.unlocked_badges || []);
+      setUnlockedBySubject(data?.unlocked_by_subject || []);
     } catch (e) {
       console.error('Erro ao buscar gamification:', e);
     }
@@ -108,6 +206,13 @@ export default function StudentDashboard() {
       // Buscar todas as disciplinas cadastradas no sistema usando o service
       const subjectsData = await subjectService.getAll();
       setSubjects(subjectsData);
+      // Preencher mapa de nomes para lookup rápido (evita mostrar "Disciplina <id>")
+      try {
+        const map = Object.fromEntries((subjectsData || []).map((s: any) => [String(s.id), s.name || '']));
+        setSubjectNamesMap(map);
+      } catch (e) {
+        console.warn('Erro ao popular subjectNamesMap', e);
+      }
       
       // Buscar atividades para atualizar o contador de pendentes
       if (user) {
@@ -497,6 +602,47 @@ export default function StudentDashboard() {
                   <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
                     Configurações
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Medals quick view (overview) */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="md:col-span-1">
+                <CardHeader>
+                  <CardTitle>Medalhas</CardTitle>
+                  <CardDescription>Conquistas recentes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {unlockedBadges && unlockedBadges.length > 0 ? (
+                    <BadgeGrid badges={unlockedBadges.slice(0,6)} cols={3} compact />
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Medalhas por Disciplina</CardTitle>
+                  <CardDescription>Progresso por disciplina</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {unlockedBySubject && unlockedBySubject.length > 0 ? (
+                    <div className="space-y-3">
+                      {unlockedBySubject.map((s:any) => (
+                        <div key={s.subject_id} className="p-2 border rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <SubjectName subjectId={s.subject_id} subjectNameFromApi={s.subject_name} />
+                            <div className="text-xs text-muted-foreground">{s.total_points} pts</div>
+                          </div>
+                          <BadgeGrid badges={s.unlocked_badges || []} cols={6} compact subjectName={subjectNamesMap[String(s.subject_id)] || s.subject_name} subjectId={s.subject_id} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Nenhuma conquista por disciplina.</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
