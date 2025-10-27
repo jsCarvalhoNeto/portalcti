@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+// React-Quill WYSIWYG editor
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +19,7 @@ interface SubmissionData {
   student_name: string;
   team_members: string;
   file: File | null;
+  text_submission?: string;
 }
 
 export default function StudentActivitiesTab() {
@@ -38,7 +42,9 @@ export default function StudentActivitiesTab() {
     team_members: '',
     file: null
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Using React-Quill for rich text; value is stored in submissionData.text_submission
   // Estados de notas removidos - todas as funcionalidades de notas estão no painel Notas & Desempenho
 
   useEffect(() => {
@@ -153,14 +159,7 @@ export default function StudentActivitiesTab() {
       return;
     }
 
-    if (!submissionData.file) {
-      toast({
-        title: "Erro de Validação",
-        description: "Por favor, selecione um arquivo para enviar.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Nota: arquivo agora é opcional (alunos podem enviar somente texto)
 
     setIsSubmitting(true);
     try {
@@ -168,7 +167,10 @@ export default function StudentActivitiesTab() {
       formData.append('activity_id', selectedActivity.id.toString());
       formData.append('student_name', submissionData.student_name);
       formData.append('team_members', submissionData.team_members);
-      formData.append('file', submissionData.file);
+      formData.append('text_submission', submissionData.text_submission || '');
+      if (submissionData.file) {
+        formData.append('file', submissionData.file);
+      }
 
       // Usar o service para enviar a atividade
       await submitStudentActivity(formData);
@@ -208,7 +210,8 @@ export default function StudentActivitiesTab() {
         activity_id: 0,
         student_name: profile?.full_name || '',
         team_members: '',
-        file: null
+        file: null,
+        text_submission: ''
       });
     } catch (error) {
       console.error('Error submitting activity:', error);
@@ -411,6 +414,29 @@ export default function StudentActivitiesTab() {
                 </div>
               )}
 
+              {/* Campo de texto grande para submissões manuscritas (editor WYSIWYG com React-Quill) */}
+              <div>
+                <Label htmlFor="text_submission">Texto de Submissão</Label>
+                <div className="mt-2">
+                  <ReactQuill
+                    id="text_submission"
+                    theme="snow"
+                    value={submissionData.text_submission || ''}
+                    onChange={(content) => setSubmissionData(prev => ({ ...prev, text_submission: content }))}
+                    modules={{
+                      toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                      ]
+                    }}
+                    formats={[ 'bold', 'italic', 'underline', 'list', 'bullet' ]}
+                    className="bg-background/50"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Use o campo acima para digitar trabalhos manuscritos. A formatação básica (negrito, itálico, sublinhado e listas) está disponível.</p>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="submission_file">Arquivo de Submissão</Label>
                 <div className="space-y-2">
@@ -434,7 +460,8 @@ export default function StudentActivitiesTab() {
                       activity_id: 0,
                       student_name: profile?.full_name || '',
                       team_members: '',
-                      file: null
+                        file: null,
+                        text_submission: ''
                     });
                   }}
                 >

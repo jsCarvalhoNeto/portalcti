@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface ExtendedStudentActivity {
   id: number;
@@ -22,6 +24,7 @@ interface ExtendedStudentActivity {
   grade_date?: string | null;    // Campo opcional que vem da API
   period?: string | null;        // Campo opcional para período
   evaluation_type?: string | null; // Campo opcional para tipo de avaliação
+  teacher_observation?: string | null;
 }
 
 export default function StudentGradesPerformanceTab() {
@@ -35,6 +38,8 @@ export default function StudentGradesPerformanceTab() {
   const [filterPeriod, setFilterPeriod] = useState('');
   const [filterEvaluationType, setFilterEvaluationType] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalObservationOpen, setModalObservationOpen] = useState(false);
+  const [modalObservationHtml, setModalObservationHtml] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -293,6 +298,7 @@ export default function StudentGradesPerformanceTab() {
                   <th className="text-left p-4 font-medium text-muted-foreground">Data de Envio</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Prazo Final</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Observação</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Nota</th>
                 </tr>
               </thead>
@@ -321,6 +327,15 @@ export default function StudentGradesPerformanceTab() {
                       </td>
                       <td className="p-4">
                         {getStatusBadge(activity.status)}
+                      </td>
+                      <td className="p-4">
+                        {activity.teacher_observation ? (
+                          <Button size="sm" variant="outline" onClick={() => { setModalObservationHtml(activity.teacher_observation || ''); setModalObservationOpen(true); }}>
+                            Visualizar
+                          </Button>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">-</div>
+                        )}
                       </td>
                       <td className="p-4">
                         <div className="font-medium text-lg">
@@ -390,6 +405,19 @@ export default function StudentGradesPerformanceTab() {
           </CardContent>
         </Card>
       </div>
+      {/* Modal para visualizar observação do professor */}
+      <Dialog open={modalObservationOpen} onOpenChange={setModalObservationOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Observação do Professor</DialogTitle>
+            <DialogDescription>Observação enviada pelo professor para esta atividade</DialogDescription>
+          </DialogHeader>
+          <div className="prose max-w-full p-4" dangerouslySetInnerHTML={{ __html: modalObservationHtml }} />
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setModalObservationOpen(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

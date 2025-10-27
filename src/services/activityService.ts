@@ -33,6 +33,7 @@ export interface ActivityGrade {
   team_members: string | null;
   file_path: string | null;
   file_name: string | null;
+  text_submission?: string | null;
   submitted_at: string | null; // Pode ser nulo para alunos que ainda não submeteram (usando graded_at como timestamp de submissão)
   status: 'graded' | 'submitted' | 'pending';
   student_name_display: string;
@@ -40,6 +41,8 @@ export interface ActivityGrade {
   subject_name: string;
   activity_name: string;
   teacher_name?: string; // Adicionado para mostrar o nome do professor
+  teacher_observation?: string | null; // Observação em rich text HTML enviada pelo professor
+  has_teacher_observation?: boolean;
 }
 
 export interface StudentActivity {
@@ -105,6 +108,16 @@ export async function updateActivityGrade(gradeId: number, grade: number) {
   } catch (error) {
     console.error('Error updating activity grade:', error);
     throw new Error('Não foi possível atualizar a nota da atividade.');
+  }
+}
+
+export async function setActivityTeacherObservation(gradeId: number, teacher_observation: string | null) {
+  try {
+    const response = await api.put(`/activities/activity-grades/${gradeId}/observation`, { teacher_observation }, { withCredentials: true });
+    return response.data;
+  } catch (error) {
+    console.error('Error setting teacher observation:', error);
+    throw new Error('Não foi possível salvar a observação.');
   }
 }
 
