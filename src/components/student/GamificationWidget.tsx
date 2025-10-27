@@ -11,6 +11,7 @@ interface BadgeItem {
   description?: string;
   threshold_points?: number;
   icon?: string;
+  icon_url?: string;
 }
 
 export default function GamificationWidget() {
@@ -120,7 +121,7 @@ export default function GamificationWidget() {
               <div className="text-xs font-medium mb-2">Medalhas</div>
               <div className="flex gap-2 flex-wrap">
                 {badges && badges.length > 0 ? badges.slice(0,3).map(b => (
-                  <div key={b.id || b.key} className="w-9 h-9 rounded-md bg-yellow-50 flex items-center justify-center text-lg">{b.icon ? <img src={`${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className="w-6 h-6" /> : '🏅'}</div>
+                  <div key={b.id || b.key} className="w-9 h-9 rounded-md bg-yellow-50 flex items-center justify-center text-lg">{b.icon_url || b.icon ? <img src={b.icon_url ? b.icon_url : `${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className="w-6 h-6" /> : '🏅'}</div>
                 )) : (
                   <div className="text-xs text-muted-foreground">—</div>
                 )}
