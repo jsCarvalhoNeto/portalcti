@@ -20,6 +20,7 @@ import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 import BadgeGrid from '@/components/badges/BadgeGrid';
+import TopStudentsCard from '@/components/student/TopStudentsCard';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
@@ -647,6 +648,9 @@ export default function StudentDashboard() {
               </Card>
             </div>
 
+            {/* Top Students Leaderboard */}
+            <TopStudentsCard limit={10} />
+
             {/* Recent Activity */}
             <Card>
               <CardHeader>
@@ -673,7 +677,7 @@ export default function StudentDashboard() {
                     <div className="space-y-4">
                       {[
                         { action: 'Nova atividade lançada na disciplina Desenvolvimento Web', time: 'Hoje às 14:30', icon: BookOpen, color: 'text-green-600' },
-                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: Gamepad, color: 'text-blue-600' },
+                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: Gamepad, color: 'text-blue-60' },
                         { action: 'Novo material de aula disponível para Programação', time: '2 dias atrás', icon: BookOpen, color: 'text-orange-600' }
                       ].map((activity, index) => (
                         <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">

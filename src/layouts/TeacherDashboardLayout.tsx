@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Menu } from 'lucide-react';
+import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 
@@ -28,6 +29,7 @@ export default function TeacherDashboardLayout({
   setActiveTab 
 }: TeacherDashboardLayoutProps) {
   const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const getTabLabel = (tabValue: string) => {
@@ -65,6 +67,20 @@ export default function TeacherDashboardLayout({
                 <BookOpen className="w-3 h-3" />
                 Professor
               </Badge>
+              {/* Botão Gamificação no topo (como no painel do aluno).
+                  Ao clicar: ativa a aba 'gamificacao' no contexto do dashboard do professor
+                  e navega para a página /teacher/achievements quando necessário. */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try { setActiveTab && setActiveTab('gamificacao'); } catch (e) { /* noop */ }
+                  navigate('/teacher');
+                }}
+              >
+                <Gamepad className="w-4 h-4 mr-2" />
+                Gamificação
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/">
                   <Home className="w-4 h-4 mr-2" />
@@ -85,12 +101,11 @@ export default function TeacherDashboardLayout({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-4xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
+            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
-              <TabsTrigger value="gamificacao">Gamificação</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
@@ -155,17 +170,7 @@ export default function TeacherDashboardLayout({
                           <BarChart3 className="w-4 h-4 mr-2" />
                           Atividades & Notas
                         </Button>
-                        <Button
-                          variant={activeTab === 'gamificacao' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
-                          onClick={() => {
-                            setActiveTab('gamificacao');
-                            setIsMobileMenuOpen(false);
-                          }}
-                        >
-                          <GraduationCap className="w-4 h-4 mr-2" />
-                          Gamificação
-                        </Button>
+                        {/* Gamificação removida do menu principal - acessível via botão no topo */}
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
                           className="w-full justify-start"

@@ -10,6 +10,8 @@ import Subjects from "./pages/Subjects";
 import SubjectDetail from "./pages/SubjectDetail";
 import StudentDashboard from "./pages/StudentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherAchievements from './pages/TeacherAchievements';
+import Achievements from './pages/Achievements';
 import AdminDashboard from "./pages/AdminDashboard";
 import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
 import InteractiveActivities from "./pages/InteractiveActivities";
@@ -35,8 +37,10 @@ const App = () => (
             <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
             <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
             <Route path="/gamification" element={<Gamification />} />
+            <Route path="/achievements" element={<Achievements />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
+            <Route path="/teacher/achievements" element={<TeacherAchievements />} />
             <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
             <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

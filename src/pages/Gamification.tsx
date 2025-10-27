@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, BarChart3, Home, LogOut, Menu } from 'lucide-react';
 import BadgeGrid from '@/components/badges/BadgeGrid';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
+import TopStudentsCard from '@/components/student/TopStudentsCard';
 
 export default function Gamification() {
   const { user, isStudent } = useAuth();
@@ -439,7 +440,14 @@ export default function Gamification() {
                 <CardDescription>Conquistas adquiridas</CardDescription>
               </CardHeader>
               <CardContent>
-                <BadgeGrid badges={(unlockedBadges && unlockedBadges.length) ? unlockedBadges : badges || []} cols={3} />
+                <div>
+                  <BadgeGrid badges={(unlockedBadges && unlockedBadges.length) ? unlockedBadges : badges || []} cols={3} />
+                  <div className="mt-4">
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/achievements">Ver todas as conquistas</Link>
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
             {/* Badges per subject */}
@@ -472,6 +480,8 @@ export default function Gamification() {
                 )}
               </CardContent>
             </Card>
+            {/* Top 10 leaderboard */}
+            <TopStudentsCard limit={10} />
           </div>
         </div>
       </div>

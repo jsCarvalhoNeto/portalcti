@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GraduationCap, Filter, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function TeacherGamificacaoTab() {
-  const { students, grades, subjects } = useTeacherDashboard();
+  const { students, grades, subjects, setActiveTab } = useTeacherDashboard();
+  
   const { toast } = useToast();
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
@@ -172,6 +174,11 @@ export default function TeacherGamificacaoTab() {
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end">
+        <Button variant="outline" className="flex items-center gap-2" asChild>
+          <Link to="/teacher/achievements">Gerenciar Conquistas</Link>
+        </Button>
+      </div>
       <div>
         <h2 className="text-2xl font-bold">Gamificação</h2>
         <p className="text-muted-foreground">Visualize e gerencie a pontuação dos alunos</p>

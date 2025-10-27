@@ -277,7 +277,7 @@ export default function TeacherSubjectEditor() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => navigate('/teacher/dashboard')}
+                  onClick={() => navigate('/teacher')}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />

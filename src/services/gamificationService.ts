@@ -95,3 +95,17 @@ export async function teacherAdjust(payload: { user_id?: string; userId?: string
     return { error: true, status: (err as any)?.response?.status };
   }
 }
+
+// Fetch top students (leaderboard).
+// NOTE: backend must expose GET /gamification/top to support this.
+export async function getTopStudents(limit = 10) {
+  try {
+    // Try authenticated endpoint first (since we know it exists and works)
+    const resp = await api.get(`/gamification/top?limit=${encodeURIComponent(String(limit))}`);
+    // backend returns { data: [...] } — unwrap when present to return the array directly
+    return resp.data && resp.data.data ? resp.data.data : resp.data;
+  } catch (err) {
+    console.error('gamificationService.getTopStudents error', err);
+    return null;
+  }
+}
