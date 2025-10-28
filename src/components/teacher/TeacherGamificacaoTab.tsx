@@ -11,9 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GraduationCap, Filter, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import StudentAchievementHistory from './StudentAchievementHistory';
 
 export default function TeacherGamificacaoTab() {
-  const { students, grades, subjects, setActiveTab } = useTeacherDashboard();
+  const { students, grades, subjects } = useTeacherDashboard();
   
   const { toast } = useToast();
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
@@ -27,6 +28,14 @@ export default function TeacherGamificacaoTab() {
   const [isLoadingReport, setIsLoadingReport] = useState<boolean>(false);
 
   const [unauthorized, setUnauthorized] = useState<boolean>(false);
+
+  // Estados para o modal de histórico de conquistas
+  const [achievementHistoryOpen, setAchievementHistoryOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{
+    id: string;
+    name?: string;
+    email?: string;
+  } | null>(null);
 
   // Adjustment dialog state
   const [adjustDialogOpen, setAdjustDialogOpen] = useState<boolean>(false);
@@ -170,6 +179,16 @@ export default function TeacherGamificacaoTab() {
     } finally {
       setIsLoadingReport(false);
     }
+  };
+
+  // Função para abrir o histórico de conquistas do aluno
+  const openStudentHistory = (studentId: string, studentName?: string, studentEmail?: string) => {
+    setSelectedStudent({
+      id: studentId,
+      name: studentName,
+      email: studentEmail
+    });
+    setAchievementHistoryOpen(true);
   };
 
   return (
@@ -384,7 +403,15 @@ export default function TeacherGamificacaoTab() {
                   {filtered.length > 0 ? (
                     filtered.map((s) => (
                       <tr key={s.id} className="border-t">
-                        <td className="p-2">{s.full_name}</td>
+                        <td className="p-2">
+                          <button
+                            onClick={() => openStudentHistory(s.id, s.full_name, s.email)}
+                            className="text-left hover:text-primary hover:underline focus:outline-none focus:text-primary transition-colors"
+                            title="Clique para ver o histórico de conquistas"
+                          >
+                            {s.full_name}
+                          </button>
+                        </td>
                         <td className="p-2 text-sm text-muted-foreground">{s.email}</td>
                         <td className="p-2 text-sm">{s.grade || '-'}</td>
                         <td className="p-2 font-medium flex items-center justify-between">
@@ -406,6 +433,15 @@ export default function TeacherGamificacaoTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de histórico de conquistas */}
+      <StudentAchievementHistory
+        open={achievementHistoryOpen}
+        onOpenChange={setAchievementHistoryOpen}
+        studentId={selectedStudent?.id || null}
+        studentName={selectedStudent?.name}
+        studentEmail={selectedStudent?.email}
+      />
     </div>
   );
 }
