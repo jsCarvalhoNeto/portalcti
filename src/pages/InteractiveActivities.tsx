@@ -66,6 +66,16 @@ export default function InteractiveActivities() {
         },
         {
           id: '2',
+          title: 'Formulário de Login - HTML & CSS',
+          description: 'Crie uma interface de login seguindo as melhores práticas de HTML5 e CSS3',
+          type: 'exercise',
+          duration: '45 min',
+          difficulty: 'intermediate',
+          status: 'not-started',
+          progress: 0
+        },
+        {
+          id: '3',
           title: 'Simulador de Algoritmos',
           description: 'Visualize como os algoritmos funcionam em tempo real',
           type: 'simulation',
@@ -75,7 +85,7 @@ export default function InteractiveActivities() {
           progress: 65
         },
         {
-          id: '3',
+          id: '4',
           title: 'Quiz de Estruturas de Dados',
           description: 'Teste seus conhecimentos sobre arrays, listas e pilhas',
           type: 'quiz',
@@ -85,7 +95,7 @@ export default function InteractiveActivities() {
           progress: 100
         },
         {
-          id: '4',
+          id: '5',
           title: 'Exercícios Interativos',
           description: 'Problemas práticos com feedback imediato',
           type: 'exercise',
@@ -268,6 +278,9 @@ export default function InteractiveActivities() {
                         };
                         const gameLevel = levelMap[activity.difficulty] || 'iniciante';
                         navigate(`/disciplinas/${id}/interactive-activities/memory-game/${gameLevel}`);
+                      } else if (activity.id === '2') {
+                        // Atividade HTML/CSS - Formulário de Login
+                        navigate(`/disciplinas/${id}/interactive-activities/html-css-form`);
                       }
                     }}>
                       <Play className="w-4 h-4 mr-2" />

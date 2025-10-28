@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
 import InteractiveActivities from "./pages/InteractiveActivities";
 import MemoryGame from "./pages/logic-programming/MemoryGame";
+import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/disciplinas/:id/interactive-activities" element={<InteractiveActivities />} />
             <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
             <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
+            <Route path="/disciplinas/:id/interactive-activities/html-css-form" element={<HtmlCssFormActivity />} />
             <Route path="/gamification" element={<Gamification />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/student" element={<StudentDashboard />} />

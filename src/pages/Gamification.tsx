@@ -417,15 +417,56 @@ export default function Gamification() {
                   <div className="text-sm text-muted-foreground">Nenhum registro encontrado.</div>
                 ) : (
                   <div className="space-y-3">
-                    {history.map((h:any) => (
-                      <div key={h.id || `${h.created_at}-${h.points}`} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div>
-                          <div className="font-medium capitalize">{h.source}{h.reason ? ` — ${h.reason}` : ''}</div>
-                          <div className="text-xs text-muted-foreground">{new Date(h.created_at).toLocaleString()}</div>
+                    {history.map((h:any) => {
+                      // Função para formatar a descrição de forma mais legível
+                      const formatDescription = (source: string, reason: string, subjectName: string) => {
+                        if (reason) {
+                          return reason;
+                        }
+                        
+                        // Fallback para registros antigos sem reason
+                        const sourceMap: Record<string, string> = {
+                          'game': 'Atividade de Jogo',
+                          'submission': 'Submissão de Atividade', 
+                          'access': 'Acesso ao Sistema',
+                          'adjustment': 'Ajuste Manual'
+                        };
+                        
+                        let description = sourceMap[source] || source;
+                        if (subjectName) {
+                          description += ` - ${subjectName}`;
+                        }
+                        
+                        return description;
+                      };
+
+                      const description = formatDescription(h.source, h.reason, h.subject_name);
+                      
+                      return (
+                        <div key={h.id || `${h.created_at}-${h.points}`} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm leading-tight">{description}</div>
+                            {h.subject_name && !h.reason && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Disciplina: {h.subject_name}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {new Date(h.created_at).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit', 
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          <div className={`font-semibold ml-3 ${h.points >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                            {h.points >= 0 ? `+${h.points}` : h.points}
+                          </div>
                         </div>
-                        <div className="font-semibold text-green-700">{h.points >= 0 ? `+${h.points}` : h.points}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

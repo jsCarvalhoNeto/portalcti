@@ -7,7 +7,6 @@ import TeacherSubjectsTab from '@/components/teacher/TeacherSubjectsTab';
 import TeacherStudentsTab from '@/components/teacher/TeacherStudentsTab';
 import TeacherGradesActivitiesTab from '@/components/teacher/TeacherGradesActivitiesTab';
 import TeacherCalendarTab from '@/components/teacher/TeacherCalendarTab';
-import TeacherGamificacaoTab from '@/components/teacher/TeacherGamificacaoTab';
 import TeacherSettingsTab from '@/components/teacher/TeacherSettingsTab';
 import TeacherDashboardLayout from '@/layouts/TeacherDashboardLayout';
 import AchievementList from '../components/achievements/AchievementList';

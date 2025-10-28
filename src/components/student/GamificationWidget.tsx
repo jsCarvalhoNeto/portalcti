@@ -107,12 +107,39 @@ export default function GamificationWidget() {
           <div className="w-48">
             <div className="text-xs font-medium mb-2">Últimos lançamentos</div>
             <div className="flex flex-col gap-2">
-              {history && history.length > 0 ? history.slice(0,3).map(h => (
-                <div key={h.id || `${h.created_at}-${h.points}`} className="flex items-center justify-between text-sm">
-                  <div className="capitalize text-muted-foreground">{h.source}</div>
-                  <div className={`font-semibold ${h.points >= 0 ? 'text-green-700' : 'text-red-600'}`}>{h.points >= 0 ? `+${h.points}` : h.points}</div>
-                </div>
-              )) : (
+              {history && history.length > 0 ? history.slice(0,3).map(h => {
+                // Função para formatar a descrição de forma compacta
+                const getCompactDescription = (source: string, reason: string) => {
+                  if (reason) {
+                    // Extrair apenas a parte principal da reason
+                    if (reason.includes('Jogo da Memória')) return 'Jogo da Memória';
+                    if (reason.includes('HTML/CSS')) return 'Atividade HTML/CSS';
+                    if (reason.includes('Submissão de atividade')) return 'Submissão';
+                    if (reason.includes('Acesso')) return 'Acesso';
+                    return reason.split(' (')[0]; // Remove a parte dos pontos
+                  }
+                  
+                  const sourceMap: Record<string, string> = {
+                    'game': 'Jogo',
+                    'submission': 'Submissão', 
+                    'access': 'Acesso',
+                    'adjustment': 'Ajuste'
+                  };
+                  
+                  return sourceMap[source] || source;
+                };
+
+                return (
+                  <div key={h.id || `${h.created_at}-${h.points}`} className="flex items-center justify-between text-sm">
+                    <div className="text-muted-foreground truncate flex-1 mr-2" title={h.reason || `${h.source}${h.subject_name ? ` - ${h.subject_name}` : ''}`}>
+                      {getCompactDescription(h.source, h.reason)}
+                    </div>
+                    <div className={`font-semibold ${h.points >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      {h.points >= 0 ? `+${h.points}` : h.points}
+                    </div>
+                  </div>
+                );
+              }) : (
                 <div className="text-xs text-muted-foreground">Sem lançamentos</div>
               )}
             </div>

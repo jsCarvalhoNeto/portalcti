@@ -365,42 +365,55 @@ const MemoryGame = () => {
       setScore(prevScore => {
         const finalScore = prevScore + timeBonus + moveBonus + (combo * 10);
 
-        // Contagem de quantas partidas já deram premiação para este usuário, por jogo.
-        // Agora persistimos por jogo (ex.: memory_game_iniciante) usando localStorage.
-        try {
-          if (user && user.id) {
-            const gameKey = `memory_game_${currentLevel}`; // identifica este jogo/nível
-            const key = `gamify_game_count_${user.id}_${gameKey}`;
-            const raw = localStorage.getItem(key);
-            const played = raw ? parseInt(raw, 10) || 0 : 0;
+        // Sempre mostrar mensagem de parabéns pela conclusão
+        toast({
+          title: '🎉 Parabéns!',
+          description: `Você completou o jogo com ${finalScore} pontos!`,
+          variant: 'default'
+        });
 
-              if (played < 5) {
-              // Incrementar contador imediatamente para evitar race/abuso
-              try { localStorage.setItem(key, String(played + 1)); } catch (e) { /* noop */ }
-
-              // Enviar pontos para gamificação (não bloquear UI)
-              // Passar o id da disciplina (route param `id`) quando disponível
-              const subjectIdForGamify = id || undefined;
-              gamificationService.awardGame(user.id, finalScore, gameKey, subjectIdForGamify).then((res) => {
-                if (res && (res as any).awarded) {
-                  toast({ title: 'Parabéns!', description: `Você ganhou ${(res as any).awarded} pontos no jogo!` });
+        // Tentar enviar pontos para gamificação (controle de execuções no backend)
+        if (user && user.id) {
+          const gameKey = `memory_game_${currentLevel}`;
+          const subjectIdForGamify = id || undefined;
+          
+          gamificationService.awardGame(user.id, finalScore, gameKey, subjectIdForGamify).then((res) => {
+            if (res) {
+              const response = res as any;
+              if (response.awarded > 0) {
+                const executionInfo = response.executionCount ? ` (${response.executionCount}/${response.maxExecutions})` : '';
+                setTimeout(() => {
+                  toast({ 
+                    title: '💎 Pontos de Gamificação!', 
+                    description: `+${response.awarded} pontos adicionados ao seu perfil${executionInfo}`,
+                    variant: 'default'
+                  });
+                }, 1500);
+                
+                if (response.message) {
+                  setTimeout(() => {
+                    toast({ 
+                      title: 'ℹ️ Informação', 
+                      description: response.message,
+                      variant: 'default'
+                    });
+                  }, 3000);
                 }
-              }).catch(err => {
-                console.error('Erro ao enviar pontos do jogo para gamificação:', err);
-              });
-            } else {
-              // Já atingiu o limite de premiações para este jogo/nível
-              try {
-                toast({ title: 'Limite de premiação atingido', description: 'Você já recebeu pontos por 5 jogos neste nível — este jogo não concederá pontos.' });
-              } catch (e) { /* noop */ }
+              } else {
+                // Quando não ganha pontos por limite atingido - mensagem mais sutil
+                setTimeout(() => {
+                  toast({ 
+                    title: 'ℹ️ Limite de pontos de gamificação',
+                    description: 'Você continua evoluindo! Os pontos de gamificação são limitados a 3 execuções por atividade.',
+                    variant: 'default'
+                  });
+                }, 1500);
+              }
             }
-          }
-        } catch (e) {
-          console.error('Erro ao acessar localStorage para contagem de jogos gamificados:', e);
-          // Em caso de erro com storage, ainda tentamos enviar a premiação (fallback)
-          if (user && user.id) {
-            gamificationService.awardGame(user.id, finalScore).catch(err => console.error(err));
-          }
+          }).catch(err => {
+            console.error('Erro ao enviar pontos do jogo para gamificação:', err);
+            // Mesmo com erro na gamificação, o jogo foi completado com sucesso
+          });
         }
 
         return finalScore;
