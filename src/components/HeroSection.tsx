@@ -58,7 +58,7 @@ const HeroSection = () => {
                 <div className="text-white/80 text-sm">Projetos</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-2">200+</div>
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">80+</div>
                 <div className="text-white/80 text-sm">Alunos</div>
               </div>
               <div className="text-center">
