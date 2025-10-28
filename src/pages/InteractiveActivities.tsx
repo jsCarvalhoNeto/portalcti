@@ -27,6 +27,7 @@ interface InteractiveActivity {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   status: 'not-started' | 'in-progress' | 'completed';
   progress?: number;
+  subject: string; // Adiciona o campo de disciplina
 }
 
 export default function InteractiveActivities() {
@@ -36,6 +37,7 @@ export default function InteractiveActivities() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [activities, setActivities] = useState<InteractiveActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState<string>('all'); // Adiciona estado para filtro por disciplina
 
   useEffect(() => {
     if (id) {
@@ -52,7 +54,7 @@ export default function InteractiveActivities() {
       setSubject(subjectData);
       
       // Fetch interactive activities (this would come from the backend)
-      // For now, using mock data
+      // For now, using mock data with subject classification
       const mockActivities: InteractiveActivity[] = [
         {
           id: '1',
@@ -62,7 +64,8 @@ export default function InteractiveActivities() {
           duration: '30 min',
           difficulty: 'beginner',
           status: 'not-started',
-          progress: 0
+          progress: 0,
+          subject: 'Lógica de Programação'
         },
         {
           id: '2',
@@ -72,7 +75,8 @@ export default function InteractiveActivities() {
           duration: '45 min',
           difficulty: 'intermediate',
           status: 'not-started',
-          progress: 0
+          progress: 0,
+          subject: 'HTML e CSS'
         },
         {
           id: '3',
@@ -82,7 +86,8 @@ export default function InteractiveActivities() {
           duration: '45 min',
           difficulty: 'intermediate',
           status: 'in-progress',
-          progress: 65
+          progress: 65,
+          subject: 'HTML e CSS'
         },
         {
           id: '4',
@@ -92,7 +97,8 @@ export default function InteractiveActivities() {
           duration: '20 min',
           difficulty: 'intermediate',
           status: 'completed',
-          progress: 100
+          progress: 100,
+          subject: 'Lógica de Programação'
         },
         {
           id: '5',
@@ -102,7 +108,8 @@ export default function InteractiveActivities() {
           duration: '60 min',
           difficulty: 'advanced',
           status: 'not-started',
-          progress: 0
+          progress: 0,
+          subject: 'HTML e CSS'
         }
       ];
       
