@@ -160,8 +160,12 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       }
     });
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error submitting student activity:', error);
+    // Verificar se há uma mensagem específica do backend
+    if (error.response && error.response.data && error.response.data.error) {
+      throw new Error(error.response.data.error);
+    }
     throw new Error('Não foi possível enviar a atividade.');
   }
 }

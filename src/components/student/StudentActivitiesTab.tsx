@@ -213,11 +213,11 @@ export default function StudentActivitiesTab() {
         file: null,
         text_submission: ''
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting activity:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a atividade. Tente novamente.",
+        description: error.message || "Não foi possível enviar a atividade. Tente novamente.",
         variant: "destructive",
       });
     } finally {
