@@ -20,6 +20,15 @@ export interface ActivityGradeData {
   graded_by: string;
 }
 
+export interface StudentActivityFile {
+  enrollment_id: number;
+  file_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_uploaded_at: string;
+}
+
 export interface ActivityGrade {
   grade_id?: number; // Adicionado para identificação única da nota
   id: number | null; // Pode ser nulo para alunos que ainda não submeteram
@@ -33,6 +42,7 @@ export interface ActivityGrade {
   team_members: string | null;
   file_path: string | null;
   file_name: string | null;
+  files?: StudentActivityFile[]; // Novo: array de arquivos enviados pelo aluno
   text_submission?: string | null;
   submitted_at: string | null; // Pode ser nulo para alunos que ainda não submeteram (usando graded_at como timestamp de submissão)
   status: 'graded' | 'submitted' | 'pending';

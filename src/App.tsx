@@ -15,6 +15,8 @@ import Achievements from './pages/Achievements';
 import AdminDashboard from "./pages/AdminDashboard";
 import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
 import InteractiveActivities from "./pages/InteractiveActivities";
+import ActivityFiles from "./pages/ActivityFiles";
+import GoogleDriveTest from "./pages/GoogleDriveTest";
 import MemoryGame from "./pages/logic-programming/MemoryGame";
 import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
 import Gamification from "./pages/Gamification";
@@ -35,6 +37,8 @@ const App = () => (
             <Route path="/disciplinas" element={<Subjects />} />
             <Route path="/disciplinas/:id" element={<SubjectDetail />} />
             <Route path="/disciplinas/:id/interactive-activities" element={<InteractiveActivities />} />
+            <Route path="/disciplinas/:id/activity-files/:activityId" element={<ActivityFiles />} />
+            <Route path="/google-drive-test" element={<GoogleDriveTest />} />
             <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
             <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
             <Route path="/disciplinas/:id/interactive-activities/html-css-form" element={<HtmlCssFormActivity />} />

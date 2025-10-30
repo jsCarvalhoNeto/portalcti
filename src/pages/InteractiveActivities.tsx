@@ -12,11 +12,15 @@ import {
   Trophy,
   ArrowLeft,
   Activity,
-  PenTool
+  PenTool,
+  FileText,
+  Upload
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
 import { Subject } from '@/types/subject';
+import FileUpload from '@/components/FileUpload';
+import FileList from '@/components/FileList';
 
 interface InteractiveActivity {
   id: string;
@@ -34,10 +38,9 @@ export default function InteractiveActivities() {
   const { id } = useParams<{ id: string }>();
   const { user, isStudent, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [subject, setSubject] = useState<Subject | null>(null);
+   const [subject, setSubject] = useState<Subject | null>(null);
   const [activities, setActivities] = useState<InteractiveActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSubject, setSelectedSubject] = useState<string>('all'); // Adiciona estado para filtro por disciplina
 
   useEffect(() => {
     if (id) {
@@ -202,6 +205,21 @@ export default function InteractiveActivities() {
     }
   };
 
+  // Função para agrupar atividades por disciplina
+  const groupActivitiesBySubject = () => {
+    const grouped: Record<string, InteractiveActivity[]> = {};
+    activities.forEach(activity => {
+      if (!grouped[activity.subject]) {
+        grouped[activity.subject] = [];
+      }
+      grouped[activity.subject].push(activity);
+    });
+    return grouped;
+  };
+
+  const groupedActivities = groupActivitiesBySubject();
+  const uniqueSubjects = Object.keys(groupedActivities);
+
   return (
     <MainLayout>
       <div>
@@ -232,72 +250,96 @@ export default function InteractiveActivities() {
         </header>
 
         <main className="container mx-auto px-4 py-8">
-          {/* Activities Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activities.map((activity) => (
-              <Card key={activity.id} className="bg-card border hover:shadow-lg transition-all duration-300">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <div className={getActivityColor(activity.type)}>
-                        {getActivityIcon(activity.type)}
+          {/* Seções por Disciplina */}
+          {uniqueSubjects.map((subjectName) => (
+            <div key={subjectName} className="mb-12">
+              <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  {subjectName === 'Lógica de Programação' && <Gamepad2 className="w-6 h-6 text-primary" />}
+                  {subjectName === 'HTML e CSS' && <PenTool className="w-6 h-6 text-primary" />}
+                  {subjectName !== 'Lógica de Programação' && subjectName !== 'HTML e CSS' && <Activity className="w-6 h-6 text-primary" />}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">{subjectName}</h2>
+                  <p className="text-muted-foreground">{groupedActivities[subjectName].length} atividade(s) disponível(is)</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groupedActivities[subjectName].map((activity) => (
+                  <Card key={activity.id} className="bg-card border hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <div className={getActivityColor(activity.type)}>
+                            {getActivityIcon(activity.type)}
+                          </div>
+                          {activity.title}
+                        </CardTitle>
+                        {getStatusBadge(activity.status)}
                       </div>
-                      {activity.title}
-                    </CardTitle>
-                    {getStatusBadge(activity.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{activity.description}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        {activity.duration}
-                      </span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        {activity.difficulty}
-                      </span>
-                    </div>
-                    
-                    {getDifficultyBadge(activity.difficulty)}
-                    
-                    {activity.status === 'in-progress' && activity.progress && (
-                      <div className="pt-2">
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${activity.progress}%` }}
-                          ></div>
+                      <p className="text-sm text-muted-foreground">{activity.description}</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            {activity.duration}
+                          </span>
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Users className="w-4 h-4" />
+                            {activity.difficulty}
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{activity.progress}% completo</p>
+                        
+                        {getDifficultyBadge(activity.difficulty)}
+                        
+                        {activity.status === 'in-progress' && activity.progress && (
+                          <div className="pt-2">
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${activity.progress}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{activity.progress}% completo</p>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2 mt-4">
+                          <Button className="flex-1" onClick={() => {
+                            if (activity.id === '1') {
+                              // Mapear difficulty para o nível correspondente
+                              const levelMap: Record<string, string> = {
+                                'beginner': 'iniciante',
+                                'intermediate': 'intermediario',
+                                'advanced': 'avancado'
+                              };
+                              const gameLevel = levelMap[activity.difficulty] || 'iniciante';
+                              navigate(`/disciplinas/${id}/interactive-activities/memory-game/${gameLevel}`);
+                            } else if (activity.id === '2') {
+                              // Atividade HTML/CSS - Formulário de Login
+                              navigate(`/disciplinas/${id}/interactive-activities/html-css-form`);
+                            }
+                          }}>
+                            <Play className="w-4 h-4 mr-2" />
+                            {activity.status === 'completed' ? 'Revisar' : 'Iniciar'}
+                          </Button>
+                          <Button variant="outline" onClick={() => {
+                            navigate(`/disciplinas/${id}/activity-files/${activity.id}`);
+                          }}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Arquivos
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                    
-                    <Button className="w-full mt-4" onClick={() => {
-                      if (activity.id === '1') {
-                        // Mapear difficulty para o nível correspondente
-                        const levelMap: Record<string, string> = {
-                          'beginner': 'iniciante',
-                          'intermediate': 'intermediario',
-                          'advanced': 'avancado'
-                        };
-                        const gameLevel = levelMap[activity.difficulty] || 'iniciante';
-                        navigate(`/disciplinas/${id}/interactive-activities/memory-game/${gameLevel}`);
-                      } else if (activity.id === '2') {
-                        // Atividade HTML/CSS - Formulário de Login
-                        navigate(`/disciplinas/${id}/interactive-activities/html-css-form`);
-                      }
-                    }}>
-                      <Play className="w-4 h-4 mr-2" />
-                      {activity.status === 'completed' ? 'Revisar' : 'Iniciar'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {activities.length === 0 && (
             <div className="text-center py-16">

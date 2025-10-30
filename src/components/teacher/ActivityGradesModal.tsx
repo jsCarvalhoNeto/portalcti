@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye, FileText as FileTextIcon, FileCode, Trash2, MessageSquare } from 'lucide-react';
+import { Eye, FileText as FileTextIcon, FileCode, Trash2, MessageSquare, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -254,14 +254,33 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                     </span>
                   </div>
                   <div className="col-span-2">
-                    {submission.file_name ? (
+                    {submission.files && submission.files.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {submission.files.map((file, index) => (
+                          <Button
+                            key={index}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadFile(file.file_url)}
+                            className="text-xs h-8 px-2 truncate flex items-center gap-1"
+                            title={`Baixar: ${file.file_name}`}
+                          >
+                            <Download className="w-3 h-3" />
+                            {file.file_name.length > 15 ? file.file_name.substring(0, 15) + '...' : file.file_name}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : submission.file_name ? (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => handleDownloadFile(submission.file_path!)}
-                        className="text-xs h-8 px-2"
+                        className="text-xs h-8 px-2 flex items-center gap-1"
+                        title={`Baixar: ${submission.file_name}`}
                       >
+                        <Download className="w-3 h-3" />
                         Baixar
                       </Button>
                     ) : (
@@ -277,7 +296,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                       value={submission.grade ?? ''}
                       onChange={(e) => handleGradeChange(submission.id, e.target.value)}
                       placeholder={submission.status === 'pending' ? 'N/A' : 'Nota'}
-                      className="w-16 text-sm"
+                      className="w-20 text-sm"
                       disabled={submission.status === 'pending'}
                     />
                   </div>

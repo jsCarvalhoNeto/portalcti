@@ -24,6 +24,7 @@ import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { FileText } from 'lucide-react';
 
 interface NewActivityModalProps {
   isOpen: boolean;
@@ -64,29 +65,86 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
   };
  const [period, setPeriod] = useState('');
   const [evaluationType, setEvaluationType] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      // Validação de tipo de arquivo
-      const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.ms-powerpoint', 
-                           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                           'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                           'application/zip', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
       
-      if (!allowedTypes.includes(selectedFile.type)) {
+      // Validação de tipo de arquivo expandida
+      const allowedTypes = [
+        'application/pdf', 'text/plain', 'text/html', 'text/css', 'text/javascript', 'application/javascript',
+        'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'text/x-python', 'text/x-java-source', 'text/markdown', 'application/json', 'application/xml'
+      ];
+      
+      // Verificar arquivos inválidos (incluindo por extensão)
+      const invalidFiles = selectedFiles.filter(file => !allowedTypes.includes(file.type) && 
+        !file.name.toLowerCase().endsWith('.py') && !file.name.toLowerCase().endsWith('.sql') &&
+        !file.name.toLowerCase().endsWith('.java') && !file.name.toLowerCase().endsWith('.c') &&
+        !file.name.toLowerCase().endsWith('.cpp') && !file.name.toLowerCase().endsWith('.cs') &&
+        !file.name.toLowerCase().endsWith('.php') && !file.name.toLowerCase().endsWith('.rb') &&
+        !file.name.toLowerCase().endsWith('.go') && !file.name.toLowerCase().endsWith('.ts') &&
+        !file.name.toLowerCase().endsWith('.md'));
+      
+      if (invalidFiles.length > 0) {
         toast({
           title: "Tipo de arquivo não suportado",
-          description: "Formatos permitidos: PDF, TXT, PPT, PPTX, DOC, DOCX, ZIP, JPG, PNG, GIF, WEBP",
+          description: `Arquivos inválidos: ${invalidFiles.map(f => f.name).join(', ')}. Formatos permitidos: PDF, TXT, HTML, CSS, JS, Python, SQL, Java, C/C++, PHP, DOC, XLS, PPT, ZIP, imagens`,
           variant: "destructive",
         });
         return;
       }
 
-      setFile(selectedFile);
+      // Verificar limite de arquivos (máximo 10 para professores)
+      if (selectedFiles.length > 10) {
+        toast({
+          title: "Muitos arquivos selecionados",
+          description: "Máximo de 10 arquivos permitidos por atividade.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar tamanho dos arquivos (máximo 50MB por arquivo)
+      const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
+      if (oversizedFiles.length > 0) {
+        toast({
+          title: "Arquivo muito grande",
+          description: `Arquivos muito grandes (máx. 50MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setFiles(selectedFiles);
+      
+      toast({
+        title: "Arquivos selecionados",
+        description: `${selectedFiles.length} arquivo(s) selecionado(s) com sucesso.`,
+      });
     }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setActivityName('');
+    setSelectedSubject('');
+    setSelectedGrade('');
+    setActivityType('individual');
+    setDescription('');
+    setDeadline('');
+    setPeriod('');
+    setEvaluationType('');
+    setFiles([]);
   };
 
   const handleSubmit = async () => {
@@ -101,8 +159,8 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
 
     setIsSubmitting(true);
     try {
-      if (file) {
-        // Se houver arquivo, usar FormData para upload
+      if (files.length > 0) {
+        // Se houver arquivos, usar FormData para upload
         const formData = new FormData();
         formData.append('name', activityName);
         formData.append('subject_id', selectedSubject);
@@ -118,7 +176,11 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
         if (evaluationType) {
           formData.append('evaluation_type', evaluationType);
         }
-        formData.append('file', file);
+        
+        // Adicionar múltiplos arquivos
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
         
         const response = await fetch(`${API_URL}/activities`, {
           method: 'POST',
@@ -151,6 +213,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
       });
       
       refetch.activities();
+      resetForm();
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -294,24 +357,58 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="file" className="text-right">
-              Arquivo
+            <Label htmlFor="files" className="text-right">
+              Arquivos
             </Label>
             <div className="col-span-3 space-y-2">
               <Input
-                id="file"
+                id="files"
                 type="file"
                 onChange={handleFileChange}
-                accept=".pdf,.txt,.ppt,.pptx,.doc,.docx,.zip,.jpg,.jpeg,.png,.gif,.webp"
+                multiple
+                accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
               />
-              {file && (
-                <p className="text-sm text-gray-50">Arquivo selecionado: {file.name}</p>
+              <p className="text-xs text-muted-foreground">
+                📁 Selecione até 10 arquivos (máx. 50MB cada). Suporta códigos, documentos, imagens e compactados.
+              </p>
+              
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-300">
+                    {files.length} arquivo(s) selecionado(s):
+                  </p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-800 p-2 rounded text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-blue-400">📄</span>
+                          <span className="text-gray-100">{file.name}</span>
+                          <span className="text-xs text-gray-400">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => {
+            resetForm();
+            onOpenChange(false);
+          }}>
             Cancelar
           </Button>
           <Button type="submit" onClick={handleSubmit} disabled={isSubmitting}>

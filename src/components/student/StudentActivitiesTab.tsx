@@ -18,7 +18,7 @@ interface SubmissionData {
   activity_id: number;
   student_name: string;
   team_members: string;
-  file: File | null;
+  files: File[];
   text_submission?: string;
 }
 
@@ -40,7 +40,7 @@ export default function StudentActivitiesTab() {
     activity_id: 0,
     student_name: profile?.full_name || '',
     team_members: '',
-    file: null
+    files: []
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,18 +114,54 @@ export default function StudentActivitiesTab() {
   // Função fetchActivityGrades removida - todas as funcionalidades de notas estão no painel Notas & Desempenho
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      // Validação de tipo de arquivo
-      const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.ms-powerpoint', 
-                           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                           'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                           'application/zip', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
       
-      if (!allowedTypes.includes(selectedFile.type)) {
+      // Validação de tipo de arquivo expandida
+      const allowedTypes = [
+        'application/pdf', 'text/plain', 'text/html', 'text/css', 'text/javascript', 'application/javascript',
+        'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'text/x-python', 'text/x-java-source', 'text/markdown', 'application/json', 'application/xml'
+      ];
+      
+      // Verificar se todos os arquivos são válidos
+      const invalidFiles = selectedFiles.filter(file => !allowedTypes.includes(file.type) && 
+        !file.name.toLowerCase().endsWith('.py') && !file.name.toLowerCase().endsWith('.sql') &&
+        !file.name.toLowerCase().endsWith('.java') && !file.name.toLowerCase().endsWith('.c') &&
+        !file.name.toLowerCase().endsWith('.cpp') && !file.name.toLowerCase().endsWith('.cs') &&
+        !file.name.toLowerCase().endsWith('.php') && !file.name.toLowerCase().endsWith('.rb') &&
+        !file.name.toLowerCase().endsWith('.go') && !file.name.toLowerCase().endsWith('.ts') &&
+        !file.name.toLowerCase().endsWith('.md'));
+      
+      if (invalidFiles.length > 0) {
         toast({
           title: "Tipo de arquivo não suportado",
-          description: "Formatos permitidos: PDF, TXT, PPT, PPTX, DOC, DOCX, ZIP, JPG, PNG, GIF, WEBP",
+          description: `Arquivos inválidos: ${invalidFiles.map(f => f.name).join(', ')}. Formatos permitidos: PDF, TXT, HTML, CSS, JS, Python, SQL, Java, C/C++, PHP, DOC, XLS, PPT, ZIP, imagens`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar limite de arquivos (máximo 5 para alunos)
+      if (selectedFiles.length > 5) {
+        toast({
+          title: "Muitos arquivos selecionados",
+          description: "Máximo de 5 arquivos permitidos por submissão.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar tamanho total (máximo 50MB por arquivo)
+      const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
+      if (oversizedFiles.length > 0) {
+        toast({
+          title: "Arquivo muito grande",
+          description: `Arquivos muito grandes (máx. 50MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
           variant: "destructive",
         });
         return;
@@ -133,9 +169,21 @@ export default function StudentActivitiesTab() {
 
       setSubmissionData({
         ...submissionData,
-        file: selectedFile
+        files: selectedFiles
+      });
+
+      toast({
+        title: "Arquivos selecionados",
+        description: `${selectedFiles.length} arquivo(s) selecionado(s) com sucesso.`,
       });
     }
+  };
+
+  const removeFile = (index: number) => {
+    setSubmissionData({
+      ...submissionData,
+      files: submissionData.files.filter((_, i) => i !== index)
+    });
   };
 
   const handleSubmitActivity = async () => {
@@ -168,8 +216,12 @@ export default function StudentActivitiesTab() {
       formData.append('student_name', submissionData.student_name);
       formData.append('team_members', submissionData.team_members);
       formData.append('text_submission', submissionData.text_submission || '');
-      if (submissionData.file) {
-        formData.append('file', submissionData.file);
+      
+      // Adicionar múltiplos arquivos
+      if (submissionData.files.length > 0) {
+        submissionData.files.forEach((file) => {
+          formData.append('files', file);
+        });
       }
 
       // Usar o service para enviar a atividade
@@ -210,7 +262,7 @@ export default function StudentActivitiesTab() {
         activity_id: 0,
         student_name: profile?.full_name || '',
         team_members: '',
-        file: null,
+        files: [],
         text_submission: ''
       });
     } catch (error: any) {
@@ -438,16 +490,48 @@ export default function StudentActivitiesTab() {
               </div>
 
               <div>
-                <Label htmlFor="submission_file">Arquivo de Submissão</Label>
+                <Label htmlFor="submission_file">Arquivos de Submissão</Label>
                 <div className="space-y-2">
                   <Input
                     id="submission_file"
                     type="file"
                     onChange={handleFileChange}
-                    accept=".pdf,.txt,.ppt,.pptx,.doc,.docx,.zip,.jpg,.jpeg,.png,.gif,.webp"
+                    multiple
+                    accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
                   />
-                  {submissionData.file && (
-                    <p className="text-sm text-muted-foreground">Arquivo selecionado: {submissionData.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    📁 Selecione até 5 arquivos (máx. 50MB cada). 
+                    Suporta: código (HTML, CSS, JS, Python, SQL, Java, etc.), documentos (PDF, DOC, PPT), imagens e compactados.
+                  </p>
+                  
+                  {submissionData.files.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {submissionData.files.length} arquivo(s) selecionado(s):
+                      </p>
+                      <div className="space-y-1">
+                        {submissionData.files.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-muted/50 p-2 rounded text-sm">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-blue-500" />
+                              <span>{file.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile(index)}
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -460,8 +544,8 @@ export default function StudentActivitiesTab() {
                       activity_id: 0,
                       student_name: profile?.full_name || '',
                       team_members: '',
-                        file: null,
-                        text_submission: ''
+                      files: [],
+                      text_submission: ''
                     });
                   }}
                 >
