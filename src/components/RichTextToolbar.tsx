@@ -47,7 +47,8 @@ import {
   Move,
   ArrowUpDown,
   ArrowLeftRight,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supportedLanguages, detectLanguage, highlightCode } from '@/utils/syntaxHighlight';
@@ -622,6 +623,46 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
     setIsCodeDialogOpen(true);
   };
 
+  const handleCollapsible = () => {
+    const selection = window.getSelection();
+    let selectedText = '';
+    
+    if (selection && selection.rangeCount > 0) {
+      selectedText = selection.toString();
+    }
+    
+    // Definir texto padrão se não houver seleção
+    const summaryText = selectedText ? selectedText : 'Clique para expandir';
+    const contentText = selectedText ? '' : 'Digite o conteúdo aqui...';
+    
+    // Criar HTML do texto colapsável usando as classes CSS definidas
+    const collapsibleHTML = `
+      <details class="collapsible-section">
+        <summary>
+          ${summaryText}
+        </summary>
+        <div class="collapsible-content">
+          <p contenteditable="true">${contentText}</p>
+        </div>
+      </details>
+      <p><br></p>
+    `;
+    
+    // Inserir o HTML
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createRange().createContextualFragment(collapsibleHTML));
+    } else {
+      document.execCommand('insertHTML', false, collapsibleHTML);
+    }
+    
+    // Notificar mudança
+    setTimeout(() => {
+      handleFormat('onChange', '');
+    }, 10);
+  };
+
   const handleTable = () => {
     // Usar dialog em vez de prompt
     handleFormat('insertTable');
@@ -741,6 +782,7 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
     { separator: true },
     { command: 'blockquote', icon: Quote, tooltip: 'Citação', customHandler: handleBlockquote, isActive: activeStyles.blockquote },
     { command: 'code', icon: Code, tooltip: 'Código', customHandler: handleCode, isActive: activeStyles.code },
+    { command: 'collapsible', icon: ChevronDown, tooltip: 'Texto colapsável', customHandler: handleCollapsible },
     { separator: true },
     { command: 'insertTable', icon: Table, tooltip: 'Inserir tabela', customHandler: handleTable },
     { separator: true },
