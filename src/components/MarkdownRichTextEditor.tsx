@@ -31,9 +31,6 @@ interface MarkdownRichTextEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   className?: string;
-  onImageUpload?: (file: File) => Promise<string>;
-  stickyToolbar?: boolean;
-  maxHeight?: string;
   enableMarkdown?: boolean;
 }
 
@@ -42,9 +39,6 @@ export default function MarkdownRichTextEditor({
   onChange,
   placeholder = "Digite seu conteúdo aqui...",
   className = "",
-  onImageUpload,
-  stickyToolbar = true,
-  maxHeight = "70vh",
   enableMarkdown = true
 }: MarkdownRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -109,12 +103,133 @@ export default function MarkdownRichTextEditor({
     onChange(html);
   }, [onChange]);
 
-  // UseEffect para aplicar LTR inicial
+  // Handler para mudanças no tamanho da fonte
+  const handleFontSizeChange = useCallback((action: string) => {
+    if (!editorRef.current) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    
+    // Se não há texto selecionado, não fazer nada
+    if (range.collapsed) return;
+
+    // Extrair o texto selecionado
+    const selectedText = range.toString();
+    if (!selectedText.trim()) return;
+
+    // Função para determinar o tamanho da fonte de um elemento
+    const getFontSize = (element: Element): number => {
+      const computedStyle = window.getComputedStyle(element);
+      const fontSize = computedStyle.fontSize;
+      return fontSize ? parseFloat(fontSize) : 16;
+    };
+
+    // Calcular incremento/decremento
+    const calculateNewSize = (currentSize: number): number => {
+      if (action === 'increase') {
+        return currentSize + 2;
+      } else if (action === 'decrease') {
+        return Math.max(8, currentSize - 2); // Mínimo de 8px
+      } else {
+        // Se for um valor específico, usar ele
+        return parseFloat(action) || currentSize;
+      }
+    };
+
+    try {
+      // Verificar se a seleção está dentro de um único elemento com font-size
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+      
+      // Se ambos os containers são o mesmo ou têm o mesmo elemento pai
+      if (startContainer === endContainer || startContainer.parentElement === endContainer.parentElement) {
+        const parentElement = (startContainer.nodeType === Node.TEXT_NODE 
+          ? startContainer.parentElement 
+          : startContainer) as HTMLElement;
+        
+        if (parentElement) {
+          const currentSize = getFontSize(parentElement);
+          const newSize = calculateNewSize(currentSize);
+          
+          // Se o elemento pai já tem font-size inline, atualizar
+          if (parentElement.style.fontSize) {
+            parentElement.style.fontSize = `${newSize}px`;
+            parentElement.style.direction = 'ltr';
+            parentElement.style.unicodeBidi = 'embed';
+          } else {
+            // Criar um span wrapper para o texto selecionado
+            const span = document.createElement('span');
+            span.style.fontSize = `${newSize}px`;
+            span.style.direction = 'ltr';
+            span.style.unicodeBidi = 'embed';
+            
+            // Extrair conteúdo e substituir
+            const contents = range.extractContents();
+            span.appendChild(contents);
+            range.insertNode(span);
+            
+            // Selecionar o span inserido
+            range.selectNode(span);
+          }
+        }
+      } else {
+        // Seleção abrange múltiplos elementos - usar abordagem mais robusta
+        const span = document.createElement('span');
+        const parentElement = range.commonAncestorContainer.parentElement;
+        const currentSize = parentElement ? getFontSize(parentElement) : 16;
+        const newSize = calculateNewSize(currentSize);
+        
+        span.style.fontSize = `${newSize}px`;
+        span.style.direction = 'ltr';
+        span.style.unicodeBidi = 'embed';
+        
+        // Extrair conteúdo e substituir
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        range.insertNode(span);
+        
+        // Selecionar o novo span
+        range.selectNode(span);
+      }
+      
+      // Atualizar seleção
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Garantir direção LTR
+      ensureLTR();
+      
+      // Notificar mudança
+      onChange(editorRef.current.innerHTML);
+      
+    } catch (error) {
+      console.error('Erro ao aplicar tamanho da fonte:', error);
+      
+      // Fallback: método mais simples
+      const span = document.createElement('span');
+      span.style.fontSize = action === 'increase' ? '18px' : '14px';
+      span.style.direction = 'ltr';
+      span.style.unicodeBidi = 'embed';
+      span.textContent = selectedText;
+      
+      range.deleteContents();
+      range.insertNode(span);
+      onChange(editorRef.current.innerHTML);
+    }
+  }, [onChange, ensureLTR]);
+
+  // UseEffect para inicialização do editor
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && editorMode === 'visual') {
+      // Inicializar conteúdo se necessário
+      if (editorRef.current.innerHTML !== content) {
+        editorRef.current.innerHTML = content;
+      }
       ensureLTR();
     }
-  }, [ensureLTR]);
+  }, [ensureLTR, content, editorMode]);
 
   // Handler para paste no editor visual
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -191,6 +306,9 @@ export default function MarkdownRichTextEditor({
         return;
       case 'insertImage':
         setIsImageDialogOpen(true);
+        return;
+      case 'fontSize':
+        handleFontSizeChange(value || '');
         return;
       default:
         document.execCommand(command, false, value);
@@ -296,8 +414,61 @@ export default function MarkdownRichTextEditor({
     if (editorRef.current && editorMode === 'visual') {
       const currentContent = editorRef.current.innerHTML;
       if (currentContent !== content) {
+        // Salvar posição do cursor antes da atualização
+        const selection = window.getSelection();
+        let cursorPosition = 0;
+        
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (editorRef.current.contains(range.startContainer)) {
+            // Calcular posição do cursor em relação ao texto
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(editorRef.current);
+            preCaretRange.setEnd(range.startContainer, range.startOffset);
+            cursorPosition = preCaretRange.toString().length;
+          }
+        }
+        
+        // Atualizar conteúdo
         editorRef.current.innerHTML = content;
-        setTimeout(() => ensureLTR(), 0);
+        ensureLTR();
+        
+        // Restaurar posição do cursor se possível
+        if (cursorPosition > 0) {
+          setTimeout(() => {
+            try {
+              const walker = document.createTreeWalker(
+                editorRef.current!,
+                NodeFilter.SHOW_TEXT,
+                null
+              );
+              
+              let currentPos = 0;
+              let textNode = walker.nextNode();
+              
+              while (textNode) {
+                const nodeLength = textNode.textContent?.length || 0;
+                if (currentPos + nodeLength >= cursorPosition) {
+                  const range = document.createRange();
+                  const offset = cursorPosition - currentPos;
+                  range.setStart(textNode, Math.min(offset, nodeLength));
+                  range.collapse(true);
+                  
+                  const newSelection = window.getSelection();
+                  if (newSelection) {
+                    newSelection.removeAllRanges();
+                    newSelection.addRange(range);
+                  }
+                  break;
+                }
+                currentPos += nodeLength;
+                textNode = walker.nextNode();
+              }
+            } catch (error) {
+              console.warn('Não foi possível restaurar a posição do cursor:', error);
+            }
+          }, 0);
+        }
       }
     }
   }, [content, editorMode, ensureLTR]);
@@ -340,7 +511,7 @@ export default function MarkdownRichTextEditor({
 
       {/* Toolbar - apenas no modo visual */}
       {editorMode === 'visual' && (
-        <div className={`border-b bg-background/50 ${stickyToolbar ? 'sticky top-0 z-10' : ''}`}>
+          <div className="border-b bg-background/50">
           <RichTextToolbar 
             onFormat={handleFormat}
             className="p-2"
@@ -357,18 +528,17 @@ export default function MarkdownRichTextEditor({
             suppressContentEditableWarning
             className="min-h-[200px] p-4 focus:outline-none prose max-w-none markdown-rich-text-editor"
             dir="ltr"
-            style={{ 
-              maxHeight: maxHeight,
-              overflowY: 'auto',
-              direction: 'ltr',
-              unicodeBidi: 'embed',
-              textAlign: 'left',
-              writingMode: 'horizontal-tb'
-            }}
+              style={{ 
+                maxHeight: '70vh',
+                overflowY: 'auto',
+                direction: 'ltr',
+                unicodeBidi: 'embed',
+                textAlign: 'left',
+                writingMode: 'horizontal-tb'
+              }}
             data-placeholder={placeholder}
             onInput={(e) => {
               const target = e.target as HTMLDivElement;
-              onChange(target.innerHTML);
               
               // Garantir direção LTR após cada entrada
               target.dir = 'ltr';
@@ -376,17 +546,14 @@ export default function MarkdownRichTextEditor({
               target.style.textAlign = 'left';
               target.style.unicodeBidi = 'embed';
               
-              // Garantir que o cursor fique no final após digitação
-              setTimeout(() => {
-                const selection = window.getSelection();
-                if (selection && target.lastChild) {
-                  const range = document.createRange();
-                  range.setStartAfter(target.lastChild);
-                  range.collapse(true);
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                }
-              }, 0);
+              // Forçar alinhamento à esquerda e direção LTR com maior especificidade
+              target.style.setProperty('text-align', 'left', 'important');
+              target.style.setProperty('direction', 'ltr', 'important');
+              target.style.setProperty('unicode-bidi', 'embed', 'important');
+              target.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+              
+              // Notificar mudança
+              onChange(target.innerHTML);
             }}
             onPaste={handlePaste}
             onKeyDown={(e) => {
@@ -404,27 +571,16 @@ export default function MarkdownRichTextEditor({
               target.style.textAlign = 'left';
               target.style.unicodeBidi = 'embed';
               
-              // Garantir que o cursor fique no final ao focar
-              setTimeout(() => {
-                const selection = window.getSelection();
-                if (selection && target.lastChild) {
-                  const range = document.createRange();
-                  range.setStartAfter(target.lastChild);
-                  range.collapse(true);
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                }
-              }, 0);
+              // REMOVIDO: Este código estava forçando o cursor para o final
+              // e causando o problema reportado
             }}
             onMouseDown={(e) => {
-              // Prevenir problemas com mouse down que possam afetar a direção
+              // Garantir direção LTR sem setTimeout para evitar interferência no cursor
               const target = e.currentTarget as HTMLDivElement;
-              setTimeout(() => {
-                target.dir = 'ltr';
-                target.style.direction = 'ltr';
-                target.style.textAlign = 'left';
-                target.style.unicodeBidi = 'embed';
-              }, 0);
+              target.dir = 'ltr';
+              target.style.direction = 'ltr';
+              target.style.textAlign = 'left';
+              target.style.unicodeBidi = 'embed';
             }}
             onClick={(e) => {
               // Garantir direção LTR em cliques
@@ -434,7 +590,7 @@ export default function MarkdownRichTextEditor({
               target.style.textAlign = 'left';
               target.style.unicodeBidi = 'embed';
             }}
-            dangerouslySetInnerHTML={{ __html: content }}
+            // dangerouslySetInnerHTML removido para permitir controle manual do conteúdo
           />
         ) : (
           <div className="flex flex-col">
@@ -447,7 +603,7 @@ export default function MarkdownRichTextEditor({
               onChange={(e) => handleMarkdownChange(e.target.value)}
               placeholder="Digite seu markdown aqui...&#10;&#10;Exemplos:&#10;# Título&#10;**negrito** e *itálico*&#10;- Lista&#10;[link](url)&#10;![imagem](url)"
               className="min-h-[200px] border-0 resize-none font-mono text-sm focus-visible:ring-0"
-              style={{ maxHeight: maxHeight }}
+              style={{ maxHeight: '70vh' }}
             />
           </div>
         )}

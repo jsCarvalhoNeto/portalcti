@@ -16,8 +16,6 @@ interface SimpleRichTextEditorProps {
   placeholder?: string;
   className?: string;
   onImageUpload?: (file: File) => Promise<string>;
-  stickyToolbar?: boolean;
-  maxHeight?: string;
 }
 
 export default function SimpleRichTextEditor({
@@ -25,9 +23,7 @@ export default function SimpleRichTextEditor({
   onChange,
   placeholder = "Digite seu conteúdo aqui...",
   className = "",
-  onImageUpload,
-  stickyToolbar = true,
-  maxHeight = "70vh"
+  onImageUpload
 }: SimpleRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
@@ -692,7 +688,7 @@ export default function SimpleRichTextEditor({
           
           /* Container do editor com scroll independente */
           .editor-container {
-            max-height: ${maxHeight};
+            max-height: 70vh;
             overflow-y: auto;
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
@@ -724,9 +720,9 @@ export default function SimpleRichTextEditor({
           }
         `}
       </style>
-      <div className={`${stickyToolbar ? 'editor-container' : 'editor-container-fixed'} ${className}`}>
+      <div className={`editor-container-fixed ${className}`}>
         {/* Toolbar */}
-        <div className={stickyToolbar ? "sticky-toolbar" : "border-b"}>
+        <div className="border-b">
           <RichTextToolbar 
             onFormat={handleFormat}
             className=""
@@ -736,7 +732,7 @@ export default function SimpleRichTextEditor({
         {/* Editor */}
         <div
           ref={editorRef}
-          className={`rich-text-editor ${stickyToolbar ? 'editor-content' : 'min-h-96 p-4'} bg-background focus:outline-none focus:ring-2 focus:ring-primary/50`}
+          className={`rich-text-editor min-h-96 p-4 bg-background focus:outline-none focus:ring-2 focus:ring-primary/50`}
           contentEditable
           suppressContentEditableWarning={true}
           dir="ltr"

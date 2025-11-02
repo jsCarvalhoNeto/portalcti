@@ -377,4 +377,10 @@ Todas as cores em HSL para consistência
     text-align: left !important;
     writing-mode: horizontal-tb !important;
   }
+
+  /* Garantir que todos os spans com font-size mantenham direção LTR */
+  .markdown-rich-text-editor span[style*="font-size"] {
+    direction: ltr !important;
+    unicode-bidi: embed !important;
+  }
 }

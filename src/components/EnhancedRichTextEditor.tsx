@@ -2,31 +2,13 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { 
-  FileText, 
-  Eye, 
-  Code2, 
-  Clipboard,
-  CheckCircle,
-  AlertCircle 
-} from 'lucide-react';
 import RichTextToolbar from './RichTextToolbar';
-import { 
-  detectMarkdown, 
-  markdownToHtml, 
-  htmlToMarkdown, 
-  handlePastedContent,
-  sanitizeHtml 
-} from '@/utils/markdownUtils';
 
 interface EnhancedRichTextEditorProps {
   content: string;
@@ -34,9 +16,6 @@ interface EnhancedRichTextEditorProps {
   placeholder?: string;
   className?: string;
   onImageUpload?: (file: File) => Promise<string>;
-  stickyToolbar?: boolean;
-  maxHeight?: string;
-  enableMarkdown?: boolean;
 }
 
 export default function EnhancedRichTextEditor({
@@ -44,22 +23,15 @@ export default function EnhancedRichTextEditor({
   onChange,
   placeholder = "Digite seu conteúdo aqui...",
   className = "",
-  onImageUpload,
-  stickyToolbar = true,
-  maxHeight = "70vh",
-  enableMarkdown = true
+  onImageUpload
 }: EnhancedRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const markdownRef = useRef<HTMLTextAreaElement>(null);
-  const [editorMode, setEditorMode] = useState<'visual' | 'markdown'>('visual');
-  const [markdownContent, setMarkdownContent] = useState('');
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [tableConfig, setTableConfig] = useState({ rows: 3, cols: 3, hasHeader: true });
   const [linkConfig, setLinkConfig] = useState({ text: '', url: '', newTab: true });
   const [imageConfig, setImageConfig] = useState({ url: '', alt: '', width: '' });
-  const [showMarkdownDetected, setShowMarkdownDetected] = useState(false);
 
   const handleFormat = useCallback((command: string, value?: string) => {
     if (!editorRef.current) return;
