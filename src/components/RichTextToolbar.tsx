@@ -635,32 +635,54 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
     const summaryText = selectedText ? selectedText : 'Clique para expandir';
     const contentText = selectedText ? '' : 'Digite o conteúdo aqui...';
     
-    // Criar HTML do texto colapsável usando as classes CSS definidas
-    const collapsibleHTML = `
-      <details class="collapsible-section">
-        <summary>
-          ${summaryText}
-        </summary>
-        <div class="collapsible-content">
-          <p contenteditable="true">${contentText}</p>
-        </div>
-      </details>
-      <p><br></p>
-    `;
+    // Criar sintaxe markdown personalizada para colapsável
+    const collapsibleMarkdown = `
+??? "${summaryText}"
+    ${contentText || 'Digite o conteúdo aqui...'}
+
+`;
     
-    // Inserir o HTML
+    // Inserir como texto simples primeiro, depois processar
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       range.deleteContents();
-      range.insertNode(document.createRange().createContextualFragment(collapsibleHTML));
+      
+      // Criar um elemento temporário para inserir o markdown
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = convertCollapsibleMarkdownToHTML(collapsibleMarkdown);
+      
+      while (tempDiv.firstChild) {
+        range.insertNode(tempDiv.firstChild);
+      }
     } else {
-      document.execCommand('insertHTML', false, collapsibleHTML);
+      const htmlContent = convertCollapsibleMarkdownToHTML(collapsibleMarkdown);
+      document.execCommand('insertHTML', false, htmlContent);
     }
     
     // Notificar mudança
     setTimeout(() => {
       handleFormat('onChange', '');
     }, 10);
+  };
+
+  // Função para converter sintaxe markdown personalizada para HTML
+  const convertCollapsibleMarkdownToHTML = (markdown: string) => {
+    const collapsibleRegex = /^\?\?\?\s*"([^"]+)"\s*\n((?:    .*(?:\n|$))*)/gm;
+    
+    return markdown.replace(collapsibleRegex, (_, title, content) => {
+      // Remover indentação das linhas de conteúdo
+      const cleanContent = content.replace(/^    /gm, '').trim();
+      
+      return `
+        <details class="collapsible-section" data-markdown-type="collapsible">
+          <summary>${title}</summary>
+          <div class="collapsible-content">
+            <p contenteditable="true">${cleanContent || 'Digite o conteúdo aqui...'}</p>
+          </div>
+        </details>
+        <p><br></p>
+      `;
+    });
   };
 
   const handleTable = () => {

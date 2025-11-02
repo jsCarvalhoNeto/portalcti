@@ -34,6 +34,7 @@ export function detectMarkdown(text: string): boolean {
     { pattern: /^\s*\|.*\|.*$/m, name: 'Tabelas' },
     { pattern: /^[-=]{3,}$/m, name: 'Separadores horizontais' },
     { pattern: /~~.*?~~/g, name: 'Tachado' },
+    { pattern: /^\?\?\?\s*"[^"]+"\s*$/m, name: 'Elementos colapsáveis' },
   ];
 
   const matches = markdownPatterns.filter(({ pattern }) => pattern.test(text));
@@ -46,11 +47,35 @@ export function detectMarkdown(text: string): boolean {
 }
 
 /**
+ * Converte sintaxe colapsável personalizada para HTML
+ */
+function processCollapsibleElements(markdown: string): string {
+  const collapsibleRegex = /^\?\?\?\s*"([^"]+)"\s*\n((?:    .*(?:\n|$))*)/gm;
+  
+  return markdown.replace(collapsibleRegex, (_, title, content) => {
+    // Remover indentação das linhas de conteúdo
+    const cleanContent = content.replace(/^    /gm, '').trim();
+    
+    return `<details class="collapsible-section" data-markdown-type="collapsible">
+<summary>${title}</summary>
+<div class="collapsible-content">
+${cleanContent || 'Digite o conteúdo aqui...'}
+</div>
+</details>
+
+`;
+  });
+}
+
+/**
  * Converte markdown para HTML com syntax highlighting
  */
 export function markdownToHtml(markdown: string): string {
   try {
-    const html = marked(markdown, { 
+    // Processar elementos colapsáveis antes do marked
+    const processedMarkdown = processCollapsibleElements(markdown);
+    
+    const html = marked(processedMarkdown, { 
       gfm: true,
       breaks: true
     }) as string;
@@ -82,6 +107,28 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
     .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
     .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
+
+  // Elementos colapsáveis (processar antes das outras formatações)
+  markdown = markdown.replace(/<details[^>]*class="collapsible-section"[^>]*>(.*?)<\/details>/gis, (_, content) => {
+    // Extrair título do summary
+    const summaryMatch = content.match(/<summary[^>]*>(.*?)<\/summary>/i);
+    const title = summaryMatch ? summaryMatch[1].trim() : 'Clique para expandir';
+    
+    // Extrair conteúdo do div
+    const contentMatch = content.match(/<div[^>]*class="collapsible-content"[^>]*>(.*?)<\/div>/is);
+    let bodyContent = contentMatch ? contentMatch[1].trim() : '';
+    
+    // Remover tags p se existirem
+    bodyContent = bodyContent.replace(/<\/?p[^>]*>/gi, '');
+    
+    // Indentar o conteúdo com 4 espaços
+    const indentedContent = bodyContent
+      .split('\n')
+      .map((line: string) => line.trim() ? `    ${line}` : '')
+      .join('\n');
+    
+    return `??? "${title}"\n${indentedContent}\n\n`;
+  });
 
   // Formatação de texto
   markdown = markdown
