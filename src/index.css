@@ -130,3 +130,251 @@ Todas as cores em HSL para consistência
     @apply bg-background text-foreground;
   }
 }
+
+/* Estilos para tabelas redimensionáveis */
+@layer components {
+  .resizable-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .resizable-table td,
+  .resizable-table th {
+    position: relative;
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    text-align: left;
+    direction: ltr;
+    min-width: 100px;
+    overflow: hidden;
+    word-wrap: break-word;
+  }
+
+  .resizable-table td:hover::after,
+  .resizable-table th:hover::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    background: rgba(59, 130, 246, 0.1);
+    z-index: 1;
+  }
+
+  .resizable-table td.resizing,
+  .resizable-table th.resizing {
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Estilos para células selecionadas */
+  .resizable-table td.selected,
+  .resizable-table th.selected {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border-color: #3b82f6 !important;
+  }
+
+  /* Indicadores visuais para linhas selecionadas */
+  .resizable-table td.row-selected,
+  .resizable-table th.row-selected {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border-color: #2563eb !important;
+  }
+
+  /* Indicadores visuais para colunas selecionadas */
+  .resizable-table td.column-selected,
+  .resizable-table th.column-selected {
+    background-color: #10b981 !important;
+    color: white !important;
+    border-color: #059669 !important;
+  }
+
+  /* Efeitos de hover para seleção */
+  .resizable-table td.row-selected:hover,
+  .resizable-table th.row-selected:hover {
+    background-color: #2563eb !important;
+  }
+
+  .resizable-table td.column-selected:hover,
+  .resizable-table th.column-selected:hover {
+    background-color: #059669 !important;
+  }
+
+  /* Estilos para drag handles */
+  .column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    width: 4px;
+    height: 100%;
+    background-color: #3b82f6;
+    cursor: col-resize;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+
+  .resizable-table td:hover .column-resize-handle,
+  .resizable-table th:hover .column-resize-handle {
+    opacity: 1;
+  }
+
+  /* Feedback visual durante redimensionamento */
+  .resizing-active {
+    cursor: col-resize !important;
+  }
+
+  .resizing-active * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+
+  /* Estilos para editor Markdown */
+  .markdown-editor [contenteditable]:empty:before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .markdown-editor .prose {
+    max-width: none;
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-editor .prose h1,
+  .markdown-editor .prose h2,
+  .markdown-editor .prose h3,
+  .markdown-editor .prose h4,
+  .markdown-editor .prose h5,
+  .markdown-editor .prose h6 {
+    color: hsl(var(--primary));
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .markdown-editor .prose h1 {
+    font-size: 2em;
+    border-bottom: 2px solid hsl(var(--border));
+    padding-bottom: 0.3em;
+  }
+
+  .markdown-editor .prose h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 0.3em;
+  }
+
+  .markdown-editor .prose h3 {
+    font-size: 1.25em;
+  }
+
+  .markdown-editor .prose pre {
+    background-color: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1em;
+    overflow-x: auto;
+  }
+
+  .markdown-editor .prose code {
+    background-color: hsl(var(--muted));
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875em;
+  }
+
+  .markdown-editor .prose pre code {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  .markdown-editor .prose blockquote {
+    border-left: 4px solid hsl(var(--primary));
+    padding-left: 1em;
+    margin: 1em 0;
+    background-color: hsl(var(--muted) / 0.3);
+    font-style: italic;
+  }
+
+  .markdown-editor .prose table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    border: 1px solid hsl(var(--border));
+  }
+
+  .markdown-editor .prose table th,
+  .markdown-editor .prose table td {
+    border: 1px solid hsl(var(--border));
+    padding: 0.75em;
+    text-align: left;
+  }
+
+  .markdown-editor .prose table th {
+    background-color: hsl(var(--muted));
+    font-weight: 600;
+  }
+
+  .markdown-editor .prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-decoration-color: hsl(var(--primary) / 0.3);
+    transition: text-decoration-color 0.2s ease;
+  }
+
+  .markdown-editor .prose a:hover {
+    text-decoration-color: hsl(var(--primary));
+  }
+
+  .markdown-editor .prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .markdown-editor .prose ul,
+  .markdown-editor .prose ol {
+    margin: 1em 0;
+    padding-left: 2em;
+  }
+
+  .markdown-editor .prose li {
+    margin: 0.25em 0;
+  }
+
+  .markdown-editor .prose hr {
+    border: none;
+    border-top: 2px solid hsl(var(--border));
+    margin: 2em 0;
+  }
+
+  /* Estilos para o modo escuro */
+  .dark .markdown-editor .prose {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .markdown-editor .prose h1,
+  .dark .markdown-editor .prose h2,
+  .dark .markdown-editor .prose h3,
+  .dark .markdown-editor .prose h4,
+  .dark .markdown-editor .prose h5,
+  .dark .markdown-editor .prose h6 {
+    color: hsl(var(--primary));
+  }
+
+  /* Forçar direção LTR em todos os editores - versão otimizada */
+  .markdown-rich-text-editor {
+    direction: ltr !important;
+    unicode-bidi: embed !important;
+    text-align: left !important;
+    writing-mode: horizontal-tb !important;
+  }
+}

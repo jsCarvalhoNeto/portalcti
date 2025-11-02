@@ -21,7 +21,7 @@ import {
 import MainLayout from '@/layouts/MainLayout';
 import { Subject } from '@/services/teacherDashboardService';
 import api from '@/services/api';
-import RichTextToolbar from '@/components/RichTextToolbar';
+import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 
 interface SubjectContent {
   id: string;
@@ -342,124 +342,52 @@ export default function TeacherSubjectEditor() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <RichTextToolbar 
-                        onFormat={(command, value) => {
-                          // Focar no elemento do editor antes de executar o comando
-                          const editor = document.querySelector(`#editor-${activeTab}`) as HTMLElement;
-                          if (editor) {
-                            editor.focus();
+                      <MarkdownRichTextEditor
+                        content={contentData[item.value] 
+                          ? contentData[item.value].map(content => content.content).join('<br><br>') 
+                          : ''
+                        }
+                        stickyToolbar={true}
+                        maxHeight="60vh"
+                        onChange={(newContent: string) => {
+                          // Atualizar o contentData localmente para feedback imediato
+                          setContentData(prev => ({
+                            ...prev,
+                            [item.value]: [{
+                              id: '1',
+                              section_type: item.value,
+                              title: item.label,
+                              content: newContent,
+                              order_index: 1,
+                              is_active: true
+                            }]
+                          }));
+                        }}
+                        placeholder={`Digite o conteúdo de ${item.label}...`}
+                        onImageUpload={async (file: File) => {
+                          try {
+                            const formData = new FormData();
+                            formData.append('image', file);
                             
-                            // Para comandos de desfazer/refazer, executar normalmente
-                            if (command === 'undo' || command === 'redo') {
-                              document.execCommand(command, false, value);
+                            const response = await fetch('/api/files/upload-image', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                              },
+                              body: formData
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                              return result.url;
+                            } else {
+                              throw new Error(result.error || 'Erro ao fazer upload da imagem');
                             }
-                            // Para comandos de bloco (como headings e blockquote), garantir que funcionem corretamente
-                            else if (command === 'formatBlock') {
-                              // Forçar a seleção para garantir que o comando seja aplicado ao conteúdo selecionado
-                              const selection = window.getSelection();
-                              if (selection && selection.rangeCount > 0) {
-                                const range = selection.getRangeAt(0);
-                                if (range.commonAncestorContainer.parentElement?.closest(`#editor-${activeTab}`)) {
-                                  document.execCommand(command, false, value);
-                                } else {
-                                  // Se não houver seleção no editor, selecionar o conteúdo inteiro temporariamente
-                                  const newRange = document.createRange();
-                                  newRange.selectNodeContents(editor);
-                                  selection.removeAllRanges();
-                                  selection.addRange(newRange);
-                                  document.execCommand(command, false, value);
-                                }
-                              } else {
-                                // Se não houver seleção, executar o comando normalmente
-                                document.execCommand(command, false, value);
-                              }
-                            }
-                            // Para comandos de inserção de HTML (como tabelas), usar insertHTML
-                            else if (command === 'insertHTML') {
-                              document.execCommand('insertHTML', false, value || '');
-                            }
-                            else {
-                              // Para outros comandos, executar normalmente
-                              document.execCommand(command, false, value);
-                            }
+                          } catch (error) {
+                            console.error('Erro no upload da imagem:', error);
+                            throw error;
                           }
-                        }} 
-                      />
-                      <div 
-                        id={`editor-${item.value}`}
-                        className="min-h-96 p-4 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 border-t-0 rounded-t-none"
-                        contentEditable
-                        suppressContentEditableWarning={true}
-                        onMouseUp={() => {
-                          // Atualiza o estado quando o usuário seleciona texto
-                          const selection = window.getSelection();
-                          if (selection && selection.rangeCount > 0) {
-                            const range = selection.getRangeAt(0);
-                            if (range.commonAncestorContainer.parentElement?.closest(`#editor-${item.value}`)) {
-                              // Seleção está dentro do editor
-                            }
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Tab') {
-                            const selection = window.getSelection();
-                            if (selection && selection.rangeCount > 0) {
-                              const range = selection.getRangeAt(0);
-                              const element = range.commonAncestorContainer.parentElement || range.commonAncestorContainer as HTMLElement;
-                              const td = element?.closest('td, th') as HTMLElement;
-                              const table = element?.closest('table') as HTMLTableElement;
-                              
-                              if (td && table) {
-                                // Verificar se estamos na última célula da última linha
-                                const rows = Array.from(table.rows);
-                                const lastRow = rows[rows.length - 1];
-                                const lastCell = lastRow.cells[lastRow.cells.length - 1];
-                                
-                                if (td === lastCell) {
-                                  e.preventDefault(); // Prevenir o comportamento padrão do Tab
-                                  
-                                  // Criar nova linha com o mesmo número de colunas
-                                  const newRow = table.insertRow();
-                                  const numCols = lastRow.cells.length;
-                                  
-                                  for (let i = 0; i < numCols; i++) {
-                                    const newCell = newRow.insertCell();
-                                    newCell.style.border = '1px solid #ccc';
-                                    newCell.style.padding = '8px';
-                                    newCell.style.textAlign = 'left';
-                                    newCell.style.resize = 'horizontal';
-                                    newCell.style.overflow = 'auto';
-                                    newCell.style.minWidth = '100px';
-                                    newCell.textContent = `Célula ${rows.length}-${i + 1}`;
-                                  }
-                                  
-                                  // Colocar o foco na primeira célula da nova linha
-                                  setTimeout(() => {
-                                    const firstNewCell = newRow.cells[0];
-                                    if (firstNewCell) {
-                                      firstNewCell.focus();
-                                      const newRange = document.createRange();
-                                      newRange.selectNodeContents(firstNewCell);
-                                      newRange.collapse(true);
-                                      const newSelection = window.getSelection();
-                                      if (newSelection) {
-                                        newSelection.removeAllRanges();
-                                        newSelection.addRange(newRange);
-                                      }
-                                    }
-                                  }, 0);
-                                }
-                              }
-                            }
-                          }
-                        }}
-                        onInput={() => {
-                          // Pode adicionar lógica para atualizar estado se necessário
-                        }}
-                        dangerouslySetInnerHTML={{ 
-                          __html: contentData[item.value]?.length > 0 
-                            ? contentData[item.value].map(content => content.content).join('<br><br>') 
-                            : '' 
                         }}
                       />
                       
@@ -467,7 +395,7 @@ export default function TeacherSubjectEditor() {
                         <Button 
                           variant="outline" 
                           onClick={() => {
-                            const content = document.querySelector(`#editor-${item.value}`)?.innerHTML || '';
+                            const content = contentData[item.value]?.[0]?.content || '';
                             handleSaveContent(item.value, content);
                           }}
                         >
