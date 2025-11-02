@@ -1,4 +1,19 @@
 import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import SimpleColorPicker from '@/components/ui/simple-color-picker';
 import { 
   Bold, 
@@ -35,6 +50,7 @@ import {
   X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { supportedLanguages, detectLanguage, highlightCode } from '@/utils/syntaxHighlight';
 
 interface RichTextToolbarProps {
   onFormat: (command: string, value?: string) => void;
@@ -46,6 +62,12 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
   const [isInTable, setIsInTable] = useState(false);
   const [currentTextColor, setCurrentTextColor] = useState('#000000');
   const [currentBgColor, setCurrentBgColor] = useState('transparent');
+  const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false);
+  const [codeConfig, setCodeConfig] = useState({ 
+    code: '', 
+    language: 'javascript',
+    selectedText: ''
+  });
 
   const handleFormat = (command: string, value?: string) => {
     onFormat(command, value);
@@ -571,27 +593,77 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
 
   const handleCode = () => {
     const selection = window.getSelection();
+    let selectedText = '';
+    
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       const element = range.commonAncestorContainer.parentElement || range.commonAncestorContainer as HTMLElement;
       const tagName = element?.nodeName;
       
+      selectedText = selection.toString();
+      
       if (tagName === 'PRE') {
         // Remover o code e voltar para parágrafo
         handleFormat('formatBlock', '<p>');
-      } else {
-        // Aplicar o code
-        handleFormat('formatBlock', '<pre>');
+        return;
       }
-    } else {
-      // Se não houver seleção, aplicar o code
-      handleFormat('formatBlock', '<pre>');
     }
+
+    // Detectar linguagem do texto selecionado (se houver)
+    const detectedLang = selectedText ? detectLanguage(selectedText) : 'javascript';
+    
+    // Configurar o dialog com o texto selecionado
+    setCodeConfig({
+      code: selectedText,
+      language: detectedLang,
+      selectedText: selectedText
+    });
+    
+    setIsCodeDialogOpen(true);
   };
 
   const handleTable = () => {
     // Usar dialog em vez de prompt
     handleFormat('insertTable');
+  };
+
+  const insertCodeBlock = () => {
+    const { code, language } = codeConfig;
+    if (!code.trim()) return;
+
+    // Aplicar syntax highlighting ao código
+    const highlightedCode = highlightCode(code, language);
+    
+    // Criar HTML do bloco de código com syntax highlighting
+    const codeHTML = `
+      <div class="code-block-container">
+        <div class="language-toolbar">
+          <span class="language-label">${supportedLanguages.find(l => l.code === language)?.name || language.toUpperCase()}</span>
+        </div>
+        <pre class="language-${language}"><code class="language-${language}" data-lang="${language}">${highlightedCode}</code></pre>
+      </div>
+      <p><br></p>
+    `;
+
+    // Inserir o código
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createRange().createContextualFragment(codeHTML));
+    } else {
+      // Se não há seleção, inserir no final
+      document.execCommand('insertHTML', false, codeHTML);
+    }
+
+    // Notificar mudança
+    setTimeout(() => {
+      handleFormat('onChange', '');
+    }, 10);
+
+    // Fechar dialog e resetar configuração
+    setIsCodeDialogOpen(false);
+    setCodeConfig({ code: '', language: 'javascript', selectedText: '' });
   };
 
   useEffect(() => {
@@ -824,6 +896,78 @@ export default function RichTextToolbar({ onFormat, className }: RichTextToolbar
           size="sm"
         />
       )}
+
+      {/* Dialog para inserção de código */}
+      <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Inserir Bloco de Código</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="codeLanguage">Linguagem de Programação</Label>
+              <Select
+                value={codeConfig.language}
+                onValueChange={(value) => setCodeConfig(prev => ({ ...prev, language: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma linguagem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {supportedLanguages.map(lang => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="codeContent">Código</Label>
+              <Textarea
+                id="codeContent"
+                value={codeConfig.code}
+                onChange={(e) => setCodeConfig(prev => ({ ...prev, code: e.target.value }))}
+                placeholder="Digite ou cole seu código aqui..."
+                className="min-h-[200px] font-mono text-sm"
+                style={{ fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, consolas, monospace' }}
+              />
+            </div>
+
+            {/* Preview do syntax highlighting */}
+            {codeConfig.code && (
+              <div>
+                <Label>Preview com Syntax Highlighting</Label>
+                <div className="border rounded-md overflow-hidden">
+                  <div className="language-toolbar">
+                    <span className="language-label">
+                      {supportedLanguages.find(l => l.code === codeConfig.language)?.name || codeConfig.language.toUpperCase()}
+                    </span>
+                  </div>
+                  <pre className={`language-${codeConfig.language} max-h-48 overflow-auto`}>
+                    <code 
+                      className={`language-${codeConfig.language}`}
+                      dangerouslySetInnerHTML={{ 
+                        __html: highlightCode(codeConfig.code, codeConfig.language) 
+                      }}
+                    />
+                  </pre>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCodeDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={insertCodeBlock} disabled={!codeConfig.code.trim()}>
+                Inserir Código
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,3 +1,6 @@
+/* Importar tema customizado do Prism.js para syntax highlighting */
+@import './styles/prism-theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

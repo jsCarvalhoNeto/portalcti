@@ -1,0 +1,509 @@
+/* Estilos para Syntax Highlighting com Prism.js */
+/* Tema otimizado para o sistema de cores do projeto */
+
+/* Estilos base para code blocks */
+.language-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-bottom: none;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.language-toolbar .language-label {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, consolas, monospace;
+}
+
+.language-toolbar .copy-button {
+  padding: 0.25rem 0.5rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.language-toolbar .copy-button:hover {
+  background: hsl(var(--accent));
+}
+
+/* Container para code blocks */
+.code-block-container {
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+}
+
+.code-block-container pre {
+  margin: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Estilos base para todos os code blocks */
+pre[class*="language-"] {
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  tab-size: 2;
+  hyphens: none;
+}
+
+code[class*="language-"] {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, consolas, monospace;
+  font-size: 0.875rem;
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  tab-size: 2;
+  hyphens: none;
+}
+
+/* Inline code */
+:not(pre) > code[class*="language-"] {
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  white-space: nowrap;
+}
+
+/* Tokens de syntax highlighting - Tema adaptado com cores mais vívidas */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #7c7c7c; /* Cinza mais claro para comentários */
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.token.punctuation {
+  color: #6c7b7f; /* Cinza azulado para pontuação */
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+/* Propriedades, tags e constantes - Vermelho vibrante */
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #e53935; /* Vermelho mais vibrante */
+  font-weight: 500;
+}
+
+/* Números e booleanos - Laranja brilhante */
+.token.boolean,
+.token.number {
+  color: #ff8f00; /* Laranja mais brilhante */
+  font-weight: 500;
+}
+
+/* Strings e valores - Verde vibrante */
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #43a047; /* Verde mais saturado */
+}
+
+/* Operadores e variáveis - Azul vibrante */
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string,
+.token.variable {
+  color: #1e88e5; /* Azul mais vibrante */
+}
+
+/* Funções e classes - Roxo vibrante */
+.token.atrule,
+.token.attr-value,
+.token.function,
+.token.class-name {
+  color: #8e24aa; /* Roxo mais saturado */
+  font-weight: 600;
+}
+
+/* Palavras-chave - Laranja escuro vibrante */
+.token.keyword {
+  color: #f57c00; /* Laranja escuro mais vibrante */
+  font-weight: 700;
+}
+
+/* Regex e importantes - Vermelho forte */
+.token.regex,
+.token.important {
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+/* Tokens específicos para linguagens com cores mais vibrantes */
+
+/* JavaScript/TypeScript */
+.language-javascript .token.template-string,
+.language-typescript .token.template-string,
+.language-jsx .token.template-string,
+.language-tsx .token.template-string {
+  color: #43a047; /* Verde mais vibrante */
+}
+
+.language-javascript .token.template-punctuation,
+.language-typescript .token.template-punctuation,
+.language-jsx .token.template-punctuation,
+.language-tsx .token.template-punctuation {
+  color: #e53935; /* Vermelho vibrante */
+}
+
+.language-javascript .token.keyword,
+.language-typescript .token.keyword {
+  color: #f57c00; /* Laranja para palavras-chave JS/TS */
+  font-weight: 700;
+}
+
+.language-javascript .token.function,
+.language-typescript .token.function {
+  color: #8e24aa; /* Roxo para funções */
+  font-weight: 600;
+}
+
+/* Python - Cores específicas */
+.language-python .token.keyword {
+  color: #ff6d00; /* Laranja forte para palavras-chave Python */
+  font-weight: 700;
+}
+
+.language-python .token.function {
+  color: #7b1fa2; /* Roxo escuro para funções Python */
+  font-weight: 600;
+}
+
+.language-python .token.class-name {
+  color: #1565c0; /* Azul para classes Python */
+  font-weight: 600;
+}
+
+.language-python .token.decorator {
+  color: #ff8f00; /* Laranja para decoradores */
+  font-weight: 500;
+}
+
+.language-python .token.triple-quoted-string {
+  color: #388e3c; /* Verde escuro para docstrings */
+  font-style: italic;
+}
+
+.language-python .token.builtin {
+  color: #6a1b9a; /* Roxo para built-ins */
+  font-weight: 500;
+}
+
+.language-python .token.boolean {
+  color: #d84315; /* Laranja avermelhado para True/False */
+  font-weight: 600;
+}
+
+/* HTML */
+.language-html .token.tag .token.punctuation {
+  color: #757575; /* Cinza para pontuação HTML */
+}
+
+.language-html .token.tag .token.tag {
+  color: #e53935; /* Vermelho para tags HTML */
+}
+
+.language-html .token.attr-name {
+  color: #1e88e5; /* Azul para atributos */
+}
+
+.language-html .token.attr-value {
+  color: #43a047; /* Verde para valores de atributos */
+}
+
+/* CSS */
+.language-css .token.selector {
+  color: #f57c00; /* Laranja para seletores CSS */
+  font-weight: 500;
+}
+
+.language-css .token.property {
+  color: #1976d2; /* Azul para propriedades CSS */
+}
+
+.language-css .token.function {
+  color: #8e24aa; /* Roxo para funções CSS */
+}
+
+.language-css .token.important {
+  color: #d32f2f; /* Vermelho para !important */
+  font-weight: 700;
+}
+
+/* JSON */
+.language-json .token.property {
+  color: #1e88e5; /* Azul para propriedades JSON */
+  font-weight: 500;
+}
+
+.language-json .token.string {
+  color: #43a047; /* Verde para strings JSON */
+}
+
+.language-json .token.number {
+  color: #ff8f00; /* Laranja para números JSON */
+}
+
+.language-json .token.boolean,
+.language-json .token.null {
+  color: #8e24aa; /* Roxo para booleanos e null */
+  font-weight: 600;
+}
+
+/* SQL */
+.language-sql .token.keyword {
+  color: #7b1fa2; /* Roxo para palavras-chave SQL */
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.language-sql .token.function {
+  color: #1976d2; /* Azul para funções SQL */
+  font-weight: 600;
+}
+
+.language-sql .token.operator {
+  color: #f57c00; /* Laranja para operadores SQL */
+}
+
+/* Shell/Bash */
+.language-bash .token.function,
+.language-shell .token.function {
+  color: #f57c00; /* Laranja para funções bash */
+  font-weight: 600;
+}
+
+.language-bash .token.parameter,
+.language-shell .token.parameter {
+  color: #1e88e5; /* Azul para parâmetros */
+}
+
+.language-bash .token.variable {
+  color: #43a047; /* Verde para variáveis */
+}
+
+.language-bash .token.shebang {
+  color: #757575; /* Cinza para shebang */
+  font-style: italic;
+}
+
+/* Java */
+.language-java .token.keyword {
+  color: #f57c00; /* Laranja para palavras-chave Java */
+  font-weight: 700;
+}
+
+.language-java .token.class-name {
+  color: #1976d2; /* Azul para classes Java */
+  font-weight: 600;
+}
+
+.language-java .token.function {
+  color: #8e24aa; /* Roxo para métodos Java */
+}
+
+/* PHP */
+.language-php .token.keyword {
+  color: #7b1fa2; /* Roxo para palavras-chave PHP */
+  font-weight: 700;
+}
+
+.language-php .token.function {
+  color: #1976d2; /* Azul para funções PHP */
+}
+
+.language-php .token.variable {
+  color: #43a047; /* Verde para variáveis PHP */
+}
+
+/* C# */
+.language-csharp .token.keyword {
+  color: #1976d2; /* Azul para palavras-chave C# */
+  font-weight: 700;
+}
+
+.language-csharp .token.class-name {
+  color: #43a047; /* Verde para classes C# */
+  font-weight: 600;
+}
+
+.language-csharp .token.function {
+  color: #8e24aa; /* Roxo para métodos C# */
+}
+
+/* YAML */
+.language-yaml .token.key {
+  color: #1976d2; /* Azul para chaves YAML */
+  font-weight: 600;
+}
+
+.language-yaml .token.boolean {
+  color: #d32f2f; /* Vermelho para booleanos YAML */
+}
+
+.language-yaml .token.important {
+  color: #ff8f00; /* Laranja para valores especiais */
+}
+
+/* Markdown */
+.language-markdown .token.bold {
+  color: #f57c00; /* Laranja para negrito */
+  font-weight: 700;
+}
+
+.language-markdown .token.italic {
+  color: #8e24aa; /* Roxo para itálico */
+  font-style: italic;
+}
+
+.language-markdown .token.code {
+  color: #43a047; /* Verde para código inline */
+  background: rgba(67, 160, 71, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Temas para modo escuro/claro */
+@media (prefers-color-scheme: dark) {
+  pre[class*="language-"] {
+    background: hsl(220 13% 18%);
+    color: hsl(220 14% 71%);
+  }
+  
+  .language-toolbar {
+    background: hsl(220 13% 15%);
+    color: hsl(220 14% 71%);
+  }
+}
+
+/* Scrollbar personalizada para code blocks */
+pre[class*="language-"]::-webkit-scrollbar {
+  height: 8px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  pre[class*="language-"] {
+    font-size: 0.8125rem;
+    padding: 0.75rem;
+  }
+  
+  .language-toolbar {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.6875rem;
+  }
+}
+
+/* Estilos para line numbers (se necessário no futuro) */
+.line-numbers .line-numbers-rows {
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  left: -3.8em;
+  width: 3em;
+  letter-spacing: -1px;
+  border-right: 1px solid hsl(var(--border));
+  user-select: none;
+}
+
+.line-numbers-rows > span {
+  display: block;
+  counter-increment: linenumber;
+}
+
+.line-numbers-rows > span:before {
+  content: counter(linenumber);
+  color: hsl(var(--muted-foreground));
+  display: block;
+  padding-right: 0.8em;
+  text-align: right;
+}
+
+/* Animações sutis */
+.token.keyword,
+.token.function {
+  transition: color 0.2s ease;
+}
+
+/* Hover effects para melhor UX */
+pre[class*="language-"]:hover {
+  border-color: hsl(var(--ring));
+}
+
+/* Estilos para código inline dentro de parágrafos */
+p code[class*="language-"],
+li code[class*="language-"],
+td code[class*="language-"] {
+  display: inline;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+}

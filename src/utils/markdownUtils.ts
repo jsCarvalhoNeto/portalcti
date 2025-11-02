@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { processCodeBlocks } from './syntaxHighlight';
 
 /**
  * Utilitários para conversão e manipulação de Markdown
@@ -45,15 +46,17 @@ export function detectMarkdown(text: string): boolean {
 }
 
 /**
- * Converte markdown para HTML
+ * Converte markdown para HTML com syntax highlighting
  */
 export function markdownToHtml(markdown: string): string {
   try {
     const html = marked(markdown, { 
       gfm: true,
       breaks: true
-    });
-    return html as string;
+    }) as string;
+    
+    // Aplicar syntax highlighting aos blocos de código
+    return processCodeBlocks(html);
   } catch (error) {
     console.error('Erro ao converter markdown:', error);
     return markdown; // Retorna o texto original em caso de erro

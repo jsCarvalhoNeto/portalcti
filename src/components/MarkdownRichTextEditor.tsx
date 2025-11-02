@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import RichTextToolbar from './RichTextToolbar';
 import MarkdownHelpButton from './MarkdownHelpButton';
+import { useCodeBlockEnhancement } from './CodeBlock';
 import { 
   detectMarkdown, 
   markdownToHtml, 
@@ -230,6 +231,9 @@ export default function MarkdownRichTextEditor({
       ensureLTR();
     }
   }, [ensureLTR, content, editorMode]);
+
+  // Hook para melhorar blocos de código com syntax highlighting
+  useCodeBlockEnhancement(editorRef);
 
   // Handler para paste no editor visual
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
