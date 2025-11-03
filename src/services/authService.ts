@@ -1,4 +1,5 @@
 import api from './api';
+import PrivacyModeUtils from '../utils/privacyMode';
 
 /**
  * Serviço para autenticação de usuários (usando API real)
@@ -107,6 +108,15 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     return response.data;
   } catch (error) {
     console.error('Erro ao obter usuário atual:', error);
+    
+    // Verificar se o erro pode ser devido a navegação privada
+    if ((error as any)?.response?.status === 401) {
+      const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+      if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+        console.warn('⚠️ Erro de autenticação pode ser devido a navegação privada ou cookies bloqueados');
+      }
+    }
+    
     return null;
   }
 }

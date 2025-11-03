@@ -7,12 +7,26 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BookOpen, Shield } from 'lucide-react';
+import { Loader2, BookOpen, Shield, AlertTriangle } from 'lucide-react';
+import PrivacyModeUtils from '@/utils/privacyMode';
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
+  const [privacyWarning, setPrivacyWarning] = useState<{ isPrivate: boolean; cookiesWork: boolean } | null>(null);
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
+
+  // Verificar navegação privada ao carregar o componente
+  useEffect(() => {
+    const checkPrivacyMode = async () => {
+      const result = await PrivacyModeUtils.handlePrivacyMode();
+      if (result.isPrivate || !result.cookiesWork) {
+        setPrivacyWarning({ isPrivate: result.isPrivate, cookiesWork: result.cookiesWork });
+      }
+    };
+
+    checkPrivacyMode();
+  }, []);
 
   // Redirect if already authenticated
   if (user) {
@@ -92,6 +106,26 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Aviso sobre navegação privada */}
+          {privacyWarning && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-800 mb-1">
+                  Navegação Privada Detectada
+                </p>
+                <p className="text-amber-700">
+                  {privacyWarning.isPrivate 
+                    ? "Você está usando modo de navegação privada. "
+                    : "Cookies podem estar bloqueados. "
+                  }
+                  Alguns recursos podem não funcionar corretamente. Para melhor experiência, 
+                  use o navegador normal ou permita cookies.
+                </p>
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="login" className="space-y-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login" className="flex items-center gap-2">
