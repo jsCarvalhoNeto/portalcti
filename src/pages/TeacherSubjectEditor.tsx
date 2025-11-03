@@ -180,6 +180,20 @@ export default function TeacherSubjectEditor() {
       const backendSection = sectionMapping[section] || section;
       console.log('🔍 handleSaveContent - Seção mapeada:', { section, backendSection });
       
+      // Limpar tags HTML vazias e espaços em branco
+      const cleanContent = content
+        .replace(/<p><br><\/p>/g, '')
+        .replace(/<p>\s*<\/p>/g, '')
+        .replace(/<br\s*\/?>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+
+      // Se o conteúdo está vazio após limpeza, limpar a seção
+      if (!cleanContent || cleanContent === '<p></p>' || cleanContent === '') {
+        console.log('🗑️ Conteúdo vazio detectado, limpando seção...');
+        return await handleClearContent(section);
+      }
+      
       const sectionLabels: Record<string, string> = {
         'content': 'Conteúdo',
         'material': 'Cronograma',
@@ -193,7 +207,7 @@ export default function TeacherSubjectEditor() {
       const response = await api.post(`/content/${id}/content`, {
         section_type: backendSection,
         title: sectionLabels[backendSection] || section,
-        content: content,
+        content: cleanContent,
         order_index: 0
       });
 
@@ -217,6 +231,60 @@ export default function TeacherSubjectEditor() {
       });
     }
  };
+
+  const handleClearContent = async (section: string) => {
+    console.log('🗑️ handleClearContent - Limpando conteúdo da seção:', section);
+    
+    // Confirmar com o usuário
+    const confirmed = window.confirm(`Tem certeza que deseja limpar todo o conteúdo de ${section}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    try {
+      // Mapeamento de seções
+      const sectionMapping: Record<string, string> = {
+        'conteudo': 'content',
+        'material': 'material',
+        'atividades': 'activities',
+        'exercicios': 'exercises',
+        'projetos': 'projects',
+        'avaliacoes': 'evaluations',
+        'recursos': 'resources'
+      };
+
+      const backendSection = sectionMapping[section] || section;
+      console.log('🔍 handleClearContent - Seção mapeada:', { section, backendSection });
+
+      // Enviar conteúdo vazio para o backend
+      const response = await api.delete(`/content/${id}/content/section/${backendSection}`);
+
+      console.log('🔍 handleClearContent - Resposta do servidor:', response.status);
+
+      if (response.status === 200 || response.status === 204) {
+        // Limpar o estado local
+        setContentData(prev => ({
+          ...prev,
+          [section]: []
+        }));
+
+        toast({
+          title: 'Sucesso',
+          description: `Conteúdo de ${section} foi limpo com sucesso!`,
+        });
+
+        // Recarregar os dados para garantir sincronia
+        fetchSubjectData();
+      } else {
+        throw new Error('Falha ao limpar conteúdo');
+      }
+    } catch (error) {
+      console.error('❌ handleClearContent - Erro ao limpar conteúdo:', error);
+      toast({
+        title: 'Erro',
+        description: `Falha ao limpar conteúdo de ${section}`,
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleSave = () => {
     // Save all content
@@ -347,8 +415,7 @@ export default function TeacherSubjectEditor() {
                           ? contentData[item.value].map(content => content.content).join('<br><br>') 
                           : ''
                         }
-                        stickyToolbar={true}
-                        maxHeight="60vh"
+                        className="max-h-[60vh] overflow-y-auto"
                         onChange={(newContent: string) => {
                           // Atualizar o contentData localmente para feedback imediato
                           setContentData(prev => ({
@@ -364,34 +431,15 @@ export default function TeacherSubjectEditor() {
                           }));
                         }}
                         placeholder={`Digite o conteúdo de ${item.label}...`}
-                        onImageUpload={async (file: File) => {
-                          try {
-                            const formData = new FormData();
-                            formData.append('image', file);
-                            
-                            const response = await fetch('/api/files/upload-image', {
-                              method: 'POST',
-                              headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                              },
-                              body: formData
-                            });
-                            
-                            const result = await response.json();
-                            
-                            if (result.success) {
-                              return result.url;
-                            } else {
-                              throw new Error(result.error || 'Erro ao fazer upload da imagem');
-                            }
-                          } catch (error) {
-                            console.error('Erro no upload da imagem:', error);
-                            throw error;
-                          }
-                        }}
                       />
                       
                       <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="destructive" 
+                          onClick={() => handleClearContent(item.value)}
+                        >
+                          Limpar Conteúdo
+                        </Button>
                         <Button 
                           variant="outline" 
                           onClick={() => {

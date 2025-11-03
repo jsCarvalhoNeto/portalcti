@@ -644,10 +644,17 @@ export function detectLanguage(code: string): string {
   Object.entries(languageKeywords).forEach(([lang, keywords]) => {
     scores[lang] = 0;
     keywords.forEach(keyword => {
-      const regex = new RegExp(keyword.toLowerCase(), 'gi');
-      const matches = codeText.match(regex);
-      if (matches) {
-        scores[lang] += matches.length;
+      try {
+        // Escapar caracteres especiais de RegExp
+        const escapedKeyword = keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedKeyword, 'gi');
+        const matches = codeText.match(regex);
+        if (matches) {
+          scores[lang] += matches.length;
+        }
+      } catch (error) {
+        // Se houver erro na criação da RegExp, ignorar esta palavra-chave
+        console.warn(`Erro ao criar RegExp para palavra-chave "${keyword}":`, error);
       }
     });
   });
