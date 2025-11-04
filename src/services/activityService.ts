@@ -53,9 +53,11 @@ export interface ActivityGrade {
   teacher_name?: string; // Adicionado para mostrar o nome do professor
   teacher_observation?: string | null; // Observação em rich text HTML enviada pelo professor
   has_teacher_observation?: boolean;
-  // Novos campos para sistema de equipes
+  
+  // 🎯 Campos para sistema de equipes
   auto_applied?: boolean; // Indica se a nota foi aplicada automaticamente para membro de equipe
   team_leader_grade_id?: number | null; // ID da nota original do líder da equipe
+  manual_grade?: boolean; // Indica se a nota foi atribuída manualmente pelo professor
 }
 
 export interface StudentActivity {
@@ -141,6 +143,33 @@ export async function deleteActivityGrade(gradeId: number) {
   } catch (error) {
     console.error('Error deleting activity grade:', error);
     throw new Error('Não foi possível excluir a nota da atividade.');
+  }
+}
+
+/**
+ * 🎯 ATRIBUIÇÃO MANUAL DE NOTAS PARA MEMBROS DE EQUIPE
+ * 
+ * Permite que o professor atribua notas manualmente para membros 
+ * específicos de uma equipe que não enviaram a atividade
+ */
+export interface ManualTeamGradeData {
+  activity_id: number;
+  enrollment_id: number;
+  grade: number;
+  teacher_observation?: string;
+  student_name?: string;
+}
+
+export async function assignManualGradeToTeamMember(gradeData: ManualTeamGradeData) {
+  try {
+    const response = await api.post('/activities/team-grades/manual', gradeData, { withCredentials: true });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error assigning manual grade to team member:', error);
+    if (error.response?.data?.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error('Não foi possível atribuir a nota manual ao membro da equipe.');
   }
 }
 
