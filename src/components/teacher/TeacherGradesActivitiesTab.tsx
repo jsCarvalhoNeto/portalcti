@@ -3,10 +3,12 @@ import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContex
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, CheckCircle, Edit3, Edit } from 'lucide-react';
+import { Plus, FileText, CheckCircle, Edit3, Edit, Crown, UserCheck } from 'lucide-react';
 import NewActivityModal from './NewActivityModal';
 import EditActivityModal from './EditActivityModal';
 import ActivityGradesModal from './ActivityGradesModal';
+import CreateTeamModal from './CreateTeamModal';
+import ActivityTeamsModal from './ActivityTeamsModal';
 
 export default function TeacherGradesActivitiesTab() {
   const { activities, loading } = useTeacherDashboard();
@@ -14,11 +16,32 @@ export default function TeacherGradesActivitiesTab() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isGradesModalOpen, setIsGradesModalOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  
+  // Estados para modais de equipe
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+  const [isTeamsModalOpen, setIsTeamsModalOpen] = useState(false);
+  const [selectedActivityForTeams, setSelectedActivityForTeams] = useState<Activity | null>(null);
+  
   const activitiesLoading = loading.activities;
 
   const handleOpenGradesModal = (activity: Activity) => {
     setSelectedActivity(activity);
     setIsGradesModalOpen(true);
+  };
+
+  const handleCreateTeam = (activity: Activity) => {
+    setSelectedActivityForTeams(activity);
+    setIsCreateTeamModalOpen(true);
+  };
+
+  const handleViewTeams = (activity: Activity) => {
+    setSelectedActivityForTeams(activity);
+    setIsTeamsModalOpen(true);
+  };
+
+  const handleTeamCreated = () => {
+    // Callback para quando uma equipe for criada - pode recarregar dados se necessário
+    console.log('Equipe criada com sucesso!');
   };
 
   return (
@@ -84,6 +107,31 @@ export default function TeacherGradesActivitiesTab() {
                       <Badge variant="secondary">
                         {activity.type === 'individual' ? 'Individual' : 'Equipe'}
                       </Badge>
+                      
+                      {/* Botões de Equipe - aparecem apenas para atividades do tipo 'team' */}
+                      {activity.type === 'team' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCreateTeam(activity)}
+                            className="flex items-center gap-1 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+                          >
+                            <Crown className="w-4 h-4" />
+                            Nova Equipe
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewTeams(activity)}
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                            Ver Equipes
+                          </Button>
+                        </>
+                      )}
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -134,6 +182,25 @@ export default function TeacherGradesActivitiesTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modais de Equipe */}
+      {selectedActivityForTeams && (
+        <>
+          <CreateTeamModal
+            isOpen={isCreateTeamModalOpen}
+            onOpenChange={setIsCreateTeamModalOpen}
+            activityId={parseInt(selectedActivityForTeams.id)}
+            activityName={selectedActivityForTeams.name}
+            onTeamCreated={handleTeamCreated}
+          />
+          <ActivityTeamsModal
+            isOpen={isTeamsModalOpen}
+            onOpenChange={setIsTeamsModalOpen}
+            activityId={parseInt(selectedActivityForTeams.id)}
+            activityName={selectedActivityForTeams.name}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -53,6 +53,9 @@ export interface ActivityGrade {
   teacher_name?: string; // Adicionado para mostrar o nome do professor
   teacher_observation?: string | null; // Observação em rich text HTML enviada pelo professor
   has_teacher_observation?: boolean;
+  // Novos campos para sistema de equipes
+  auto_applied?: boolean; // Indica se a nota foi aplicada automaticamente para membro de equipe
+  team_leader_grade_id?: number | null; // ID da nota original do líder da equipe
 }
 
 export interface StudentActivity {

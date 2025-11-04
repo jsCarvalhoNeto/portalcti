@@ -227,9 +227,27 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Aviso sobre sistema de equipes */}
+              {submissions.some(s => s.auto_applied || (s.team_members && !s.auto_applied)) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white text-xs">👥</span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-blue-900 mb-2">Sistema de Equipes Ativo</h4>
+                      <div className="text-sm text-blue-700 space-y-1">
+                        <p>• <strong>Líder da Equipe:</strong> Aluno que fez a submissão original</p>
+                        <p>• <strong>Membros da Equipe:</strong> Recebem automaticamente a mesma nota do líder</p>
+                        <p>• <strong>Notas Auto-aplicadas:</strong> Indicadas com marcador azul - não podem ser editadas individualmente</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-12 gap-4 font-semibold text-sm text-muted-foreground border-b pb-2">
                   <div className="col-span-2">Aluno</div>
-                    <div className="col-span-2">Email</div>
+                    <div className="col-span-2">Email / Equipe</div>
                     <div className="col-span-2">Data de Envio</div>
                     <div className="col-span-1">Status</div>
                     <div className="col-span-2">Arquivo</div>
@@ -237,10 +255,37 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                     <div className="col-span-2">Ações</div>
               </div>
 
-              {submissions.map((submission) => (
-                <div key={submission.id || submission.student_id} className="grid grid-cols-12 gap-4 items-center p-3 border rounded hover:bg-muted/50 transition-colors">
-                  <div className="col-span-2 font-medium truncate">{submission.student_name_display}</div>
-                  <div className="col-span-2 text-sm text-muted-foreground truncate">{submission.student_email}</div>
+              {submissions.map((submission) => {
+                // Verificar se é uma nota aplicada automaticamente para membro de equipe
+                const isAutoApplied = submission.auto_applied === true;
+                const hasTeamMembers = submission.team_members && submission.team_members.trim();
+                
+                return (
+                <div key={submission.id || submission.student_id} className={`grid grid-cols-12 gap-4 items-center p-3 border rounded hover:bg-muted/50 transition-colors ${
+                  isAutoApplied ? 'bg-blue-50 border-blue-200' : ''
+                }`}>
+                  <div className="col-span-2 font-medium truncate">
+                    {submission.student_name_display}
+                    {isAutoApplied && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-xs text-blue-600">Membro da Equipe</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="col-span-2 text-sm text-muted-foreground">
+                    <div className="truncate">{submission.student_email}</div>
+                    {hasTeamMembers && !isAutoApplied && (
+                      <div className="text-xs text-blue-600 mt-1 truncate" title={submission.team_members || ''}>
+                        👥 Líder da Equipe
+                      </div>
+                    )}
+                    {isAutoApplied && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        🔗 Nota aplicada automaticamente
+                      </div>
+                    )}
+                  </div>
                   <div className="col-span-2 text-sm text-muted-foreground truncate">
                     {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString('pt-BR') : 'N/A'}
                   </div>
@@ -296,9 +341,13 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                       value={submission.grade ?? ''}
                       onChange={(e) => handleGradeChange(submission.id, e.target.value)}
                       placeholder={submission.status === 'pending' ? 'N/A' : 'Nota'}
-                      className="w-20 text-sm"
-                      disabled={submission.status === 'pending'}
+                      className={`w-20 text-sm ${isAutoApplied ? 'bg-blue-100' : ''}`}
+                      disabled={submission.status === 'pending' || isAutoApplied}
+                      title={isAutoApplied ? 'Nota aplicada automaticamente - edite a nota do líder da equipe' : ''}
                     />
+                    {isAutoApplied && (
+                      <div className="text-xs text-blue-600 mt-1">Auto</div>
+                    )}
                   </div>
                   <div className="col-span-2 flex justify-center">
                     {submission.id ? (
@@ -368,7 +417,8 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

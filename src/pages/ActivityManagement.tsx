@@ -2,14 +2,24 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, FileText, BookOpen, Users, Plus, Edit, Trash2, Eye, Calendar } from 'lucide-react';
+import { Search, FileText, BookOpen, Users, Plus, Edit, Trash2, Eye, Calendar, UserCheck, Crown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import ActivityTeamsModal from '@/components/teacher/ActivityTeamsModal';
+import CreateTeamModal from '@/components/teacher/CreateTeamModal';
 
 export default function ActivityManagement() {
   const { userRole } = useAuth();
   const [activities, setActivities] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Estados para o modal de equipes
+  const [teamsModalOpen, setTeamsModalOpen] = useState(false);
+  const [selectedActivityForTeams, setSelectedActivityForTeams] = useState<{id: string, name: string} | null>(null);
+  
+  // Estados para o modal de criação de equipes
+  const [createTeamModalOpen, setCreateTeamModalOpen] = useState(false);
+  const [selectedActivityForCreateTeam, setSelectedActivityForCreateTeam] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     // Simular carregamento de dados das atividades
@@ -20,6 +30,7 @@ export default function ActivityManagement() {
           title: 'Exercício de Fixação 1',
           subject: 'Matemática Básica',
           type: 'Exercício',
+          activityType: 'individual',
           dueDate: '2024-12-15',
           students: 25,
           completed: 18,
@@ -27,9 +38,10 @@ export default function ActivityManagement() {
         },
         {
           id: '2',
-          title: 'Trabalho Prático',
-          subject: 'Português Técnico',
+          title: 'Projeto de Programação Web',
+          subject: 'Lógica de Programação',
           type: 'Trabalho',
+          activityType: 'team',
           dueDate: '2024-12-20',
           students: 22,
           completed: 15,
@@ -75,6 +87,27 @@ export default function ActivityManagement() {
   const handleViewActivity = (id: string) => {
     // Lógica para visualizar atividade
     console.log('Visualizar atividade:', id);
+  };
+
+  const handleViewTeams = (activity: any) => {
+    setSelectedActivityForTeams({
+      id: activity.id,
+      name: activity.title
+    });
+    setTeamsModalOpen(true);
+  };
+
+  const handleCreateTeam = (activity: any) => {
+    setSelectedActivityForCreateTeam({
+      id: activity.id,
+      name: activity.title
+    });
+    setCreateTeamModalOpen(true);
+  };
+
+  const handleTeamCreated = () => {
+    // Callback após criar equipe - pode recarregar dados se necessário
+    console.log('Equipe criada com sucesso!');
   };
 
   if (loading) {
@@ -169,6 +202,28 @@ export default function ActivityManagement() {
                     <Eye className="h-4 w-4 mr-1" />
                     Ver
                   </Button>
+                  {activity.activityType === 'team' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCreateTeam(activity)}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <Crown className="h-4 w-4 mr-1" />
+                        Nova Equipe
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewTeams(activity)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Ver Equipes
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -200,6 +255,27 @@ export default function ActivityManagement() {
           </div>
         )}
       </div>
+
+      {/* Modal de Equipes */}
+      {selectedActivityForTeams && (
+        <ActivityTeamsModal
+          isOpen={teamsModalOpen}
+          onOpenChange={setTeamsModalOpen}
+          activityId={parseInt(selectedActivityForTeams.id)}
+          activityName={selectedActivityForTeams.name}
+        />
+      )}
+
+      {/* Modal de Criação de Equipes */}
+      {selectedActivityForCreateTeam && (
+        <CreateTeamModal
+          isOpen={createTeamModalOpen}
+          onOpenChange={setCreateTeamModalOpen}
+          activityId={parseInt(selectedActivityForCreateTeam.id)}
+          activityName={selectedActivityForCreateTeam.name}
+          onTeamCreated={handleTeamCreated}
+        />
+      )}
     </div>
   );
 }
