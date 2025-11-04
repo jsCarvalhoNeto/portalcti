@@ -9,6 +9,7 @@ export interface Subject {
   current_students?: number;
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
   semester?: string;
+  year: number; // Ano letivo da disciplina
   created_at: string;
   updated_at: string;
 }

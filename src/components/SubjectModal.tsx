@@ -21,6 +21,7 @@ interface Subject {
   semester?: string;
   period?: string;
   schedule?: string;
+  year?: number; // Ano letivo da disciplina
 }
 
 interface Teacher {
@@ -45,7 +46,8 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
     semester: '',
     period: '',
     schedule: '',
-    grade: ''
+    grade: '',
+    year: new Date().getFullYear() // Ano atual como padrão
   });
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teachersLoaded, setTeachersLoaded] = useState(false);
@@ -70,7 +72,8 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           semester: subject.semester || '',
           period: subject.period || '',
           schedule: subject.schedule || '',
-          grade: subject.grade || ''
+          grade: subject.grade || '',
+          year: subject.year || new Date().getFullYear()
         });
       } else {
         // Limpa o formulário para o caso de criação
@@ -82,7 +85,8 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           semester: '',
           period: '',
           schedule: '',
-          grade: ''
+          grade: '',
+          year: new Date().getFullYear()
         });
       }
     }
@@ -124,7 +128,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           max_students: formData.max_students,
           grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
           semester: formData.semester || undefined,
-          period: formData.period || undefined
+          period: formData.period || undefined,
+          year: formData.year
         });
         toast({
           title: "Sucesso",
@@ -140,7 +145,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           max_students: formData.max_students,
           grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
           semester: formData.semester || undefined,
-          period: formData.period || undefined
+          period: formData.period || undefined,
+          year: formData.year
         });
         toast({
           title: "Sucesso",
@@ -282,6 +288,18 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <SelectItem value="4º Período">4º Período</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="year">Ano Letivo</Label>
+              <Input
+                id="year"
+                type="number"
+                value={formData.year}
+                onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                min="2020"
+                max="2030"
+                required
+              />
             </div>
           </div>
 

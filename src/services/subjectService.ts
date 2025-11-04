@@ -10,6 +10,7 @@ export interface CreateSubjectData {
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
   semester?: string;
   period?: string;
+  year?: number; // Ano letivo da disciplina
 }
 
 export interface UpdateSubjectData {
@@ -21,6 +22,7 @@ export interface UpdateSubjectData {
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
   semester?: string;
   period?: string;
+  year?: number; // Ano letivo da disciplina
 }
 
 export const subjectService = {
