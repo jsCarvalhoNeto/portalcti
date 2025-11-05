@@ -96,10 +96,30 @@ export default function TeacherCalendarTab() {
         title: "Sucesso",
         description: "Evento excluído com sucesso!",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao deletar evento:', error);
+      
+      let errorMessage = "Falha ao excluir evento";
+      
+      // Extrair mensagem específica do erro
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Tratar diferentes tipos de erro
+      if (error.response?.status === 403) {
+        errorMessage = "Você não tem permissão para deletar este evento";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Evento não encontrado";
+      } else if (error.response?.status === 401) {
+        errorMessage = "Sessão expirada. Faça login novamente";
+      }
+      
       toast({
         title: "Erro",
-        description: "Falha ao excluir evento",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
