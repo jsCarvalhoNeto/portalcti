@@ -13,6 +13,7 @@ export interface Subject {
   schedule?: string;
   max_students: number;
   current_students?: number;
+  color?: string; // Cor hexadecimal para o card da disciplina (ex: #3B82F6)
 }
 
 export interface Student {

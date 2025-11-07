@@ -2,9 +2,10 @@ import { useTeacherDashboard, Subject } from '@/contexts/TeacherDashboardContext
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, Calendar, Edit } from 'lucide-react';
+import { GraduationCap, Calendar, Edit, Palette } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SubjectColorEditModal from './SubjectColorEditModal';
 
 interface TeacherSubjectsTabProps {
 }
@@ -13,6 +14,8 @@ export default function TeacherSubjectsTab() {
   const { subjects, loading, error, refetch } = useTeacherDashboard();
   const subjectsLoading = loading.subjects;
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [showColorEditModal, setShowColorEditModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +28,15 @@ export default function TeacherSubjectsTab() {
 
   const handleEditSubject = (subjectId: number) => {
     navigate(`/teacher/subjects/${subjectId}/edit`);
+  }
+
+  const handleEditColor = (subject: Subject) => {
+    setEditingSubject(subject);
+    setShowColorEditModal(true);
+  }
+
+  const handleColorEditSuccess = () => {
+    refetch.subjects();
   }
 
   return (
@@ -57,55 +69,123 @@ export default function TeacherSubjectsTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subject) => (
-            <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{subject.name}</CardTitle>
-                    <CardDescription>ID: {subject.id}</CardDescription>
-                  </div>
-                  <Badge variant="outline">Ativo</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {subject.description && (
-                    <p className="text-sm text-muted-foreground">{subject.description}</p>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">
-                      Disciplina ID: {subject.id}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center gap-1" 
-                        onClick={() => handleEditSubject(subject.id)}
+          {subjects.map((subject) => {
+            // Cor do card - usa cor personalizada ou padrão
+            const cardColor = subject.color || '#3B82F6';
+            
+            // Determina se a cor é clara ou escura para ajustar o texto
+            const isLightColor = (hex: string) => {
+              const rgb = parseInt(hex.slice(1), 16);
+              const r = (rgb >> 16) & 255;
+              const g = (rgb >> 8) & 255;
+              const b = rgb & 255;
+              const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+              return brightness > 128;
+            };
+
+            const textColor = isLightColor(cardColor) ? '#1f2937' : '#ffffff';
+            
+            return (
+              <Card 
+                key={subject.id} 
+                className="hover:shadow-glow transition-all duration-300 border-0 relative overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
+                  color: textColor
+                }}
+              >
+                {/* Barra de cor no topo do card */}
+                <div 
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ backgroundColor: cardColor }}
+                />
+                
+                <CardHeader className="relative">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle 
+                        className="text-lg" 
+                        style={{ color: textColor }}
                       >
-                        <Edit className="w-4 h-4" />
-                        Editar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center gap-1"
-                        onClick={() => handleViewDetails(subject)}
+                        {subject.name}
+                      </CardTitle>
+                      <CardDescription 
+                        style={{ color: `${textColor}B3` }}
                       >
-                        <GraduationCap className="w-4 h-4" />
-                        Notas
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        Atividades
-                      </Button>
+                        ID: {subject.id}
+                      </CardDescription>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className="border-white/30 text-white bg-white/20"
+                    >
+                      Ativo
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="relative">
+                  <div className="space-y-3">
+                    {subject.description && (
+                      <p 
+                        className="text-sm" 
+                        style={{ color: `${textColor}CC` }}
+                      >
+                        {subject.description}
+                      </p>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <div 
+                        className="text-sm"
+                        style={{ color: `${textColor}B3` }}
+                      >
+                        Disciplina ID: {subject.id}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditColor(subject);
+                          }}
+                          title="Editar cor do card"
+                        >
+                          <Palette className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
+                          onClick={() => handleEditSubject(subject.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                          onClick={() => handleViewDetails(subject)}
+                        >
+                          <GraduationCap className="w-4 h-4" />
+                          Notas
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          Atividades
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
           {subjects.length === 0 && !subjectsLoading && (
             <div className="col-span-full text-center py-8">
               <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
@@ -163,6 +243,14 @@ export default function TeacherSubjectsTab() {
           </div>
         </div>
       )}
+
+      {/* Modal de Edição de Cor */}
+      <SubjectColorEditModal
+        isOpen={showColorEditModal}
+        onClose={() => setShowColorEditModal(false)}
+        subject={editingSubject}
+        onSuccess={handleColorEditSuccess}
+      />
     </div>
   );
 }
