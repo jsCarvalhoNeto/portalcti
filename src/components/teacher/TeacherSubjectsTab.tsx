@@ -2,10 +2,12 @@ import { useTeacherDashboard, Subject } from '@/contexts/TeacherDashboardContext
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, Calendar, Edit, Palette } from 'lucide-react';
+import { GraduationCap, Calendar, Edit, Palette, Users, MessageSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubjectColorEditModal from './SubjectColorEditModal';
+import ColorSuggestionsModal from './ColorSuggestionsModal';
+import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
 
 interface TeacherSubjectsTabProps {
 }
@@ -16,11 +18,64 @@ export default function TeacherSubjectsTab() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showColorEditModal, setShowColorEditModal] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+  const [suggestionsSubject, setSuggestionsSubject] = useState<Subject | null>(null);
+  
+  // Estados para cores personalizadas do professor
+  const [showPersonalColorModal, setShowPersonalColorModal] = useState(false);
+  const [personalColorSubject, setPersonalColorSubject] = useState<Subject | null>(null);
+  const [userColors, setUserColors] = useState<Record<number, string>>({});
+  
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log('TeacherSubjectsTab - Dados recebidos:', { subjects, subjectsLoading, error });
+    loadUserColors();
   }, [subjects, subjectsLoading, error]);
+
+  // Carregar cores personalizadas do professor
+  const loadUserColors = async () => {
+    try {
+      const response = await fetch('/api/user-colors', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.colors) {
+          const colorsMap: Record<number, string> = {};
+          data.colors.forEach((item: any) => {
+            colorsMap[item.subject_id] = item.color;
+          });
+          setUserColors(colorsMap);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar cores personalizadas:', error);
+    }
+  };
+
+  // Função para obter cor de uma disciplina (personalizada ou padrão)
+  const getSubjectColor = (subject: Subject) => {
+    // Se o professor tem cor personalizada, usa ela
+    if (userColors[subject.id]) {
+      return userColors[subject.id];
+    }
+    // Senão, usa a cor da disciplina ou padrão
+    return subject.color || '#3B82F6';
+  };
+
+  // Funções para cores personalizadas
+  const handlePersonalizeColor = (subject: Subject) => {
+    setPersonalColorSubject(subject);
+    setShowPersonalColorModal(true);
+  };
+
+  const handlePersonalColorChanged = (subjectId: number, newColor: string) => {
+    setUserColors(prev => ({
+      ...prev,
+      [subjectId]: newColor
+    }));
+  };
 
   const handleViewDetails = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -71,7 +126,7 @@ export default function TeacherSubjectsTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject) => {
             // Cor do card - usa cor personalizada ou padrão
-            const cardColor = subject.color || '#3B82F6';
+            const cardColor = getSubjectColor(subject);
             
             // Determina se a cor é clara ou escura para ajustar o texto
             const isLightColor = (hex: string) => {
@@ -152,6 +207,31 @@ export default function TeacherSubjectsTab() {
                           title="Editar cor do card"
                         >
                           <Palette className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePersonalizeColor(subject);
+                          }}
+                          title="Personalizar cor (apenas para você)"
+                        >
+                          <Users className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSuggestionsSubject(subject);
+                            setShowSuggestionsModal(true);
+                          }}
+                          title="Ver sugestões de cores dos alunos"
+                        >
+                          <MessageSquare className="w-4 h-4" />
                         </Button>
                         <Button 
                           size="sm" 
@@ -250,6 +330,26 @@ export default function TeacherSubjectsTab() {
         onClose={() => setShowColorEditModal(false)}
         subject={editingSubject}
         onSuccess={handleColorEditSuccess}
+      />
+
+      {/* Modal de Sugestões de Cores */}
+      <ColorSuggestionsModal
+        isOpen={showSuggestionsModal}
+        onClose={() => setShowSuggestionsModal(false)}
+        subject={suggestionsSubject}
+        onSuccess={() => {
+          // Recarregar dados se necessário
+          refetch.subjects();
+          loadUserColors();
+        }}
+      />
+
+      {/* Modal de Cor Pessoal do Professor */}
+      <PersonalColorModal
+        isOpen={showPersonalColorModal}
+        onClose={() => setShowPersonalColorModal(false)}
+        subject={personalColorSubject}
+        onColorChanged={handlePersonalColorChanged}
       />
     </div>
   );

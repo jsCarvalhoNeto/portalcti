@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
+import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
+import { useUserColors } from '@/hooks/useUserColors';
 import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
@@ -49,6 +51,12 @@ export default function StudentDashboard() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { loadUserColors: loadUserColorsHook } = useUserColors();
+  
+  // Estados para modal de cor pessoal
+  const [showPersonalColorModal, setShowPersonalColorModal] = useState(false);
+  const [selectedSubjectForPersonalColor, setSelectedSubjectForPersonalColor] = useState<any>(null);
+  const [userColors, setUserColors] = useState<Record<number, string>>({});
 
   const getTabLabel = (tabValue: string) => {
     const labels: Record<string, string> = {
@@ -108,14 +116,48 @@ export default function StudentDashboard() {
     return <div className="font-medium">{localName || resolveSubjectName(subjectId, subjectNameFromApi)}</div>;
   }
 
+  // Funções para cores personalizadas
+  const handlePersonalizeColor = (subject: any) => {
+    setSelectedSubjectForPersonalColor(subject);
+    setShowPersonalColorModal(true);
+  };
+
+  const handlePersonalColorChanged = (subjectId: number, newColor: string) => {
+    setUserColors(prev => ({
+      ...prev,
+      [subjectId]: newColor
+    }));
+  };
+
+  // Função para obter cor de uma disciplina (personalizada ou padrão)
+  const getSubjectColor = (subject: any) => {
+    // Se o usuário tem cor personalizada, usa ela
+    if (userColors[subject.id]) {
+      return userColors[subject.id];
+    }
+    // Senão, usa a cor da disciplina ou padrão
+    return subject.color || '#3B82F6';
+  };
+
   useEffect(() => {
     if (user && isStudent) {
       fetchSubjects();
       fetchNotifications();
       loadProfileData();
       fetchGamification();
+      loadUserColors();
     }
   }, [user, isStudent]);
+
+  // Carregar cores personalizadas do usuário
+  const loadUserColors = async () => {
+    try {
+      const colorsMap = loadUserColorsHook();
+      setUserColors(colorsMap);
+    } catch (error) {
+      console.error('Erro ao carregar cores personalizadas:', error);
+    }
+  };
 
   // If unlockedBySubject arrives before subjects list is loaded, re-fetch subjects
   useEffect(() => {
@@ -712,8 +754,8 @@ export default function StudentDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {subjects.map((subject) => {
-                  // Cor do card - usa cor personalizada ou padrão
-                  const cardColor = subject.color || '#3B82F6';
+                  // Cor do card - usa cor personalizada do usuário ou cor da disciplina ou padrão
+                  const cardColor = getSubjectColor(subject);
                   
                   // Determina se a cor é clara ou escura para ajustar o texto
                   const isLightColor = (hex: string) => {
@@ -792,6 +834,18 @@ export default function StudentDashboard() {
                               Semestre: {subject.semester || 'Não informado'}
                             </div>
                             <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePersonalizeColor(subject);
+                                }}
+                                title="Personalizar cor (apenas para você)"
+                              >
+                                <Palette className="w-4 h-4" />
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
@@ -1011,6 +1065,14 @@ export default function StudentDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Modal de Cor Pessoal */}
+      <PersonalColorModal
+        isOpen={showPersonalColorModal}
+        onClose={() => setShowPersonalColorModal(false)}
+        subject={selectedSubjectForPersonalColor}
+        onColorChanged={handlePersonalColorChanged}
+      />
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ColorPicker from '@/components/ui/ColorPicker';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/services/api';
-import { Subject } from '@/types/subject';
+import { Subject } from '@/contexts/TeacherDashboardContext';
 
 interface SubjectColorEditModalProps {
   isOpen: boolean;
