@@ -11,6 +11,7 @@ import { BookOpen, BarChart3, Home, LogOut, Menu } from 'lucide-react';
 import BadgeGrid from '@/components/badges/BadgeGrid';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 import TopStudentsCard from '@/components/student/TopStudentsCard';
+import DailyChallengeCard from '@/components/student/DailyChallengeCard';
 
 export default function Gamification() {
   const { user, isStudent } = useAuth();
@@ -360,6 +361,11 @@ export default function Gamification() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Desafio do Dia */}
+        <div className="max-w-6xl mx-auto mb-6">
+          <DailyChallengeCard />
         </div>
 
         <div className="max-w-6xl mx-auto">

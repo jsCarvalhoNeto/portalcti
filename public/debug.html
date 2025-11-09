@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Teste Debug Toggle Desafios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug: Toggle Desafios - Erro 403</h1>
+        
+        <div class="info">
+            <strong>Status:</strong> Middleware requireTeacher temporariamente removido para debug.<br>
+            <strong>Backend:</strong> http://localhost:4002<br>
+            <strong>Logs:</strong> Observe o console desta página e o terminal do backend
+        </div>
+
+        <div class="test-section">
+            <h3>1. 🔍 Teste de Autenticação</h3>
+            <button onclick="testAuth()">Testar Autenticação</button>
+            <div id="authResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. 📋 Listar Desafios</h3>
+            <button onclick="listChallenges()">Listar Desafios</button>
+            <div id="challengesList"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. 🔄 Teste Toggle</h3>
+            <label>ID do Desafio:</label>
+            <input type="number" id="challengeId" value="1" min="1">
+            <label>Ativo:</label>
+            <select id="isActive">
+                <option value="true">true</option>
+                <option value="false">false</option>
+            </select>
+            <br>
+            <button onclick="testToggle()">Testar Toggle</button>
+            <div id="toggleResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. 📊 Logs do Console</h3>
+            <button onclick="clearLogs()">Limpar Logs</button>
+            <div id="logs" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let logElement = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logLine;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Também logar no console do navegador
+            console.log(logLine);
+        }
+
+        function clearLogs() {
+            logElement.textContent = '';
+        }
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = type;
+            element.innerHTML = message;
+        }
+
+        async function testAuth() {
+            log('🔐 Testando autenticação...');
+            showResult('authResult', 'Testando...', 'info');
+            
+            try {
+                // Verificar cookies e storage
+                log('🍪 Cookies: ' + document.cookie);
+                log('💾 SessionStorage: ' + JSON.stringify(sessionStorage));
+                log('💾 LocalStorage: ' + JSON.stringify(localStorage));
+                
+                // Testar uma rota simples que requer auth
+                const response = await fetch('/api/daily-challenges', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📡 Response Status: ${response.status}`);
+                log(`📡 Response Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Auth Success: ${data.length} challenges found`);
+                    showResult('authResult', `✅ Autenticação OK! Encontrados ${data.length} desafios`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Auth Failed: ${errorText}`);
+                    showResult('authResult', `❌ Erro ${response.status}: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Auth Error: ${error.message}`);
+                showResult('authResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function listChallenges() {
+            log('📋 Listando desafios...');
+            showResult('challengesList', 'Carregando...', 'info');
+            
+            try {
+                const response = await fetch('/api/daily-challenges', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const challenges = await response.json();
+                    log(`📋 Found ${challenges.length} challenges`);
+                    
+                    let html = `<strong>Encontrados ${challenges.length} desafios:</strong><br>`;
+                    challenges.slice(0, 5).forEach(challenge => {
+                        html += `
+                            <div style="margin: 5px 0; padding: 5px; border: 1px solid #ccc;">
+                                <strong>ID:</strong> ${challenge.id} | 
+                                <strong>Título:</strong> ${challenge.title} | 
+                                <strong>Professor ID:</strong> ${challenge.teacher_id} |
+                                <strong>Ativo:</strong> ${challenge.is_active ? 'Sim' : 'Não'}
+                            </div>
+                        `;
+                    });
+                    
+                    showResult('challengesList', html, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ List Error: ${errorText}`);
+                    showResult('challengesList', `❌ Erro ${response.status}: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ List Error: ${error.message}`);
+                showResult('challengesList', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function testToggle() {
+            const challengeId = document.getElementById('challengeId').value;
+            const isActive = document.getElementById('isActive').value === 'true';
+            
+            log(`🔄 Testando toggle - Challenge ID: ${challengeId}, isActive: ${isActive}`);
+            showResult('toggleResult', 'Testando toggle...', 'info');
+            
+            try {
+                const response = await fetch(`/api/daily-challenges/${challengeId}/toggle-active`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ isActive })
+                });
+                
+                log(`🔄 Toggle Status: ${response.status}`);
+                log(`🔄 Toggle Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+                
+                const responseText = await response.text();
+                log(`🔄 Toggle Response: ${responseText}`);
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        log(`✅ Toggle Success: ${data.message}`);
+                        showResult('toggleResult', `✅ Sucesso: ${data.message}`, 'success');
+                    } catch (e) {
+                        log(`✅ Toggle Success (non-JSON): ${responseText}`);
+                        showResult('toggleResult', `✅ Sucesso: ${responseText}`, 'success');
+                    }
+                } else {
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        log(`❌ Toggle Failed: ${JSON.stringify(errorData)}`);
+                        showResult('toggleResult', `❌ Erro ${response.status}: ${errorData.error || responseText}`, 'error');
+                    } catch (e) {
+                        log(`❌ Toggle Failed (non-JSON): ${responseText}`);
+                        showResult('toggleResult', `❌ Erro ${response.status}: ${responseText}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Toggle Error: ${error.message}`);
+                showResult('toggleResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-executar teste de auth quando carregar
+        window.addEventListener('load', () => {
+            log('🚀 Página carregada. Execute os testes.');
+        });
+    </script>
+</body>
+</html>

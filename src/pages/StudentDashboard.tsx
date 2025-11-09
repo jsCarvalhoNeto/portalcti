@@ -808,12 +808,6 @@ export default function StudentDashboard() {
                               </p>
                             )}
                           </div>
-                          <Badge 
-                            variant="outline" 
-                            className="border-white/30 text-white bg-white/20"
-                          >
-                            {subject.current_students}/{subject.max_students}
-                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="relative">
@@ -826,53 +820,56 @@ export default function StudentDashboard() {
                               {subject.description}
                             </p>
                           )}
-                          <div className="flex justify-between items-center">
+                          <div className="space-y-3">
                             <div 
                               className="text-sm"
                               style={{ color: `${textColor}B3` }}
                             >
                               Semestre: {subject.semester || 'Não informado'}
                             </div>
-                            <div className="flex gap-2">
+                            
+                            {/* Botões organizados em grid responsivo para estudantes */}
+                            <div className="grid grid-cols-2 gap-1 md:grid-cols-2">
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                              >
+                                <BookOpen className="w-3 h-3" />
+                                <span className="text-xs">Conteúdo</span>
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                              >
+                                <Gamepad className="w-3 h-3" />
+                                <span className="text-xs">Notas</span>
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTab('activities');
+                                }}
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span className="text-xs">Atividades</span>
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePersonalizeColor(subject);
                                 }}
                                 title="Personalizar cor (apenas para você)"
                               >
-                                <Palette className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                              >
-                                <BookOpen className="w-4 h-4" />
-                                Conteúdo
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                              >
-                                <Gamepad className="w-4 h-4" />
-                                Notas
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTab('activities');
-                                }}
-                              >
-                                <FileText className="w-4 h-4" />
-                                Atividades
+                                <Palette className="w-3 h-3" />
+                                <span className="text-xs">Cor</span>
                               </Button>
                             </div>
                           </div>

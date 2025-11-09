@@ -11,6 +11,7 @@ import SubjectDetail from "./pages/SubjectDetail";
 import StudentDashboard from "./pages/StudentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherAchievements from './pages/TeacherAchievements';
+import TeacherDailyChallenges from './pages/TeacherDailyChallenges';
 import Achievements from './pages/Achievements';
 import AdminDashboard from "./pages/AdminDashboard";
 import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/achievements" element={<TeacherAchievements />} />
+            <Route path="/teacher/daily-challenges" element={<TeacherDailyChallenges />} />
             <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
             <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

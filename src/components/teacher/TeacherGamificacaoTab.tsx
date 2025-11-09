@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Filter, RefreshCw } from 'lucide-react';
+import { GraduationCap, Filter, RefreshCw, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StudentAchievementHistory from './StudentAchievementHistory';
 
@@ -193,9 +193,15 @@ export default function TeacherGamificacaoTab() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
         <Button variant="outline" className="flex items-center gap-2" asChild>
           <Link to="/teacher/achievements">Gerenciar Conquistas</Link>
+        </Button>
+        <Button variant="outline" className="flex items-center gap-2" asChild>
+          <Link to="/teacher/daily-challenges">
+            <Trophy className="w-4 h-4" />
+            Gerenciar Desafios
+          </Link>
         </Button>
       </div>
       <div>
