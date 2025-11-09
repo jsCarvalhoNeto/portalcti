@@ -5,30 +5,39 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { updateStudentProfile, changeStudentPassword } from '@/services/studentProfileService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
+import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
 import { useUserColors } from '@/hooks/useUserColors';
 import { useSubjectFavorites } from '@/hooks/useSubjectFavorites';
+import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
-import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Edit3, Lock, FileText, Menu, Palette, Star } from 'lucide-react';
+import BadgeGrid from '@/components/badges/BadgeGrid';
+import TopStudentsCard from '@/components/student/TopStudentsCard';
 
 export default function StudentDashboard() {
-  const { user, profile, userRole, signOut, loading } = useAuth();
+  const { user, profile, isStudent, signOut, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [subjectNamesMap, setSubjectNamesMap] = useState<Record<string, string>>({});
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [pendingActivities, setPendingActivities] = useState(0);
   const [totalPoints, setTotalPoints] = useState<number>(0);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
   const [unlockedBadges, setUnlockedBadges] = useState<any[]>([]);
+  const [unlockedBySubject, setUnlockedBySubject] = useState<any[]>([]);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     full_name: '',
@@ -46,23 +55,23 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  
   // Use the custom colors hook
-  const { getUserColor } = useUserColors();
+  const { userColors } = useUserColors();
 
   // Use the subject favorites hook
   const {
-    loading: loadingFavorites,
-    isFavorite,
+    favorites,
+    sortedSubjects,
+    loadingFavorites,
     toggleFavorite
-  } = useSubjectFavorites();
+  } = useSubjectFavorites(subjects);
 
   // Force logout if not authenticated
   useEffect(() => {
-    if (!loading && (!user || !profile || !userRole || userRole !== 'student')) {
+    if (!loading && (!user || !profile || profile.profile_type !== 'student')) {
       signOut();
     }
-  }, [user, profile, userRole, loading, signOut]);
+  }, [user, profile, loading, signOut]);
 
   useEffect(() => {
     if (!loading && profile) {
@@ -87,24 +96,40 @@ export default function StudentDashboard() {
 
     setLoadingSubjects(true);
     try {
-      const [subjectsRes, activitiesRes] = await Promise.all([
-        subjectService.getAll(), // Usar getAll() por enquanto
-        getStudentActivities()
+      const [subjectsRes, activitiesRes, gamificationRes] = await Promise.all([
+        subjectService.getStudentSubjects(profile.id),
+        getStudentActivities(),
+        gamificationService.getStudentProgress(profile.id)
       ]);
 
       setSubjects(subjectsRes || []);
 
+      // Create subjects name map
+      const namesMap: Record<string, string> = {};
+      if (subjectsRes && Array.isArray(subjectsRes)) {
+        subjectsRes.forEach(subject => {
+          if (subject && subject.id && subject.name) {
+            namesMap[subject.id] = subject.name;
+          }
+        });
+      }
+      setSubjectNamesMap(namesMap);
+
       // Process activities
-      if (activitiesRes && Array.isArray(activitiesRes)) {
-        const pending = activitiesRes.filter(
-          (activity: any) => !activity.submission_date
+      if (activitiesRes && activitiesRes.activities) {
+        const pending = activitiesRes.activities.filter(
+          activity => !activity.submission_date
         ).length;
         setPendingActivities(pending);
       }
 
-      // Mock gamification data for now
-      setTotalPoints(150);
-      setUnlockedBadges([]);
+      // Process gamification data
+      if (gamificationRes) {
+        setTotalPoints(gamificationRes.totalPoints || 0);
+        setProgressPercent(gamificationRes.progressPercent || 0);
+        setUnlockedBadges(gamificationRes.badges || []);
+        setUnlockedBySubject(gamificationRes.badgesBySubject || []);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do estudante:', error);
       toast({
@@ -119,7 +144,7 @@ export default function StudentDashboard() {
 
   const handleUpdateProfile = async () => {
     try {
-      // TODO: Implementar updateStudentProfile com os parâmetros corretos
+      await updateStudentProfile(profileData);
       toast({
         title: "Sucesso",
         description: "Perfil atualizado com sucesso",
@@ -146,7 +171,7 @@ export default function StudentDashboard() {
     }
 
     try {
-      // TODO: Implementar changeStudentPassword com os parâmetros corretos
+      await changeStudentPassword(passwordData.currentPassword, passwordData.newPassword);
       toast({
         title: "Sucesso",
         description: "Senha alterada com sucesso",
@@ -173,20 +198,19 @@ export default function StudentDashboard() {
   };
 
   const getGradientForSubject = (subjectId: string) => {
-    const color = getUserColor(parseInt(subjectId));
-    if (!color) return 'from-blue-500 to-indigo-600';
+    const colors = userColors[subjectId];
+    if (!colors) return 'from-blue-500 to-indigo-600';
     
-    return `from-[${color}] to-[${color}]`;
+    return `from-[${colors.primary}] to-[${colors.secondary}]`;
   };
 
   // Handle favorite toggle
   const handleToggleFavorite = async (subjectId: string) => {
     try {
-      await toggleFavorite(parseInt(subjectId));
-      const isCurrentlyFavorite = isFavorite(parseInt(subjectId));
+      await toggleFavorite(subjectId);
       toast({
         title: "Sucesso",
-        description: isCurrentlyFavorite ? "Disciplina removida dos favoritos" : "Disciplina adicionada aos favoritos",
+        description: favorites.includes(subjectId) ? "Disciplina removida dos favoritos" : "Disciplina adicionada aos favoritos",
       });
     } catch (error) {
       console.error('Erro ao alterar favorito:', error);
@@ -208,20 +232,11 @@ export default function StudentDashboard() {
   }
 
   // Redirect if not student
-  if (!user || !profile || !userRole || userRole !== 'student') {
+  if (!user || !profile || profile.profile_type !== 'student') {
     return <Navigate to="/auth/signin" replace />;
   }
 
-  // Sort subjects (favorites first) 
-  const sortedSubjects = [...subjects].sort((a: any, b: any) => {
-    const aIsFavorite = isFavorite(parseInt(a.id));
-    const bIsFavorite = isFavorite(parseInt(b.id));
-    
-    if (aIsFavorite && !bIsFavorite) return -1;
-    if (!aIsFavorite && bIsFavorite) return 1;
-    return 0;
-  });
-
+  // Sort subjects (favorites first)
   const displaySubjects = sortedSubjects;
 
   return (
@@ -455,21 +470,21 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displaySubjects.map((subject: any) => {
-                  const isSubjectFavorite = isFavorite(parseInt(subject.id));
+                {displaySubjects.map((subject) => {
+                  const isFavorite = favorites.includes(subject.id);
                   
                   return (
                     <Card 
                       key={subject.id} 
                       className={`hover:shadow-glow transition-all duration-300 cursor-pointer border-0 relative overflow-hidden ${
-                        isSubjectFavorite 
+                        isFavorite 
                           ? 'ring-2 ring-yellow-400 shadow-lg transform scale-[1.02]' 
                           : ''
                       }`}
                     >
                       <div 
                         className={`absolute inset-0 bg-gradient-to-br ${
-                          isSubjectFavorite 
+                          isFavorite 
                             ? 'from-yellow-400 via-amber-500 to-orange-500' 
                             : getGradientForSubject(subject.id)
                         } opacity-90`}
@@ -486,7 +501,7 @@ export default function StudentDashboard() {
                       >
                         <Star 
                           className={`h-4 w-4 ${
-                            isSubjectFavorite 
+                            isFavorite 
                               ? 'text-yellow-300 fill-yellow-300' 
                               : 'text-white'
                           }`} 
@@ -574,7 +589,7 @@ export default function StudentDashboard() {
 
           {/* Activities Tab */}
           <TabsContent value="activities" className="mt-6">
-            <StudentActivitiesTab />
+            <StudentActivitiesTab subjectNamesMap={subjectNamesMap} />
           </TabsContent>
 
           {/* Grades Tab */}
@@ -607,22 +622,15 @@ export default function StudentDashboard() {
                       <div className="w-full bg-gray-200 rounded-full h-3">
                         <div 
                           className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                          style={{ width: `50%` }}
+                          style={{ width: `${progressPercent}%` }}
                         ></div>
                       </div>
-                      <p className="text-sm text-muted-foreground">50% Completo</p>
+                      <p className="text-sm text-muted-foreground">{progressPercent}% Completo</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Top Estudantes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">Ranking em breve...</p>
-                  </CardContent>
-                </Card>
+                <TopStudentsCard />
               </div>
 
               {/* Badges Grid */}
@@ -634,21 +642,10 @@ export default function StudentDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {unlockedBadges.length === 0 ? (
-                      <p className="col-span-full text-muted-foreground text-center py-8">
-                        Nenhuma conquista ainda. Complete atividades para desbloquear badges!
-                      </p>
-                    ) : (
-                      unlockedBadges.map((badge: any, index: number) => (
-                        <div key={index} className="text-center p-4 border rounded-lg">
-                          <div className="text-2xl mb-2">{badge.icon || '🏆'}</div>
-                          <p className="font-semibold">{badge.name}</p>
-                          <p className="text-sm text-muted-foreground">{badge.description}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <BadgeGrid 
+                    badges={unlockedBadges} 
+                    subjectNamesMap={subjectNamesMap}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -667,11 +664,7 @@ export default function StudentDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Funcionalidade de cores personalizadas em breve...
-                  </p>
-                </div>
+                <PersonalColorModal subjects={subjects} />
               </CardContent>
             </Card>
           </TabsContent>
