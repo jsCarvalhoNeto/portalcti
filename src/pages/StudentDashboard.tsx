@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette, Star } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,6 @@ import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerfo
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
 import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
 import { useUserColors } from '@/hooks/useUserColors';
-import { useSubjectFavorites } from '@/hooks/useSubjectFavorites';
 import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { getStudentActivities } from '@/services/activityService';
@@ -53,7 +52,6 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { loadUserColors: loadUserColorsHook } = useUserColors();
-  const { isFavorite, toggleFavorite, sortSubjectsByFavorites } = useSubjectFavorites();
   
   // Estados para modal de cor pessoal
   const [showPersonalColorModal, setShowPersonalColorModal] = useState(false);
@@ -755,10 +753,9 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortSubjectsByFavorites(subjects).map((subject) => {
+                {subjects.map((subject) => {
                   // Cor do card - usa cor personalizada do usuário ou cor da disciplina ou padrão
                   const cardColor = getSubjectColor(subject);
-                  const isSubjectFavorite = isFavorite(subject.id);
                   
                   // Determina se a cor é clara ou escura para ajustar o texto
                   const isLightColor = (hex: string) => {
@@ -772,24 +769,13 @@ export default function StudentDashboard() {
 
                   const textColor = isLightColor(cardColor) ? '#1f2937' : '#ffffff';
                   
-                  // Muda a cor do card se for favorito
-                  const finalCardColor = isSubjectFavorite 
-                    ? '#FFD700' // Dourado para favoritos
-                    : cardColor;
-                  
-                  const finalTextColor = isSubjectFavorite && isLightColor(finalCardColor) 
-                    ? '#1f2937' 
-                    : (isSubjectFavorite ? '#1f2937' : textColor);
-                  
                   return (
                     <Card 
                       key={subject.id} 
-                      className={`hover:shadow-glow transition-all duration-300 cursor-pointer border-0 relative overflow-hidden ${isSubjectFavorite ? 'ring-2 ring-yellow-400 ring-opacity-50' : ''}`}
+                      className="hover:shadow-glow transition-all duration-300 cursor-pointer border-0 relative overflow-hidden" 
                       onClick={() => navigate(`/disciplinas/${subject.id}`)}
                       style={{
-                        background: isSubjectFavorite 
-                          ? `linear-gradient(135deg, ${finalCardColor}DD 0%, ${finalCardColor}BB 100%)`
-                          : `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
+                        background: `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
                         color: textColor
                       }}
                     >
@@ -801,49 +787,33 @@ export default function StudentDashboard() {
                       
                       <CardHeader className="relative">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                          <div>
                             <CardTitle 
                               className="text-lg" 
-                              style={{ color: finalTextColor }}
+                              style={{ color: textColor }}
                             >
                               {subject.name}
                             </CardTitle>
                             <CardDescription 
-                              style={{ color: `${finalTextColor}B3` }}
+                              style={{ color: `${textColor}B3` }}
                             >
                               Professor: {subject.teacher_name}
                             </CardDescription>
                             {subject.schedule && (
                               <p 
                                 className="text-sm mt-1" 
-                                style={{ color: `${finalTextColor}CC` }}
+                                style={{ color: `${textColor}CC` }}
                               >
                                 {subject.schedule}
                               </p>
                             )}
                           </div>
-                          
-                          {/* Ícone de favorito */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(subject.id, subject.name);
-                            }}
-                            className={`
-                              p-1 rounded-full transition-all duration-200 
-                              ${isSubjectFavorite 
-                                ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-100/20' 
-                                : 'text-gray-300 hover:text-yellow-400 hover:bg-white/20'
-                              }
-                            `}
-                            title={isSubjectFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                          <Badge 
+                            variant="outline" 
+                            className="border-white/30 text-white bg-white/20"
                           >
-                            <Star 
-                              className={`w-5 h-5 transition-transform duration-200 hover:scale-110 ${
-                                isSubjectFavorite ? 'fill-current' : ''
-                              }`} 
-                            />
-                          </button>
+                            {subject.current_students}/{subject.max_students}
+                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="relative">
@@ -851,77 +821,58 @@ export default function StudentDashboard() {
                           {subject.description && (
                             <p 
                               className="text-sm" 
-                              style={{ color: `${finalTextColor}CC` }}
+                              style={{ color: `${textColor}CC` }}
                             >
                               {subject.description}
                             </p>
                           )}
-                          <div className="space-y-3">
+                          <div className="flex justify-between items-center">
                             <div 
                               className="text-sm"
-                              style={{ color: `${finalTextColor}B3` }}
+                              style={{ color: `${textColor}B3` }}
                             >
                               Semestre: {subject.semester || 'Não informado'}
                             </div>
-                        <div className="space-y-3">
-                          {subject.description && (
-                            <p 
-                              className="text-sm" 
-                              style={{ color: `${finalTextColor}CC` }}
-                            >
-                              {subject.description}
-                            </p>
-                          )}
-                          <div className="space-y-3">
-                            <div 
-                              className="text-sm"
-                              style={{ color: `${finalTextColor}B3` }}
-                            >
-                              Semestre: {subject.semester || 'Não informado'}
-                            </div>
-                            
-                            {/* Botões organizados em grid responsivo para estudantes */}
-                            <div className="grid grid-cols-2 gap-1 md:grid-cols-2">
+                            <div className="flex gap-2">
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
-                              >
-                                <BookOpen className="w-3 h-3" />
-                                <span className="text-xs">Conteúdo</span>
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
-                              >
-                                <Gamepad className="w-3 h-3" />
-                                <span className="text-xs">Notas</span>
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTab('activities');
-                                }}
-                              >
-                                <FileText className="w-3 h-3" />
-                                <span className="text-xs">Atividades</span>
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePersonalizeColor(subject);
                                 }}
                                 title="Personalizar cor (apenas para você)"
                               >
-                                <Palette className="w-3 h-3" />
-                                <span className="text-xs">Cor</span>
+                                <Palette className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                              >
+                                <BookOpen className="w-4 h-4" />
+                                Conteúdo
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                              >
+                                <Gamepad className="w-4 h-4" />
+                                Notas
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTab('activities');
+                                }}
+                              >
+                                <FileText className="w-4 h-4" />
+                                Atividades
                               </Button>
                             </div>
                           </div>

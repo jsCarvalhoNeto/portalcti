@@ -188,75 +188,42 @@ export default function TeacherSubjectsTab() {
                         {subject.description}
                       </p>
                     )}
-                    <div className="space-y-3">
+                    <div className="flex justify-between items-center">
                       <div 
                         className="text-sm"
                         style={{ color: `${textColor}B3` }}
                       >
                         Disciplina ID: {subject.id}
                       </div>
-                      
-                      {/* Botões organizados em grid responsivo */}
-                      <div className="grid grid-cols-2 gap-1 md:grid-cols-3">
-                        {/* Ações principais */}
+                      <div className="flex gap-2">
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0" 
-                          onClick={() => handleEditSubject(subject.id)}
-                        >
-                          <Edit className="w-3 h-3" />
-                          <span className="text-xs">Editar</span>
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
-                          onClick={() => handleViewDetails(subject)}
-                        >
-                          <GraduationCap className="w-3 h-3" />
-                          <span className="text-xs">Notas</span>
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
-                        >
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-xs">Atividades</span>
-                        </Button>
-                        
-                        {/* Personalizações de cor */}
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditColor(subject);
                           }}
                           title="Editar cor do card"
                         >
-                          <Palette className="w-3 h-3" />
-                          <span className="text-xs">Cor</span>
+                          <Palette className="w-4 h-4" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePersonalizeColor(subject);
                           }}
                           title="Personalizar cor (apenas para você)"
                         >
-                          <Users className="w-3 h-3" />
-                          <span className="text-xs">Pessoal</span>
+                          <Users className="w-4 h-4" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSuggestionsSubject(subject);
@@ -264,8 +231,33 @@ export default function TeacherSubjectsTab() {
                           }}
                           title="Ver sugestões de cores dos alunos"
                         >
-                          <MessageSquare className="w-3 h-3" />
-                          <span className="text-xs">Ideias</span>
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
+                          onClick={() => handleEditSubject(subject.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                          onClick={() => handleViewDetails(subject)}
+                        >
+                          <GraduationCap className="w-4 h-4" />
+                          Notas
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          Atividades
                         </Button>
                       </div>
                     </div>
