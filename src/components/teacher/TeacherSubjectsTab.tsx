@@ -2,15 +2,10 @@ import { useTeacherDashboard, Subject } from '@/contexts/TeacherDashboardContext
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, Calendar, Edit, Palette, Users, MessageSquare } from 'lucide-react';
+import { GraduationCap, Palette, BookOpen, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubjectColorEditModal from './SubjectColorEditModal';
-import ColorSuggestionsModal from './ColorSuggestionsModal';
-import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
-
-interface TeacherSubjectsTabProps {
-}
 
 export default function TeacherSubjectsTab() {
   const { subjects, loading, error, refetch } = useTeacherDashboard();
@@ -18,12 +13,6 @@ export default function TeacherSubjectsTab() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showColorEditModal, setShowColorEditModal] = useState(false);
-  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
-  const [suggestionsSubject, setSuggestionsSubject] = useState<Subject | null>(null);
-  
-  // Estados para cores personalizadas do professor
-  const [showPersonalColorModal, setShowPersonalColorModal] = useState(false);
-  const [personalColorSubject, setPersonalColorSubject] = useState<Subject | null>(null);
   const [userColors, setUserColors] = useState<Record<number, string>>({});
   
   const navigate = useNavigate();
@@ -64,25 +53,8 @@ export default function TeacherSubjectsTab() {
     return subject.color || '#3B82F6';
   };
 
-  // Funções para cores personalizadas
-  const handlePersonalizeColor = (subject: Subject) => {
-    setPersonalColorSubject(subject);
-    setShowPersonalColorModal(true);
-  };
-
-  const handlePersonalColorChanged = (subjectId: number, newColor: string) => {
-    setUserColors(prev => ({
-      ...prev,
-      [subjectId]: newColor
-    }));
-  };
-
   const handleViewDetails = (subject: Subject) => {
     setSelectedSubject(subject);
-  }
-
-  const handleEditSubject = (subjectId: number) => {
-    navigate(`/teacher/subjects/${subjectId}/edit`);
   }
 
   const handleEditColor = (subject: Subject) => {
@@ -179,7 +151,7 @@ export default function TeacherSubjectsTab() {
                   </div>
                 </CardHeader>
                 <CardContent className="relative">
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {subject.description && (
                       <p 
                         className="text-sm" 
@@ -188,78 +160,67 @@ export default function TeacherSubjectsTab() {
                         {subject.description}
                       </p>
                     )}
-                    <div className="flex justify-between items-center">
+                    
+                    {subject.description && (
                       <div 
-                        className="text-sm"
+                        className="text-sm mt-2"
                         style={{ color: `${textColor}B3` }}
                       >
-                        Disciplina ID: {subject.id}
+                        ID: {subject.id}
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditColor(subject);
-                          }}
-                          title="Editar cor do card"
-                        >
-                          <Palette className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePersonalizeColor(subject);
-                          }}
-                          title="Personalizar cor (apenas para você)"
-                        >
-                          <Users className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSuggestionsSubject(subject);
-                            setShowSuggestionsModal(true);
-                          }}
-                          title="Ver sugestões de cores dos alunos"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30" 
-                          onClick={() => handleEditSubject(subject.id)}
-                        >
-                          <Edit className="w-4 h-4" />
-                          Editar
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                          onClick={() => handleViewDetails(subject)}
-                        >
-                          <GraduationCap className="w-4 h-4" />
-                          Notas
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30"
-                        >
-                          <Calendar className="w-4 h-4" />
-                          Atividades
-                        </Button>
-                      </div>
+                    )}
+                    
+                    {/* Botões organizados em grid responsivo para professores */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                        style={{ color: textColor }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/teacher/subjects/${subject.id}/edit`);
+                        }}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span className="text-sm font-medium">Conteúdo</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                        style={{ color: textColor }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDetails(subject);
+                        }}
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        <span className="text-sm font-medium">Notas</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                        style={{ color: textColor }}
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span className="text-sm font-medium">Atividades</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                        style={{ color: textColor }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditColor(subject);
+                        }}
+                        title="Editar cor do card"
+                      >
+                        <Palette className="w-4 h-4" />
+                        <span className="text-sm font-medium">Cor</span>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -330,26 +291,6 @@ export default function TeacherSubjectsTab() {
         onClose={() => setShowColorEditModal(false)}
         subject={editingSubject}
         onSuccess={handleColorEditSuccess}
-      />
-
-      {/* Modal de Sugestões de Cores */}
-      <ColorSuggestionsModal
-        isOpen={showSuggestionsModal}
-        onClose={() => setShowSuggestionsModal(false)}
-        subject={suggestionsSubject}
-        onSuccess={() => {
-          // Recarregar dados se necessário
-          refetch.subjects();
-          loadUserColors();
-        }}
-      />
-
-      {/* Modal de Cor Pessoal do Professor */}
-      <PersonalColorModal
-        isOpen={showPersonalColorModal}
-        onClose={() => setShowPersonalColorModal(false)}
-        subject={personalColorSubject}
-        onColorChanged={handlePersonalColorChanged}
       />
     </div>
   );

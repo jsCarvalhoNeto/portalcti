@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -829,47 +829,59 @@ export default function StudentDashboard() {
                             </div>
                             
                             {/* Botões organizados em grid responsivo para estudantes */}
-                            <div className="grid grid-cols-2 gap-1 md:grid-cols-2">
+                            <div className="grid grid-cols-2 gap-2 mt-4">
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                                style={{ color: textColor }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/disciplinas/${subject.id}`);
+                                }}
                               >
-                                <BookOpen className="w-3 h-3" />
-                                <span className="text-xs">Conteúdo</span>
+                                <BookOpen className="w-4 h-4" />
+                                <span className="text-sm font-medium">Conteúdo</span>
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                                style={{ color: textColor }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTab('grades');
+                                }}
                               >
-                                <Gamepad className="w-3 h-3" />
-                                <span className="text-xs">Notas</span>
+                                <GraduationCap className="w-4 h-4" />
+                                <span className="text-sm font-medium">Notas</span>
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0" 
+                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                                style={{ color: textColor }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveTab('activities');
                                 }}
                               >
-                                <FileText className="w-3 h-3" />
-                                <span className="text-xs">Atividades</span>
+                                <FileText className="w-4 h-4" />
+                                <span className="text-sm font-medium">Atividades</span>
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex items-center gap-1 bg-white/20 border-white/30 text-white hover:bg-white/30 min-w-0"
+                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                                style={{ color: textColor }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePersonalizeColor(subject);
                                 }}
                                 title="Personalizar cor (apenas para você)"
                               >
-                                <Palette className="w-3 h-3" />
-                                <span className="text-xs">Cor</span>
+                                <Palette className="w-4 h-4" />
+                                <span className="text-sm font-medium">Cor</span>
                               </Button>
                             </div>
                           </div>
