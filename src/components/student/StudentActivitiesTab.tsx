@@ -416,7 +416,10 @@ export default function StudentActivitiesTab() {
               {selectedActivity.description && (
                 <div>
                   <Label>Descrição</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{selectedActivity.description}</p>
+                  <div 
+                    className="text-sm text-muted-foreground mt-1 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedActivity.description }}
+                  />
                 </div>
               )}
 
@@ -591,9 +594,10 @@ export default function StudentActivitiesTab() {
                     </div>
                     
                     {activity.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {activity.description}
-                      </p>
+                      <div 
+                        className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: activity.description }}
+                      />
                     )}
 
                     {activity.file_path && activity.file_name && (

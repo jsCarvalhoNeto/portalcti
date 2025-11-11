@@ -278,7 +278,10 @@ export default function InteractiveActivities() {
                         </CardTitle>
                         {getStatusBadge(activity.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
+                      <div 
+                        className="text-sm text-muted-foreground prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: activity.description }}
+                      />
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">

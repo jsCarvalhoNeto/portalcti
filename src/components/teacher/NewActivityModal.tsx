@@ -18,13 +18,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { FileText } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface NewActivityModalProps {
   isOpen: boolean;
@@ -228,7 +228,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Criar Nova Atividade</DialogTitle>
           <DialogDescription>
@@ -331,18 +331,38 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
               </div>
             </RadioGroup>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="description" className="text-right pt-2">
               Descrição
             </Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3"
-              placeholder="Descrição da atividade..."
-              rows={3}
-            />
+            <div className="col-span-3">
+              <ReactQuill
+                id="description"
+                theme="snow"
+                value={description}
+                onChange={setDescription}
+                placeholder="Descrição da atividade com formatação..."
+                modules={{
+                  toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['clean']
+                  ]
+                }}
+                formats={[
+                  'bold', 'italic', 'underline', 'strike',
+                  'color', 'background',
+                  'list', 'bullet',
+                  'align'
+                ]}
+                className="bg-background"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Use a barra de ferramentas para formatar o texto com negrito, itálico, cores, listas, etc.
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="deadline" className="text-right">

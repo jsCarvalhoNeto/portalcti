@@ -137,7 +137,10 @@ export default function ActivityFiles() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground mb-4">{mockActivity.description}</p>
+              <div 
+                className="text-muted-foreground mb-4 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: mockActivity.description }}
+              />
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
