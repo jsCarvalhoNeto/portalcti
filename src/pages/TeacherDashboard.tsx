@@ -10,6 +10,7 @@ import TeacherGradesActivitiesTab from '@/components/teacher/TeacherGradesActivi
 import TeacherCalendarTab from '@/components/teacher/TeacherCalendarTab';
 import TeacherGamificacaoTab from '@/components/teacher/TeacherGamificacaoTab';
 import TeacherSettingsTab from '@/components/teacher/TeacherSettingsTab';
+import TeacherUtilitiesTab from '@/components/teacher/TeacherUtilitiesTab';
 import TeacherDashboardLayout from '@/layouts/TeacherDashboardLayout';
 
 function TeacherDashboardContent() {
@@ -47,6 +48,7 @@ function TeacherDashboardContent() {
         <TeacherStudentsTab key="students" />,
         <TeacherGradesActivitiesTab key="grades" />,
         <TeacherGamificacaoTab key="gamificacao" />,
+        <TeacherUtilitiesTab key="utilitarios" />,
         <TeacherCalendarTab key="calendar" />,
         <TeacherSettingsTab 
           key="settings"

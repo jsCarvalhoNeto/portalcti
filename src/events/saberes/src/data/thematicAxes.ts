@@ -1,0 +1,88 @@
+import { ThematicAxis } from "@/types/registration";
+
+export const thematicAxes: ThematicAxis[] = [
+  {
+    id: "tecnologia-inovacao-educacao",
+    title: "Tecnologia, Inovação e Educação",
+    description: "Impactos do uso de tecnologias na educação dentro da sociedade capitalista. Como a tecnologia tem impactado o processo de ensino e aprendizagem?",
+    teachers: ["Álvaro Botelho", "Thiago Salviano"],
+    technicalAreas: ["Comércio", "Informática"],
+  },
+  {
+    id: "identidade-grotesco-loucura",
+    title: "Identidade, O Grotesco e a Loucura",
+    description: "Formação e interpretação do conceito de identidade, considerando ideias de grotesco e loucura na literatura, cinema e mídias sociais.",
+    teachers: ["Álvaro Botelho", "Leonardo Messias"],
+    technicalAreas: ["Enfermagem", "Estética"],
+  },
+  {
+    id: "retratos-nordeste",
+    title: "Retratos do Nordeste – Visões de um Povo Diverso",
+    description: "Reflexão crítica sobre estigmas e preconceitos historicamente construídos em torno do povo nordestino através de produções culturais.",
+    teachers: ["Felipe Tavares", "Aline Rodrigues", "Álvaro Botelho"],
+    technicalAreas: ["Informática", "Comércio"],
+  },
+  {
+    id: "meu-negocio-numeros",
+    title: "Meu Negócio em Números",
+    description: "Aplicação da matemática na criação e gestão de pequenos empreendimentos. Desenvolver negócios simples e realistas com planejamento.",
+    teachers: ["Henrique Luís", "Tony"],
+    technicalAreas: ["Comércio"],
+  },
+  {
+    id: "linguagem-beleza",
+    title: "A Linguagem da Beleza",
+    description: "Representações da beleza na literatura, mídias e publicidade. Como se construíram os discursos sobre beleza ao longo da história?",
+    teachers: ["Francisco", "Marliete", "Dimerson", "Herllen"],
+    technicalAreas: ["Estética", "Enfermagem"],
+  },
+  {
+    id: "saude-meio-ambiente",
+    title: "Saúde, Meio Ambiente e Tecnologias",
+    description: "Problemáticas de poluição, uso de substâncias químicas e relação entre contaminação ambiental e doenças. Práticas sustentáveis e bem-estar.",
+    teachers: ["Aline", "Sahara", "Aureliano", "Camila"],
+    technicalAreas: ["Enfermagem", "Edificações", "Estética", "Informática"],
+  },
+  {
+    id: "estetica-masculina",
+    title: "A Construção da Estética Masculina",
+    description: "Análise filosófica sobre o surgimento e legitimidade do cuidado com a aparência no homem contemporâneo.",
+    teachers: ["Sebastião Gonçalves", "Marliete Silva"],
+    technicalAreas: ["Enfermagem", "Estética", "Informática"],
+  },
+  {
+    id: "universo-bulas",
+    title: "O Universo das Bulas",
+    description: "Da leitura à dosagem - uma interconexão entre matemática e português na administração segura de medicamentos.",
+    teachers: ["Lucas", "Ivânia", "Virlândia", "Camila"],
+    technicalAreas: ["Enfermagem", "Estética"],
+  },
+  {
+    id: "eventos-climaticos",
+    title: "Mapeamento e Prevenção de Eventos Climáticos",
+    description: "Mudanças ambientais e mitigação dos impactos por meio da tecnologia. Previsão, mapeamento e prevenção de desastres naturais.",
+    teachers: ["Ivon"],
+    technicalAreas: ["Informática", "Edificações"],
+  },
+  {
+    id: "construcao-sustentavel",
+    title: "Construção Sustentável e Soluções Climáticas",
+    description: "Técnicas tradicionais e modernas de construção sustentável. Recursos renováveis, gestão de resíduos e materiais de baixo impacto.",
+    teachers: ["Ivon"],
+    technicalAreas: ["Edificações", "Informática"],
+  },
+  {
+    id: "fisica-estruturas",
+    title: "Física Aplicada às Estruturas e Construções",
+    description: "Princípios físicos que fundamentam o planejamento e execução de edificações. Estabilidade, distribuição de cargas e desempenho de materiais.",
+    teachers: ["Aureliano Nascimento"],
+    technicalAreas: ["Edificações"],
+  },
+  {
+    id: "numeros-primos-criptografia",
+    title: "Números Primos na Proteção de Dados",
+    description: "A teoria dos números aplicada à criptografia no mundo digital. Como os números primos garantem a segurança das informações?",
+    teachers: ["André"],
+    technicalAreas: ["Informática"],
+  },
+];

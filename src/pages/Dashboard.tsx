@@ -49,6 +49,13 @@ export default function Dashboard() {
       icon: Settings,
       path: '/admin',
       roles: ['admin']
+    },
+    {
+      title: 'Utilitários',
+      description: 'Acesse ferramentas úteis para professores',
+      icon: Settings,
+      path: '/teacher/utilitarios',
+      roles: ['teacher']
     }
   ];
 

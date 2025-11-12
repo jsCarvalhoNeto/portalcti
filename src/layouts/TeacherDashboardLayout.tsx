@@ -39,6 +39,7 @@ export default function TeacherDashboardLayout({
       students: 'Meus Alunos',
       grades: 'Atividades & Notas',
       gamificacao: 'Gamificação',
+      utilitarios: 'Utilitários',
       calendar: 'Calendário',
       settings: 'Configurações'
     };
@@ -87,6 +88,17 @@ export default function TeacherDashboardLayout({
                   Portal
                 </Link>
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try { setActiveTab && setActiveTab('utilitarios'); } catch (e) { /* noop */ }
+                  navigate('/teacher');
+                }}
+              >
+                <Menu className="w-4 h-4 mr-2" />
+                Utilitários
+              </Button>
               <Button variant="outline" size="sm" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sair
@@ -101,11 +113,12 @@ export default function TeacherDashboardLayout({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-4xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
+            <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
+              <TabsTrigger value="utilitarios">Utilitários</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
@@ -171,6 +184,17 @@ export default function TeacherDashboardLayout({
                           Atividades & Notas
                         </Button>
                         {/* Gamificação removida do menu principal - acessível via botão no topo */}
+                        <Button
+                          variant={activeTab === 'utilitarios' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('utilitarios');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Menu className="w-4 h-4 mr-2" />
+                          Utilitários
+                        </Button>
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
                           className="w-full justify-start"
@@ -319,11 +343,14 @@ export default function TeacherDashboardLayout({
           <TabsContent value="gamificacao" className="space-y-8">
             {children && Array.isArray(children) ? children[3] : null}
           </TabsContent>
-          <TabsContent value="calendar" className="space-y-8">
+          <TabsContent value="utilitarios" className="space-y-8">
             {children && Array.isArray(children) ? children[4] : null}
           </TabsContent>
-          <TabsContent value="settings" className="space-y-8">
+          <TabsContent value="calendar" className="space-y-8">
             {children && Array.isArray(children) ? children[5] : null}
+          </TabsContent>
+          <TabsContent value="settings" className="space-y-8">
+            {children && Array.isArray(children) ? children[6] : null}
           </TabsContent>
         </Tabs>
       </main>

@@ -22,6 +22,21 @@ import MemoryGame from "./pages/logic-programming/MemoryGame";
 import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
+import PollVotingPage from './pages/PollVotingPage';
+
+// Adicionar esta interface se não existir
+interface PollData {
+  id: string;
+  title: string;
+  options: Array<{
+    id: string;
+    text: string;
+    votes: number;
+    voters: string[];
+  }>;
+  isActive: boolean;
+  createdAt: string;
+}
 
 const queryClient = new QueryClient();
 
@@ -51,6 +66,7 @@ const App = () => (
             <Route path="/teacher/daily-challenges" element={<TeacherDailyChallenges />} />
             <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/poll/:pollId" element={<PollVotingPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
