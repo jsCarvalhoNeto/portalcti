@@ -92,7 +92,7 @@ const EventConfirmation = () => {
       const responseData = response.data;
       console.log('📄 Dados da resposta:', responseData);
 
-      if (response.status === 200 && responseData.success) {
+      if ((response.status === 200 || response.status === 201) && responseData.success) {
         console.log('✅ Inscrição realizada com sucesso!');
         console.log('🔄 Definindo isSubmitted = true...');
         
