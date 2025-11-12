@@ -6,10 +6,20 @@ export const API_URL = import.meta.env.VITE_API_URL;
 const createAPI = () => {
   let baseURL = API_URL;
   
+  // Validar se VITE_API_URL está definida
+  if (!baseURL) {
+    console.error('❌ VITE_API_URL não está definida! Configure a variável de ambiente no Railway.');
+    console.error('📋 Adicione: VITE_API_URL=https://ctibackend-production.up.railway.app/api');
+    // Usar fallback para desenvolvimento local
+    baseURL = '/api';
+  }
+  
   // Remover barra final se existir para evitar dupla barra
   if (baseURL && baseURL.endsWith('/')) {
     baseURL = baseURL.slice(0, -1);
   }
+  
+  console.log('🌐 API configurada com baseURL:', baseURL);
   
   const instance = axios.create({
     baseURL: baseURL,
