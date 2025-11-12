@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle, Users, Lightbulb, Target, Mail, AlertCircle, Loader2 } from "lucide-react";
 import api from "@/services/api";
+import axios from "axios";
 
 const EventConfirmation = () => {
   const navigate = useNavigate();
@@ -111,7 +112,22 @@ const EventConfirmation = () => {
       }
     } catch (error) {
       console.error("❌ Erro ao confirmar inscrição:", error);
-      const errorMsg = "Erro de conexão. Tente novamente.";
+      
+      // Verificar tipo de erro para dar feedback mais preciso
+      let errorMsg = "Erro de conexão. Tente novamente.";
+      
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          errorMsg = "Timeout na conexão. Verifique sua internet e tente novamente.";
+        } else if (error.code === 'ERR_NETWORK') {
+          errorMsg = "Erro de rede. Verifique sua conexão com a internet.";
+        } else if (error.response) {
+          errorMsg = error.response.data?.message || `Erro ${error.response.status}: ${error.response.statusText}`;
+        } else if (error.request) {
+          errorMsg = "Sem resposta do servidor. Verifique sua conexão.";
+        }
+      }
+      
       setErrorMessage(errorMsg);
       alert(errorMsg);
     } finally {

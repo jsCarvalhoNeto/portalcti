@@ -24,6 +24,11 @@ const createAPI = () => {
   const instance = axios.create({
     baseURL: baseURL,
     withCredentials: true, // Habilitar envio de cookies
+    timeout: 30000, // 30 segundos de timeout para dispositivos móveis
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
   });
 
   // Interceptor para lidar com erros 401 (navegação privada)
