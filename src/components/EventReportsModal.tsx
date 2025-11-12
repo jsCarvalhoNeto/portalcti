@@ -20,6 +20,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import api from '@/services/api';
 
 interface EventReportsModalProps {
   open: boolean;
@@ -67,8 +68,8 @@ export default function EventReportsModal({ open, onClose }: EventReportsModalPr
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/events/admin/reports');
-      const data = await response.json();
+      const response = await api.get('/events/admin/reports');
+      const data = response.data;
       
       if (data.success) {
         setReportsData(data.data);
@@ -89,8 +90,8 @@ export default function EventReportsModal({ open, onClose }: EventReportsModalPr
 
   const downloadCSV = async () => {
     try {
-      const response = await fetch('/api/events/admin/export');
-      const csvData = await response.text();
+      const response = await api.get('/events/admin/export', { responseType: 'text' });
+      const csvData = response.data;
       
       const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');

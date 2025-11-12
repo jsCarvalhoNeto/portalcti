@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle, Users, Lightbulb, Target, Mail, AlertCircle, Loader2 } from "lucide-react";
+import api from "@/services/api";
 
 const EventConfirmation = () => {
   const navigate = useNavigate();
@@ -84,20 +85,14 @@ const EventConfirmation = () => {
 
       console.log('📋 Dados de registro preparados:', registrationData);
 
-      const response = await fetch("/api/events/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(registrationData),
-      });
+      const response = await api.post("/events/register", registrationData);
 
       console.log('📡 Status da resposta:', response.status, response.statusText);
 
-      const responseData = await response.json();
+      const responseData = response.data;
       console.log('📄 Dados da resposta:', responseData);
 
-      if (response.ok && responseData.success) {
+      if (response.status === 200 && responseData.success) {
         console.log('✅ Inscrição realizada com sucesso!');
         console.log('🔄 Definindo isSubmitted = true...');
         

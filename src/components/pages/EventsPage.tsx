@@ -98,16 +98,12 @@ const EventsPage: React.FC = () => {
       setLoading(true);
       
       // Buscar estatísticas dos eixos temáticos
-      const axesResponse = await fetch('/api/events/thematic-axes');
-      if (!axesResponse.ok) throw new Error('Erro ao carregar eixos temáticos');
-      
-      const axesData = await axesResponse.json();
+      const axesResponse = await api.get('/events/thematic-axes');
+      const axesData = axesResponse.data;
       
       // Buscar estatísticas gerais
-      const statsResponse = await fetch('/api/events/registration-stats');
-      if (!statsResponse.ok) throw new Error('Erro ao carregar estatísticas');
-      
-      const statsData = await statsResponse.json();
+      const statsResponse = await api.get('/events/registration-stats');
+      const statsData = statsResponse.data;
       
       setEventStats({
         totalRegistrations: statsData.data?.total_registrations || 0,

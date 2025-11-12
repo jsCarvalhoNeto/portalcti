@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Users, GraduationCap } from "lucide-react";
+import api from "@/services/api";
 
 interface ThematicAxis {
   id: number;
@@ -45,9 +46,9 @@ const EventThematicAxes = () => {
   useEffect(() => {
     const fetchAxes = async () => {
       try {
-        const response = await fetch("/api/events/thematic-axes");
-        if (response.ok) {
-          const result = await response.json();
+        const response = await api.get("/events/thematic-axes");
+        const result = response.data;
+        if (result.success) {
           console.log('API Response:', result);
           const axesArray = result.success ? result.data : [];
           
