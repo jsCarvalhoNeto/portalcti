@@ -23,6 +23,11 @@ import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 import PollVotingPage from './pages/PollVotingPage';
+import EventsPage from './components/pages/EventsPage';
+import EventRegistration from './pages/EventRegistration';
+import EventThematicAxes from './pages/EventThematicAxes';
+import EventTeamForm from './pages/EventTeamForm';
+import EventConfirmation from './pages/EventConfirmation';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -60,6 +65,11 @@ const App = () => (
             <Route path="/disciplinas/:id/interactive-activities/html-css-form" element={<HtmlCssFormActivity />} />
             <Route path="/gamification" element={<Gamification />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/eventos" element={<EventsPage />} />
+            <Route path="/eventos/inscricao" element={<EventRegistration />} />
+            <Route path="/eventos/eixos-tematicos" element={<EventThematicAxes />} />
+            <Route path="/eventos/equipe" element={<EventTeamForm />} />
+            <Route path="/eventos/confirmacao" element={<EventConfirmation />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/achievements" element={<TeacherAchievements />} />

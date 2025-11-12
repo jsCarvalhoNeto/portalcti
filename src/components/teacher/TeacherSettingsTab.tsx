@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit, Lock, Bell, Shield } from 'lucide-react';
+import { Edit, Lock, Bell, Shield, BarChart3 } from 'lucide-react';
 import { updateTeacherProfile, changeTeacherPassword } from '@/services/teacherDashboardService';
 import { useToast } from '@/hooks/use-toast';
+import EventReportsModal from '@/components/EventReportsModal';
 
 export default function TeacherSettingsTab() {
   const { profile, editingProfile, setEditingProfile } = useTeacherDashboard();
@@ -24,6 +25,8 @@ export default function TeacherSettingsTab() {
     newPassword: '',
     confirmPassword: ''
  });
+
+  const [showReportsModal, setShowReportsModal] = useState(false);
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -244,9 +247,23 @@ export default function TeacherSettingsTab() {
               <Shield className="w-4 h-4 mr-2" />
               Preferências de Privacidade
             </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowReportsModal(true)}
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Relatórios do Evento
+            </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Relatórios */}
+      <EventReportsModal 
+        open={showReportsModal}
+        onClose={() => setShowReportsModal(false)}
+      />
     </div>
   );
 }
