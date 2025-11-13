@@ -630,5 +630,30 @@ Todas as cores em HSL para consistência
       width: 100vw !important;
       max-width: 100vw !important;
     }
+    
+    /* Prevenir que cards fiquem pela metade */
+    .container {
+      max-width: 100% !important;
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+    
+    /* Garantir que grids funcionem corretamente em mobile */
+    .grid {
+      width: 100% !important;
+    }
+    
+    /* Corrigir largura de cards em mobile */
+    .grid > * {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* Ajustar TabsList mobile */
+    [role="tablist"] {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: visible !important;
+    }
   }
 }
