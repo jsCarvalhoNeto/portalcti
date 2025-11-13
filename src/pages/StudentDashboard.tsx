@@ -373,50 +373,51 @@ export default function StudentDashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
                 <BookOpen className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">Painel do Aluno</h1>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-xl font-bold truncate">Painel do Aluno</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
                   Bem-vindo, {profile?.full_name || user.email}
                 </p>
               </div>
             </div>
 
             {/* Nota: o resumo de gamificação foi integrado ao card 'Progresso Geral' acima */}
-            <div className="flex items-center gap-3">
-              <Badge variant="default" className="flex items-center gap-1">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              <Badge variant="default" className="hidden sm:flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
                 Aluno
               </Badge>
               <Button 
                 variant="outline" 
-                size="sm" 
+                size="sm"
+                className="hidden lg:flex"
                 onClick={() => window.location.reload()}
                 title="Atualizar página"
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Atualizar
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" className="hidden lg:flex" asChild>
                 <Link to="/gamification">
                   <Gamepad className="w-4 h-4 mr-2" />
                   Gamificação
                 </Link>
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" className="hidden md:flex" asChild>
                 <Link to="/">
-                  <Home className="w-4 h-4 mr-2" />
-                  Portal
+                  <Home className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Portal</span>
                 </Link>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sair</span>
               </Button>
             </div>
           </div>
@@ -424,10 +425,10 @@ export default function StudentDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-8 w-full">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
-          <div className="max-w-4xl mx-auto mb-8">
+          <div className="w-full max-w-4xl mx-auto mb-4 sm:mb-8">
             <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
@@ -539,24 +540,24 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <TabsContent value="overview" className="space-y-8">
+          <TabsContent value="overview" className="space-y-6 sm:space-y-8 w-full">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
               {stats.map((stat, index) => {
                 if (stat.title === 'Progresso Geral') {
                   return (
                     <Tooltip key={index}>
                       <TooltipTrigger asChild>
-                        <Link to="/gamification" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer">
-                          <Card className="hover:shadow-glow transition-all duration-300 hover:scale-[1.01]">
-                            <CardContent className="p-6">
+                        <Link to="/gamification" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer w-full">
+                          <Card className="hover:shadow-glow transition-all duration-300 hover:scale-[1.01] w-full">
+                            <CardContent className="p-4 sm:p-6">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-2xl font-bold">{totalPoints}</p>
-                                  <p className="text-sm text-muted-foreground">Pontos acumulados</p>
+                                  <p className="text-xl sm:text-2xl font-bold">{totalPoints}</p>
+                                  <p className="text-xs sm:text-sm text-muted-foreground">Pontos acumulados</p>
                                 </div>
-                                <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                                  <Gamepad className={`w-6 h-6 ${stat.color}`} />
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                  <Gamepad className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                                 </div>
                               </div>
 
@@ -578,15 +579,15 @@ export default function StudentDashboard() {
                 }
 
                 return (
-                  <Card key={index} className="hover:shadow-glow transition-all duration-300">
-                    <CardContent className="p-6">
+                  <Card key={index} className="hover:shadow-glow transition-all duration-300 w-full">
+                    <CardContent className="p-4 sm:p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-2xl font-bold">{stat.value}</p>
-                          <p className="text-sm text-muted-foreground">{stat.title}</p>
+                          <p className="text-xl sm:text-2xl font-bold">{stat.value}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">{stat.title}</p>
                         </div>
-                        <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                          <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                         </div>
                       </div>
                     </CardContent>
@@ -596,52 +597,52 @@ export default function StudentDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+              <Card className="hover:shadow-glow transition-all duration-300 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
                     Minhas Disciplinas
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Acesse materiais, tarefas e informações das disciplinas
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                   <Button className="w-full" onClick={() => setActiveTab('subjects')}>
                     Acessar Disciplinas
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-accent" />
+              <Card className="hover:shadow-glow transition-all duration-300 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-accent flex-shrink-0" />
                     Calendário Acadêmico
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Veja datas importantes e prazos acadêmicos
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                   <Button variant="outline" className="w-full" onClick={() => setActiveTab('calendar')}>
                     Ver Calendário
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-secondary-foreground" />
+              <Card className="hover:shadow-glow transition-all duration-300 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-foreground flex-shrink-0" />
                     Configurações
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Configure seu perfil e preferências
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                   <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
                     Configurações
                   </Button>
@@ -650,27 +651,27 @@ export default function StudentDashboard() {
             </div>
 
             {/* Medals quick view (overview) */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Medalhas</CardTitle>
-                  <CardDescription>Conquistas recentes</CardDescription>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full">
+              <Card className="md:col-span-1 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">Medalhas</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Conquistas recentes</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                   {unlockedBadges && unlockedBadges.length > 0 ? (
                     <BadgeGrid badges={unlockedBadges.slice(0,6)} cols={3} compact />
                   ) : (
-                    <div className="text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Medalhas por Disciplina</CardTitle>
-                  <CardDescription>Progresso por disciplina</CardDescription>
+              <Card className="md:col-span-2 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">Medalhas por Disciplina</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Progresso por disciplina</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                   {unlockedBySubject && unlockedBySubject.length > 0 ? (
                     <div className="space-y-3">
                       {unlockedBySubject.map((s:any) => (
@@ -684,7 +685,7 @@ export default function StudentDashboard() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">Nenhuma conquista por disciplina.</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">Nenhuma conquista por disciplina.</div>
                   )}
                 </CardContent>
               </Card>
@@ -694,14 +695,14 @@ export default function StudentDashboard() {
             <TopStudentsCard limit={10} />
 
             {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Atividades Recentes</CardTitle>
-                <CardDescription>
+            <Card className="w-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">Atividades Recentes</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Últimas atualizações e notificações importantes
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-3">
                 <div className="space-y-4">
                   {notifications.length > 0 ? (
                     notifications.map((activity, index) => (
@@ -739,11 +740,11 @@ export default function StudentDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="subjects" className="space-y-8">
+          <TabsContent value="subjects" className="space-y-6 sm:space-y-8 w-full">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold">Minhas Disciplinas</h2>
-                <p className="text-muted-foreground">Todas as disciplinas cadastradas no sistema</p>
+                <h2 className="text-xl sm:text-2xl font-bold">Minhas Disciplinas</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Todas as disciplinas cadastradas no sistema</p>
               </div>
             </div>
 
@@ -752,7 +753,7 @@ export default function StudentDashboard() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
                 {subjects.map((subject) => {
                   // Cor do card - usa cor personalizada do usuário ou cor da disciplina ou padrão
                   const cardColor = getSubjectColor(subject);
@@ -899,19 +900,19 @@ export default function StudentDashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="grades" className="space-y-8">
+          <TabsContent value="grades" className="space-y-6 sm:space-y-8 w-full">
             <StudentGradesPerformanceTab />
           </TabsContent>
 
-          <TabsContent value="calendar" className="space-y-8">
+          <TabsContent value="calendar" className="space-y-6 sm:space-y-8 w-full">
             <StudentCalendarTab />
           </TabsContent>
 
-          <TabsContent value="activities" className="space-y-8">
+          <TabsContent value="activities" className="space-y-6 sm:space-y-8 w-full">
             <StudentActivitiesTab />
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-8">
+          <TabsContent value="settings" className="space-y-6 sm:space-y-8 w-full">
             <div>
               <h2 className="text-2xl font-bold">Configurações</h2>
               <p className="text-muted-foreground">Configure seu perfil e preferências</p>

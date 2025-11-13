@@ -64,44 +64,44 @@ export default function TeacherDashboardLayout({
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              <Badge variant="secondary" className="hidden sm:flex items-center gap-1">
+              <Badge variant="secondary" className="hidden md:flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
                 Professor
               </Badge>
-              {/* Botões visíveis apenas em telas médias e maiores */}
+              {/* Botões visíveis em tablets e desktop */}
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden lg:flex"
+                className="hidden md:flex"
                 onClick={() => {
                   try { setActiveTab && setActiveTab('gamificacao'); } catch (e) { /* noop */ }
                   navigate('/teacher');
                 }}
               >
-                <Gamepad className="w-4 h-4 mr-2" />
-                Gamificação
+                <Gamepad className="w-4 h-4 lg:mr-2" />
+                <span className="hidden lg:inline">Gamificação</span>
               </Button>
               <Button variant="outline" size="sm" className="hidden md:flex" asChild>
                 <Link to="/">
-                  <Home className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Portal</span>
+                  <Home className="w-4 h-4 lg:mr-2" />
+                  <span className="hidden lg:inline">Portal</span>
                 </Link>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden lg:flex"
+                className="hidden md:flex"
                 onClick={() => {
                   try { setActiveTab && setActiveTab('utilitarios'); } catch (e) { /* noop */ }
                   navigate('/teacher');
                 }}
               >
-                <Menu className="w-4 h-4 mr-2" />
-                Utilitários
+                <Menu className="w-4 h-4 lg:mr-2" />
+                <span className="hidden lg:inline">Utilitários</span>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sair</span>
+                <LogOut className="w-4 h-4 lg:mr-2" />
+                <span className="hidden lg:inline">Sair</span>
               </Button>
             </div>
           </div>
