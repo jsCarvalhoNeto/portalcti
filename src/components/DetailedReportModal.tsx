@@ -102,8 +102,8 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible print:max-w-none">
+        <DialogHeader className="print:hidden">
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <FileText className="w-6 h-6" />
             Relatório Detalhado por Equipe
@@ -138,8 +138,8 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
             </div>
 
             {/* Resumo Geral */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:block print:mb-6">
+              <Card className="print:inline-block print:w-auto print:mr-4">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total de Eixos
@@ -151,7 +151,7 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="print:inline-block print:w-auto print:mr-4">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Users className="w-4 h-4" />
@@ -164,7 +164,7 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="print:inline-block print:w-auto">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <UserCircle className="w-4 h-4" />
