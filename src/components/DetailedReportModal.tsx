@@ -8,13 +8,11 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   Users, 
   FileText, 
   RefreshCw,
   UserCircle,
-  Crown,
   Printer
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -181,77 +179,67 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
             </div>
 
             {/* Relatório por Eixo */}
-            <div className="space-y-8">
-              {reportData.axes.map((axis, axisIndex) => (
+            <div className="space-y-6">
+              {reportData.axes.map((axis) => (
                 <div key={axis.axis_id} className="page-break-before">
-                  <Card>
-                    <CardHeader style={{ borderLeftWidth: '4px', borderLeftColor: axis.axis_color }}>
-                      <CardTitle className="flex items-center justify-between">
-                        <span className="text-xl">{axis.axis_title}</span>
-                        <div className="flex gap-2">
-                          <Badge variant="outline">{axis.total_teams} equipes</Badge>
-                          <Badge variant="outline">{axis.total_students} estudantes</Badge>
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {axis.teams.map((team, teamIndex) => (
-                        <div key={team.team_id} className="border rounded-lg p-4 page-break-inside-avoid">
-                          {/* Informações da Equipe */}
-                          <div className="mb-4">
-                            <h4 className="font-semibold text-lg mb-1">{team.team_name}</h4>
-                            <p className="text-sm text-muted-foreground italic mb-2">{team.project_title}</p>
-                            {team.project_description && (
-                              <p className="text-sm text-muted-foreground">{team.project_description}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Inscrita em: {new Date(team.registered_at).toLocaleDateString('pt-BR', { 
-                                day: '2-digit', 
-                                month: 'long', 
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
+                  {/* Cabeçalho do Eixo */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-bold mb-1" style={{ color: axis.axis_color }}>
+                      {axis.axis_title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {axis.total_teams} equipes • {axis.total_students} estudantes
+                    </p>
+                  </div>
 
-                          {/* Lista de Participantes */}
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
-                              <Users className="w-4 h-4" />
-                              Participantes ({team.total_members})
-                            </h5>
-                            <div className="space-y-2">
-                              {team.participants.map((participant, pIndex) => (
-                                <div key={pIndex} className="flex items-center justify-between py-2 border-b last:border-0">
-                                  <div className="flex items-center gap-2">
-                                    {participant.role === 'Líder' ? (
-                                      <Crown className="w-4 h-4 text-yellow-600" />
-                                    ) : (
-                                      <UserCircle className="w-4 h-4 text-blue-600" />
-                                    )}
-                                    <div>
-                                      <p className="font-medium text-sm">{participant.name}</p>
-                                      <p className="text-xs text-muted-foreground">{participant.email}</p>
-                                    </div>
+                  {/* Tabela de Equipes */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="text-left p-2 font-semibold border-b">#</th>
+                          <th className="text-left p-2 font-semibold border-b">Equipe / Projeto</th>
+                          <th className="text-left p-2 font-semibold border-b">Participantes</th>
+                          <th className="text-left p-2 font-semibold border-b">Data</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {axis.teams.map((team, index) => (
+                          <tr key={team.team_id} className="border-b last:border-b-0 page-break-inside-avoid">
+                            <td className="p-2 align-top">{index + 1}</td>
+                            <td className="p-2 align-top">
+                              <div>
+                                <p className="font-medium">{team.team_name}</p>
+                                <p className="text-xs text-muted-foreground italic">{team.project_title}</p>
+                              </div>
+                            </td>
+                            <td className="p-2 align-top">
+                              <div className="space-y-1">
+                                {team.participants.map((participant, pIndex) => (
+                                  <div key={pIndex} className="text-xs">
+                                    <span className="font-medium">
+                                      {participant.role === 'Líder' ? '🔹 ' : '• '}
+                                      {participant.name}
+                                    </span>
+                                    <span className="text-muted-foreground"> ({participant.email})</span>
                                   </div>
-                                  <Badge variant={participant.role === 'Líder' ? 'default' : 'secondary'} className="text-xs">
-                                    {participant.role}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-2 align-top text-xs whitespace-nowrap">
+                              {new Date(team.registered_at).toLocaleDateString('pt-BR')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                      {axis.teams.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          Nenhuma equipe inscrita neste eixo
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {axis.teams.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4 text-sm">
+                      Nenhuma equipe inscrita neste eixo
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
