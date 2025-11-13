@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit, Lock, Bell, Shield, BarChart3, FileText } from 'lucide-react';
+import { Edit, Lock, Bell, Shield, BarChart3, FileText, Users } from 'lucide-react';
 import { updateTeacherProfile, changeTeacherPassword } from '@/services/teacherDashboardService';
 import { useToast } from '@/hooks/use-toast';
 import EventReportsModal from '@/components/EventReportsModal';
 import DetailedReportModal from '@/components/DetailedReportModal';
+import TeamManagementModal from '@/components/TeamManagementModal';
 
 export default function TeacherSettingsTab() {
   const { profile, editingProfile, setEditingProfile } = useTeacherDashboard();
@@ -28,7 +29,8 @@ export default function TeacherSettingsTab() {
   });
 
   const [showReportsModal, setShowReportsModal] = useState(false);
-  const [showDetailedReportModal, setShowDetailedReportModal] = useState(false);  const handleUpdateProfile = async () => {
+  const [showDetailedReportModal, setShowDetailedReportModal] = useState(false);
+  const [showTeamManagementModal, setShowTeamManagementModal] = useState(false);  const handleUpdateProfile = async () => {
     if (!user) return;
     
     try {
@@ -263,6 +265,14 @@ export default function TeacherSettingsTab() {
               <FileText className="w-4 h-4 mr-2" />
               Relatório por Equipe
             </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowTeamManagementModal(true)}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Gerenciar Equipes
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -277,6 +287,12 @@ export default function TeacherSettingsTab() {
       <DetailedReportModal 
         open={showDetailedReportModal}
         onClose={() => setShowDetailedReportModal(false)}
+      />
+
+      {/* Modal de Gerenciamento de Equipes */}
+      <TeamManagementModal 
+        open={showTeamManagementModal}
+        onClose={() => setShowTeamManagementModal(false)}
       />
     </div>
   );

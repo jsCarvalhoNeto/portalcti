@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Subjects from "./pages/Subjects";
@@ -47,42 +48,48 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/disciplinas" element={<Subjects />} />
-            <Route path="/disciplinas/:id" element={<SubjectDetail />} />
-            <Route path="/disciplinas/:id/interactive-activities" element={<InteractiveActivities />} />
-            <Route path="/disciplinas/:id/activity-files/:activityId" element={<ActivityFiles />} />
-            <Route path="/google-drive-test" element={<GoogleDriveTest />} />
-            <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
-            <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
-            <Route path="/disciplinas/:id/interactive-activities/html-css-form" element={<HtmlCssFormActivity />} />
-            <Route path="/gamification" element={<Gamification />} />
-            <Route path="/achievements" element={<Achievements />} />
-            <Route path="/eventos" element={<EventsPage />} />
-            <Route path="/eventos/inscricao" element={<EventRegistration />} />
-            <Route path="/eventos/eixos-tematicos" element={<EventThematicAxes />} />
-            <Route path="/eventos/equipe" element={<EventTeamForm />} />
-            <Route path="/eventos/confirmacao" element={<EventConfirmation />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/achievements" element={<TeacherAchievements />} />
-            <Route path="/teacher/daily-challenges" element={<TeacherDailyChallenges />} />
-            <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/poll/:pollId" element={<PollVotingPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <ErrorBoundary fallbackRoute="/eventos">
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/disciplinas" element={<Subjects />} />
+              <Route path="/disciplinas/:id" element={<SubjectDetail />} />
+              <Route path="/disciplinas/:id/interactive-activities" element={<InteractiveActivities />} />
+              <Route path="/disciplinas/:id/activity-files/:activityId" element={<ActivityFiles />} />
+              <Route path="/google-drive-test" element={<GoogleDriveTest />} />
+              <Route path="/disciplinas/:id/interactive-activities/memory-game" element={<MemoryGame />} />
+              <Route path="/disciplinas/:id/interactive-activities/memory-game/:level" element={<MemoryGame />} />
+              <Route path="/disciplinas/:id/interactive-activities/html-css-form" element={<HtmlCssFormActivity />} />
+              <Route path="/gamification" element={<Gamification />} />
+              <Route path="/achievements" element={<Achievements />} />
+              <Route path="/eventos" element={<EventsPage />} />
+              <Route path="/eventos/inscricao" element={<EventRegistration />} />
+              <Route path="/eventos/eixos-tematicos" element={<EventThematicAxes />} />
+              <Route path="/eventos/equipe" element={<EventTeamForm />} />
+              <Route path="/eventos/confirmacao" element={
+                <ErrorBoundary fallbackRoute="/eventos/inscricao">
+                  <EventConfirmation />
+                </ErrorBoundary>
+              } />
+              <Route path="/student" element={<StudentDashboard />} />
+              <Route path="/teacher" element={<TeacherDashboard />} />
+              <Route path="/teacher/achievements" element={<TeacherAchievements />} />
+              <Route path="/teacher/daily-challenges" element={<TeacherDailyChallenges />} />
+              <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/poll/:pollId" element={<PollVotingPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 

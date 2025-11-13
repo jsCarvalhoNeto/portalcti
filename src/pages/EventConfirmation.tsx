@@ -145,7 +145,7 @@ const EventConfirmation = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-background to-green-50 flex items-center justify-center p-4" style={{ marginTop: '80px' }}>
+        <main className="min-h-screen bg-gradient-to-br from-green-50 via-background to-green-50 flex items-center justify-center p-4 pt-24 pb-24">
           <div className="w-full max-w-2xl text-center">
             <Card className="p-8 shadow-2xl bg-card/95 backdrop-blur-sm border-0">
               <div className="space-y-6">
@@ -187,17 +187,18 @@ const EventConfirmation = () => {
               </div>
             </Card>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
   }
 
   if (!studentData) {
+    console.log('⚠️ studentData está nulo, mostrando loading ou redirecionando...');
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center p-4" style={{ marginTop: '80px' }}>
+        <main className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center p-4 pt-24 pb-24">
           <div className="text-center max-w-md">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
             <p className="text-lg text-muted-foreground mt-4">Carregando dados da inscrição...</p>
@@ -212,16 +213,17 @@ const EventConfirmation = () => {
               Voltar ao Início
             </Button>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
   }
 
+  console.log('📄 Renderizando página de confirmação normal...');
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center p-4" style={{ marginTop: '80px' }}>
+      <main className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center p-4 pt-24 pb-24">
         <div className="w-full max-w-4xl">
           <Card className="p-8 shadow-2xl bg-card/95 backdrop-blur-sm border-0">
             <div className="mb-6">
@@ -362,7 +364,7 @@ const EventConfirmation = () => {
             </div>
           </Card>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );
