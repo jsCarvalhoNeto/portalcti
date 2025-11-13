@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ChevronLeft, Users, UserPlus, Lightbulb } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const teamSchema = z.object({
   teamName: z.string().optional(),
@@ -37,6 +38,7 @@ type TeamForm = z.infer<typeof teamSchema>;
 
 const EventTeamForm = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [studentData, setStudentData] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<Array<{ name: string; email: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +93,17 @@ const EventTeamForm = () => {
     console.log('🎯 EventTeamForm - onSubmit chamado');
     console.log('📋 Dados do formulário:', data);
     console.log('👥 Membros da equipe:', teamMembers);
+    
+    // Validar mínimo de 3 membros (líder + 2 adicionais)
+    const totalMembers = teamMembers.length + 1; // +1 para incluir o líder
+    if (teamMembers.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Equipe incompleta",
+        description: `Sua equipe precisa ter no mínimo 3 membros (incluindo você como líder). Adicione pelo menos ${2 - teamMembers.length} membro(s) adicional(is).`
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -210,7 +223,7 @@ const EventTeamForm = () => {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold text-foreground">
-                    Membros da Equipe (máximo 6 membros incluindo você)
+                    Membros da Equipe (mínimo 3, máximo 6 membros incluindo você)
                   </h3>
                   
                   <div className="bg-muted/50 p-4 rounded-lg">
@@ -295,12 +308,12 @@ const EventTeamForm = () => {
                   )}
 
                   <p className="text-sm text-muted-foreground">
-                    {teamMembers.length === 0 && "Você pode adicionar até 5 membros à sua equipe."}
-                    {teamMembers.length === 1 && "Você pode adicionar mais 4 membros à sua equipe."}
-                    {teamMembers.length === 2 && "Você pode adicionar mais 3 membros à sua equipe."}
-                    {teamMembers.length === 3 && "Você pode adicionar mais 2 membros à sua equipe."}
-                    {teamMembers.length === 4 && "Você pode adicionar mais 1 membro à sua equipe."}
-                    {teamMembers.length === 5 && "Sua equipe está completa (máximo de 6 membros)."}
+                    {teamMembers.length === 0 && "⚠️ Adicione pelo menos 2 membros (mínimo 3 incluindo você). Máximo: 5 membros adicionais."}
+                    {teamMembers.length === 1 && "⚠️ Adicione mais 1 membro para atingir o mínimo de 3. Você pode adicionar até 4 membros adicionais."}
+                    {teamMembers.length === 2 && "✅ Mínimo atingido! Você pode adicionar mais 3 membros à sua equipe."}
+                    {teamMembers.length === 3 && "✅ Você pode adicionar mais 2 membros à sua equipe."}
+                    {teamMembers.length === 4 && "✅ Você pode adicionar mais 1 membro à sua equipe."}
+                    {teamMembers.length === 5 && "✅ Sua equipe está completa (máximo de 6 membros)."}
                   </p>
                 </div>
 

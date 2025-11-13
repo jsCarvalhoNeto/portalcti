@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit, Lock, Bell, Shield, BarChart3 } from 'lucide-react';
+import { Edit, Lock, Bell, Shield, BarChart3, FileText } from 'lucide-react';
 import { updateTeacherProfile, changeTeacherPassword } from '@/services/teacherDashboardService';
 import { useToast } from '@/hooks/use-toast';
 import EventReportsModal from '@/components/EventReportsModal';
+import DetailedReportModal from '@/components/DetailedReportModal';
 
 export default function TeacherSettingsTab() {
   const { profile, editingProfile, setEditingProfile } = useTeacherDashboard();
@@ -24,11 +25,10 @@ export default function TeacherSettingsTab() {
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
- });
+  });
 
   const [showReportsModal, setShowReportsModal] = useState(false);
-
-  const handleUpdateProfile = async () => {
+  const [showDetailedReportModal, setShowDetailedReportModal] = useState(false);  const handleUpdateProfile = async () => {
     if (!user) return;
     
     try {
@@ -255,6 +255,14 @@ export default function TeacherSettingsTab() {
               <BarChart3 className="w-4 h-4 mr-2" />
               Relatórios do Evento
             </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowDetailedReportModal(true)}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Relatório por Equipe
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -263,6 +271,12 @@ export default function TeacherSettingsTab() {
       <EventReportsModal 
         open={showReportsModal}
         onClose={() => setShowReportsModal(false)}
+      />
+
+      {/* Modal de Relatório Detalhado */}
+      <DetailedReportModal 
+        open={showDetailedReportModal}
+        onClose={() => setShowDetailedReportModal(false)}
       />
     </div>
   );

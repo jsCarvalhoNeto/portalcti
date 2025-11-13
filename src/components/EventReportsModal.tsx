@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Calendar,
   Target,
-  TrendingUp
+  TrendingUp,
+  FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/services/api';
@@ -113,6 +114,10 @@ export default function EventReportsModal({ open, onClose }: EventReportsModalPr
     }
   };
 
+  const printPDF = () => {
+    window.print();
+  };
+
   useEffect(() => {
     if (open) {
       fetchReports();
@@ -138,15 +143,21 @@ export default function EventReportsModal({ open, onClose }: EventReportsModalPr
         ) : reportsData ? (
           <div className="space-y-6">
             {/* Botões de Ação */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center print:hidden">
               <Button onClick={fetchReports} variant="outline" className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" />
                 Atualizar
               </Button>
-              <Button onClick={downloadCSV} className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Baixar CSV
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={printPDF} variant="outline" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Imprimir PDF
+                </Button>
+                <Button onClick={downloadCSV} className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Baixar CSV
+                </Button>
+              </div>
             </div>
 
             {/* Cards de Estatísticas Gerais */}
