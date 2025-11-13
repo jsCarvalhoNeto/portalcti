@@ -449,13 +449,13 @@ export default function StudentDashboard() {
                       <Menu className="w-4 h-4 ml-2" />
                     </Button>
                   </SwipeableSheetTrigger>
-                  <SwipeableSheetContent side="bottom" className="p-0" onSwipeUp={() => setIsMobileMenuOpen(false)}>
-                    <div className="p-4">
-                      <h3 className="font-semibold mb-4">Navegação</h3>
-                      <div className="space-y-2">
+                  <SwipeableSheetContent side="bottom" className="p-0 max-h-[85vh]" onSwipeUp={() => setIsMobileMenuOpen(false)}>
+                    <div className="p-4 pb-6" data-scrollable>
+                      <h3 className="font-semibold mb-4 text-lg">Navegação</h3>
+                      <div className="space-y-2 pb-2">
                         <Button
                           variant={activeTab === 'overview' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('overview');
                             setIsMobileMenuOpen(false);
@@ -466,7 +466,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={activeTab === 'subjects' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('subjects');
                             setIsMobileMenuOpen(false);
@@ -477,7 +477,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={activeTab === 'activities' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('activities');
                             setIsMobileMenuOpen(false);
@@ -488,7 +488,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={"ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             // navigate to gamification page
                             window.location.href = '/gamification';
@@ -500,7 +500,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={activeTab === 'grades' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('grades');
                             setIsMobileMenuOpen(false);
@@ -511,7 +511,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('calendar');
                             setIsMobileMenuOpen(false);
@@ -522,7 +522,7 @@ export default function StudentDashboard() {
                         </Button>
                         <Button
                           variant={activeTab === 'settings' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('settings');
                             setIsMobileMenuOpen(false);

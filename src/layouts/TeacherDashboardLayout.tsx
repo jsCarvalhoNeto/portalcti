@@ -135,13 +135,13 @@ export default function TeacherDashboardLayout({
                       <Menu className="w-4 h-4 ml-2" />
                     </Button>
                   </SwipeableSheetTrigger>
-                  <SwipeableSheetContent side="bottom" className="p-0" onSwipeUp={() => setIsMobileMenuOpen(false)}>
-                    <div className="p-4">
-                      <h3 className="font-semibold mb-4">Navegação</h3>
-                      <div className="space-y-2">
+                  <SwipeableSheetContent side="bottom" className="p-0 max-h-[85vh]" onSwipeUp={() => setIsMobileMenuOpen(false)}>
+                    <div className="p-4 pb-6" data-scrollable>
+                      <h3 className="font-semibold mb-4 text-lg">Navegação</h3>
+                      <div className="space-y-2 pb-2">
                         <Button
                           variant={activeTab === 'overview' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('overview');
                             setIsMobileMenuOpen(false);
@@ -152,7 +152,7 @@ export default function TeacherDashboardLayout({
                         </Button>
                         <Button
                           variant={activeTab === 'subjects' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('subjects');
                             setIsMobileMenuOpen(false);
@@ -163,7 +163,7 @@ export default function TeacherDashboardLayout({
                         </Button>
                         <Button
                           variant={activeTab === 'students' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('students');
                             setIsMobileMenuOpen(false);
@@ -174,7 +174,7 @@ export default function TeacherDashboardLayout({
                         </Button>
                         <Button
                           variant={activeTab === 'grades' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('grades');
                             setIsMobileMenuOpen(false);
@@ -186,7 +186,7 @@ export default function TeacherDashboardLayout({
                         {/* Gamificação removida do menu principal - acessível via botão no topo */}
                         <Button
                           variant={activeTab === 'utilitarios' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('utilitarios');
                             setIsMobileMenuOpen(false);
@@ -197,7 +197,7 @@ export default function TeacherDashboardLayout({
                         </Button>
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('calendar');
                             setIsMobileMenuOpen(false);
@@ -208,7 +208,7 @@ export default function TeacherDashboardLayout({
                         </Button>
                         <Button
                           variant={activeTab === 'settings' ? "secondary" : "ghost"}
-                          className="w-full justify-start"
+                          className="w-full justify-start min-h-12"
                           onClick={() => {
                             setActiveTab('settings');
                             setIsMobileMenuOpen(false);
