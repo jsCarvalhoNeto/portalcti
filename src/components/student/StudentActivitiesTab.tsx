@@ -285,7 +285,9 @@ export default function StudentActivitiesTab() {
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (document.body.contains(link)) {
+      document.body.removeChild(link);
+    }
   };
 
   // Função para obter badge de status com cores diferentes

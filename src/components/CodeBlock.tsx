@@ -29,7 +29,9 @@ export default function CodeBlock({ code, language, children }: CodeBlockProps) 
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
-      document.body.removeChild(textArea);
+      if (document.body.contains(textArea)) {
+        document.body.removeChild(textArea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
