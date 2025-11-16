@@ -127,9 +127,7 @@ export default function DetailedReportModal({ open, onClose }: DetailedReportMod
     link.download = `relatorio-equipes-${new Date().toISOString().split('T')[0]}.html`;
     document.body.appendChild(link);
     link.click();
-    if (document.body.contains(link)) {
-      document.body.removeChild(link);
-    }
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
     toast({

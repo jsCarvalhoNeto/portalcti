@@ -236,9 +236,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
       a.download = `${safeName}_submission.txt`;
       document.body.appendChild(a);
       a.click();
-      if (document.body.contains(a)) {
-        document.body.removeChild(a);
-      }
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error('Error downloading text submission:', e);
@@ -257,9 +255,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
       a.download = `${safeName}_submission.html`;
       document.body.appendChild(a);
       a.click();
-      if (document.body.contains(a)) {
-        document.body.removeChild(a);
-      }
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error('Error downloading html submission:', e);
