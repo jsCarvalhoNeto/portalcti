@@ -90,12 +90,18 @@ export default function TeacherSubjectsTab() {
         </div>
       )}
 
-      {subjectsLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Suas Disciplinas</CardTitle>
+          <CardDescription>Gerencie as disciplinas que você leciona</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {subjectsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject) => {
             // Cor do card - usa cor personalizada ou padrão
             const cardColor = getSubjectColor(subject);
@@ -225,22 +231,24 @@ export default function TeacherSubjectsTab() {
                   </div>
                 </CardContent>
               </Card>
-            );
-          })}
-          {subjects.length === 0 && !subjectsLoading && (
-            <div className="col-span-full text-center py-8">
-              <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => refetch.subjects()}
-              >
-                Recarregar Disciplinas
-              </Button>
+              );
+            })}
+            {subjects.length === 0 && !subjectsLoading && (
+              <div className="col-span-full text-center py-8">
+                <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => refetch.subjects()}
+                >
+                  Recarregar Disciplinas
+                </Button>
+              </div>
+            )}
             </div>
           )}
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
       {/* Dialog para detalhes da disciplina */}
       {selectedSubject && (

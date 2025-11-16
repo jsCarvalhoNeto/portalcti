@@ -109,10 +109,10 @@ export default function TeacherDashboardLayout({
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-8 w-full">
+      <main className="container mx-auto px-4 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
-          <div className="w-full max-w-4xl mx-auto mb-4 sm:mb-8">
+          <div className="max-w-4xl mx-auto mb-8">
             <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
@@ -225,20 +225,20 @@ export default function TeacherDashboardLayout({
             </div>
           </div>
 
-          <TabsContent value="overview" className="space-y-6 sm:space-y-8 w-full">
-            <div className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="overview" className="space-y-8">
+            <div className="space-y-8">
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, index) => (
-                  <Card key={index} className="hover:shadow-glow transition-all duration-300 w-full">
-                    <CardContent className="p-4 sm:p-6">
+                  <Card key={index} className="hover:shadow-glow transition-all duration-300">
+                    <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xl sm:text-2xl font-bold">{stat.value}</p>
-                          <p className="text-xs sm:text-sm text-muted-foreground">{stat.title}</p>
+                          <p className="text-2xl font-bold">{stat.value}</p>
+                          <p className="text-sm text-muted-foreground">{stat.title}</p>
                         </div>
-                        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                          <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
+                        <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
                         </div>
                       </div>
                     </CardContent>
@@ -247,52 +247,52 @@ export default function TeacherDashboardLayout({
               </div>
 
               {/* Quick Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
-                <Card className="hover:shadow-glow transition-all duration-300 w-full">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="hover:shadow-glow transition-all duration-300">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-primary" />
                       Minhas Disciplinas
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
+                    <CardDescription>
                       Gerencie suas disciplinas e materiais de aula
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-3">
+                  <CardContent>
                     <Button className="w-full" onClick={() => setActiveTab('subjects')}>
                       Acessar Disciplinas
                     </Button>
                   </CardContent>
                 </Card>
 
-                <Card className="hover:shadow-glow transition-all duration-300 w-full">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-accent flex-shrink-0" />
+                <Card className="hover:shadow-glow transition-all duration-300">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-accent" />
                       Meus Alunos
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
+                    <CardDescription>
                       Veja e interaja com seus alunos matriculados
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-3">
+                  <CardContent>
                     <Button variant="outline" className="w-full" onClick={() => setActiveTab('students')}>
                       Gerenciar Alunos
                     </Button>
                   </CardContent>
                 </Card>
 
-                <Card className="hover:shadow-glow transition-all duration-300 w-full">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-foreground flex-shrink-0" />
+                <Card className="hover:shadow-glow transition-all duration-300">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-secondary-foreground" />
                       Atividades & Notas
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
+                    <CardDescription>
                       Gerencie atividades e notas dos alunos
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-3">
+                  <CardContent>
                     <Button variant="outline" className="w-full" onClick={() => setActiveTab('grades')}>
                       Gerenciar Notas
                     </Button>
@@ -301,10 +301,10 @@ export default function TeacherDashboardLayout({
               </div>
 
               {/* Recent Activity */}
-              <Card className="w-full">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base sm:text-lg">Atividades Recentes</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Atividades Recentes</CardTitle>
+                  <CardDescription>
                     Últimas atualizações e interações importantes
                   </CardDescription>
                 </CardHeader>
@@ -331,25 +331,25 @@ export default function TeacherDashboardLayout({
             </div>
           </TabsContent>
 
-          <TabsContent value="subjects" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="subjects" className="space-y-8">
             {children && Array.isArray(children) ? children[0] : null}
           </TabsContent>
-          <TabsContent value="students" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="students" className="space-y-8">
             {children && Array.isArray(children) ? children[1] : null}
           </TabsContent>
-          <TabsContent value="grades" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="grades" className="space-y-8">
             {children && Array.isArray(children) ? children[2] : null}
           </TabsContent>
-          <TabsContent value="gamificacao" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="gamificacao" className="space-y-8">
             {children && Array.isArray(children) ? children[3] : null}
           </TabsContent>
-          <TabsContent value="utilitarios" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="utilitarios" className="space-y-8">
             {children && Array.isArray(children) ? children[4] : null}
           </TabsContent>
-          <TabsContent value="calendar" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="calendar" className="space-y-8">
             {children && Array.isArray(children) ? children[5] : null}
           </TabsContent>
-          <TabsContent value="settings" className="space-y-6 sm:space-y-8 w-full">
+          <TabsContent value="settings" className="space-y-8">
             {children && Array.isArray(children) ? children[6] : null}
           </TabsContent>
         </Tabs>

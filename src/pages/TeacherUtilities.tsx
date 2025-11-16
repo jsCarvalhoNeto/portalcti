@@ -54,8 +54,13 @@ export default function TeacherUtilities() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Utilitários</h1>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Utilitários</h2>
+          <p className="text-muted-foreground">Ferramentas úteis para professores</p>
+        </div>
+      </div>
       
       {activeUtility === 'Pesquisa Online' ? (
         <div className="max-w-4xl mx-auto">
@@ -71,80 +76,88 @@ export default function TeacherUtilities() {
           <PollUtility />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {utilities.map((utility, index) => {
-            const textColor = isLightColor(utility.color) ? '#1f2937' : '#ffffff';
-            const Icon = utility.icon;
-            
-            return (
-              <Card 
-                key={index} 
-                className="hover:shadow-glow transition-all duration-300 border-0 relative overflow-hidden cursor-pointer"
-                style={{
-                  background: `linear-gradient(135deg, ${utility.color}CC 0%, ${utility.color}AA 100%)`,
-                  color: textColor
-                }}
-              >
-                {/* Barra de cor no topo do card */}
-                <div 
-                  className="absolute top-0 left-0 right-0 h-1"
-                  style={{ backgroundColor: utility.color }}
-                />
+        <Card>
+          <CardHeader>
+            <CardTitle>Ferramentas Disponíveis</CardTitle>
+            <CardDescription>Acesse as ferramentas e utilitários do professor</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {utilities.map((utility, index) => {
+                const textColor = isLightColor(utility.color) ? '#1f2937' : '#ffffff';
+                const Icon = utility.icon;
                 
-                <CardHeader className="relative">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle 
-                        className="text-lg" 
-                        style={{ color: textColor }}
-                      >
-                        {utility.name}
-                      </CardTitle>
-                      <CardDescription 
-                        style={{ color: `${textColor}B3` }}
-                      >
-                        Ferramenta do Professor
-                      </CardDescription>
-                    </div>
-                    <Badge 
-                      variant="outline" 
-                      className="border-white/30 text-white bg-white/20"
-                    >
-                      Disponível
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative">
-                  <div className="space-y-4">
-                    <p 
-                      className="text-sm" 
-                      style={{ color: `${textColor}CC` }}
-                    >
-                      {utility.description}
-                    </p>
+                return (
+                  <Card 
+                    key={index} 
+                    className="hover:shadow-glow transition-all duration-300 border-0 relative overflow-hidden cursor-pointer"
+                    style={{
+                      background: `linear-gradient(135deg, ${utility.color}CC 0%, ${utility.color}AA 100%)`,
+                      color: textColor
+                    }}
+                  >
+                    {/* Barra de cor no topo do card */}
+                    <div 
+                      className="absolute top-0 left-0 right-0 h-1"
+                      style={{ backgroundColor: utility.color }}
+                    />
                     
-                    {/* Botão de ação seguindo o padrão */}
-                    <div className="flex justify-center">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-3 px-6"
-                        style={{ color: textColor }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUtilityClick(utility.name);
-                        }}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span className="text-sm font-medium">Acessar</span>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <CardHeader className="relative">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle 
+                            className="text-lg" 
+                            style={{ color: textColor }}
+                          >
+                            {utility.name}
+                          </CardTitle>
+                          <CardDescription 
+                            style={{ color: `${textColor}B3` }}
+                          >
+                            Ferramenta do Professor
+                          </CardDescription>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className="border-white/30 text-white bg-white/20"
+                        >
+                          Disponível
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="relative">
+                      <div className="space-y-4">
+                        <p 
+                          className="text-sm" 
+                          style={{ color: `${textColor}CC` }}
+                        >
+                          {utility.description}
+                        </p>
+                        
+                        {/* Botão de ação seguindo o padrão */}
+                        <div className="flex justify-center">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-3 px-6"
+                            style={{ color: textColor }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUtilityClick(utility.name);
+                            }}
+                          >
+                            <Icon className="w-4 h-4" />
+                            <span className="text-sm font-medium">Acessar</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
