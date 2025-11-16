@@ -76,6 +76,15 @@ export interface StudentActivity {
 
 export async function createActivity(activityData: ActivityData) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando criação de atividade');
+      throw new Error('Não é possível criar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.post('/activities', activityData, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -86,6 +95,15 @@ export async function createActivity(activityData: ActivityData) {
 
 export async function assignActivityGrade(gradeData: ActivityGradeData) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando atribuição de nota de atividade');
+      throw new Error('Não é possível atribuir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.post('/activities/activity-grades', gradeData, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -96,6 +114,15 @@ export async function assignActivityGrade(gradeData: ActivityGradeData) {
 
 export async function getActivityGrades(activityId: number): Promise<ActivityGrade[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de notas de atividade');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get(`/activities/${activityId}/grades`, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -106,6 +133,15 @@ export async function getActivityGrades(activityId: number): Promise<ActivityGra
 
 export async function updateActivity(activityId: number, activityData: ActivityData) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando atualização de atividade');
+      throw new Error('Não é possível atualizar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.put(`/activities/${activityId}`, activityData, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -116,6 +152,15 @@ export async function updateActivity(activityId: number, activityData: ActivityD
 
 export async function updateActivityGrade(gradeId: number, grade: number) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando atualização de nota de atividade');
+      throw new Error('Não é possível atualizar notas no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     console.log('Tentando atualizar nota da atividade:', { gradeId, grade });
     const response = await api.put(`/activities/activity-grades/${gradeId}`, { grade }, { withCredentials: true });
     console.log('Nota atualizada com sucesso:', response.data);
@@ -128,6 +173,15 @@ export async function updateActivityGrade(gradeId: number, grade: number) {
 
 export async function setActivityTeacherObservation(gradeId: number, teacher_observation: string | null) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando definição de observação de atividade');
+      throw new Error('Não é possível definir observações no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.put(`/activities/activity-grades/${gradeId}/observation`, { teacher_observation }, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -138,6 +192,15 @@ export async function setActivityTeacherObservation(gradeId: number, teacher_obs
 
 export async function deleteActivityGrade(gradeId: number) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando exclusão de nota de atividade');
+      throw new Error('Não é possível excluir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.delete(`/activities/activity-grades/${gradeId}`, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -162,6 +225,15 @@ export interface ManualTeamGradeData {
 
 export async function assignManualGradeToTeamMember(gradeData: ManualTeamGradeData) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando atribuição de nota manual para membro da equipe');
+      throw new Error('Não é possível atribuir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.post('/activities/team-grades/manual', gradeData, { withCredentials: true });
     return response.data;
   } catch (error: any) {
@@ -175,6 +247,15 @@ export async function assignManualGradeToTeamMember(gradeData: ManualTeamGradeDa
 
 export async function deleteActivity(activityId: number) {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando exclusão de atividade');
+      throw new Error('Não é possível excluir atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.delete(`/activities/${activityId}`, { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -185,6 +266,15 @@ export async function deleteActivity(activityId: number) {
 
 export async function getStudentActivities(): Promise<StudentActivity[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de atividades do aluno');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get('/activities/student', { withCredentials: true });
     return response.data;
   } catch (error) {
@@ -195,6 +285,15 @@ export async function getStudentActivities(): Promise<StudentActivity[]> {
 
 export async function submitStudentActivity(activityData: FormData): Promise<any> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando envio de atividade do aluno');
+      throw new Error('Não é possível enviar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    }
+
     const response = await api.post('/activities/student-activities', activityData, {
       withCredentials: true,
       headers: {
@@ -214,6 +313,15 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
 
 export async function getStudentActivityGrades(): Promise<ActivityGrade[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de notas de atividades do aluno');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get('/activities/student/grades', { withCredentials: true });
     return response.data;
   } catch (error) {

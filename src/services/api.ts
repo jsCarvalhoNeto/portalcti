@@ -42,11 +42,17 @@ const createAPI = () => {
           const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
           
           if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-            console.warn('🔒 Erro 401 relacionado a navegação privada detectado');
+            console.warn('🔒 Erro 401 relacionado a navegação privada detectado', {
+              url: error.config?.url,
+              method: error.config?.method,
+              privacyDetails: privacyCheck
+            });
             
             // Adicionar informação adicional ao erro
             error.isPrivacyModeIssue = true;
             error.privacyDetails = privacyCheck;
+          } else {
+            console.log('⚠️ Erro 401 não relacionado a modo privado - pode ser sessão expirada');
           }
         } catch (importError) {
           console.warn('Não foi possível verificar modo de navegação privada:', importError);

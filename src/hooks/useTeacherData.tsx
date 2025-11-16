@@ -15,6 +15,16 @@ export const useTeacherData = () => {
     }
 
     try {
+      // Verificar primeiro se estamos em modo privado
+      const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+      const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+      
+      if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+        console.log('🔒 Modo privado detectado - pulando busca de dados do professor');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       console.log('Buscando disciplinas para o professor:', user.id);

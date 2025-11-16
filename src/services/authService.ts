@@ -104,6 +104,13 @@ export async function logout(): Promise<boolean> {
  */
 export async function getCurrentUser(): Promise<UserProfile | null> {
   try {
+    // Verificar primeiro se estamos em modo privado
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de usuário atual');
+      return null;
+    }
+
     const response = await api.get('/auth/me');
     return response.data;
   } catch (error) {

@@ -79,6 +79,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       setLoading(true);
       try {
+        // Verificar primeiro se estamos em modo privado antes de tentar obter usuário
+        const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+        const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+        
+        if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+          console.log('🔒 Modo privado detectado - pulando verificação de sessão');
+          setLoading(false);
+          return;
+        }
+
         // Tentar obter informações do usuário atual via API usando cookies
         const currentUser = await getCurrentUser();
         if (currentUser) {
@@ -86,6 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Erro ao verificar sessão:", error);
+        // Verificar se o erro é relacionado a modo privado
+        if ((error as any)?.isPrivacyModeIssue) {
+          console.log('🔒 Erro de sessão relacionado a modo privado - pulando verificação');
+        }
       } finally {
         setLoading(false);
       }

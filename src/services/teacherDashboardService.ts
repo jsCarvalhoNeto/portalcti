@@ -80,6 +80,15 @@ export interface UserProfile {
  */
 export async function getTeacherSubjects(teacherId: string): Promise<Subject[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de disciplinas do professor');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get(`/teachers/${teacherId}/subjects`);
     return response.data;
   } catch (error) {
@@ -93,6 +102,15 @@ export async function getTeacherSubjects(teacherId: string): Promise<Subject[]> 
  */
 export async function getTeacherActivities(teacherId: string): Promise<Activity[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de atividades do professor');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get(`/activities/teacher/${teacherId}`);
     return response.data;
   } catch (error) {
@@ -171,10 +189,34 @@ export async function getPendingActivities(teacherId: string): Promise<Activity[
  */
 export async function getTeacherCalendarEvents(teacherId: string): Promise<CalendarEvent[]> {
   try {
+    // Verificar se estamos em modo privado antes de fazer a requisição
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando requisição de eventos do calendário');
+      return []; // Retornar array vazio em modo privado
+    }
+
     const response = await api.get(`/calendar-events/user/me`);
-    return response.data.data;
+    // Verificar se a resposta contém o formato esperado
+    if (response.data && response.data.data !== undefined) {
+      return response.data.data;
+    } else {
+      // Caso o backend retorne diretamente o array sem envelope
+      return response.data || [];
+    }
   } catch (error) {
     console.error('Erro ao buscar eventos do calendário:', error);
+    // Verificar se o erro é relacionado a modo privado
+    if ((error as any)?.response?.status === 401) {
+      const { default: FallbackPrivacyModeUtils } = await import('../utils/privacyMode');
+      const fallbackPrivacyCheck = await FallbackPrivacyModeUtils.handlePrivacyMode();
+      if (fallbackPrivacyCheck.isPrivate || !fallbackPrivacyCheck.cookiesWork) {
+        console.warn('⚠️ Erro 401 relacionado a modo privado detectado');
+        return []; // Retornar array vazio em caso de erro de autenticação no modo privado
+      }
+    }
     throw error;
   }
 }

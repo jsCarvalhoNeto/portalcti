@@ -124,6 +124,16 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
   const fetchStudents = useCallback(async () => {
     if (!user) return;
     
+    // Verificar primeiro se estamos em modo privado
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando busca de alunos do professor');
+      setLoading(prev => ({ ...prev, students: false }));
+      return;
+    }
+
     setLoading(prev => ({ ...prev, students: true }));
     setError(prev => ({ ...prev, students: null }));
     
@@ -145,6 +155,16 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
   const fetchActivities = useCallback(async () => {
     if (!user) return;
     
+    // Verificar primeiro se estamos em modo privado
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando busca de atividades do professor');
+      setLoading(prev => ({ ...prev, activities: false }));
+      return;
+    }
+
     setLoading(prev => ({ ...prev, activities: true }));
     setError(prev => ({ ...prev, activities: null }));
     
@@ -166,6 +186,16 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
   const fetchCalendarEvents = useCallback(async () => {
     if (!user) return;
     
+    // Verificar primeiro se estamos em modo privado
+    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    
+    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+      console.log('🔒 Modo privado detectado - pulando busca de eventos do calendário');
+      setLoading(prev => ({ ...prev, calendar: false }));
+      return;
+    }
+
     setLoading(prev => ({ ...prev, calendar: true }));
     setError(prev => ({ ...prev, calendar: null }));
     
