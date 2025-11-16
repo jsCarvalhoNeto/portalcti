@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +31,17 @@ interface NewActivityModalProps {
 
 export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityModalProps) {
   const { subjects, grades, refetch } = useTeacherDashboard();
+
+  // Snapshots locais para evitar que a lista de itens mude durante o ciclo de vida do modal
+  const [subjectsSnapshot, setSubjectsSnapshot] = useState(subjects);
+  const [gradesSnapshot, setGradesSnapshot] = useState(grades);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSubjectsSnapshot(subjects);
+      setGradesSnapshot(grades);
+    }
+  }, [isOpen, subjects, grades]);
   const { user } = useAuth();
   const { toast } = useToast();
   const [activityName, setActivityName] = useState('');
@@ -133,6 +144,9 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  // Usar ref para saber se o modal estava aberto
+  const wasOpen = useRef(isOpen);
+
   const resetForm = () => {
     setActivityName('');
     setSelectedSubject('');
@@ -144,6 +158,14 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
     setEvaluationType('');
     setFiles([]);
   };
+
+  // Limpar o formulário apenas quando o modal for fechado
+  useEffect(() => {
+    if (wasOpen.current && !isOpen) {
+      resetForm();
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen]);
 
   const handleSubmit = async () => {
     if (!activityName || !selectedSubject || !selectedGrade || !user) {
@@ -211,7 +233,6 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
       });
       
       refetch.activities();
-      resetForm();
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -250,12 +271,12 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
             <Label htmlFor="subject" className="text-right">
               Disciplina
             </Label>
-            <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!subjects || subjects.length === 0}>
+            <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!subjectsSnapshot || subjectsSnapshot.length === 0}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder={subjects && subjects.length > 0 ? "Selecione a disciplina" : "Nenhuma disciplina disponível"} />
+                <SelectValue placeholder={subjectsSnapshot && subjectsSnapshot.length > 0 ? "Selecione a disciplina" : "Nenhuma disciplina disponível"} />
               </SelectTrigger>
               <SelectContent>
-                {subjects && subjects.length > 0 ? subjects.map((subject) => (
+                {subjectsSnapshot && subjectsSnapshot.length > 0 ? subjectsSnapshot.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id.toString()}>
                     {subject.name}
                   </SelectItem>
@@ -273,7 +294,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
               </SelectTrigger>
               <SelectContent>
                 {/* Supondo que 'grades' seja um array de strings como ['1º Ano', '2º Ano'] */}
-                {grades && grades.map((grade) => (
+                {gradesSnapshot && gradesSnapshot.map((grade) => (
                   <SelectItem key={grade} value={grade}>
                     {grade}
                   </SelectItem>
@@ -408,7 +429,6 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => {
-            resetForm();
             onOpenChange(false);
           }}>
             Cancelar
