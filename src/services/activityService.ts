@@ -76,7 +76,7 @@ export interface StudentActivity {
 
 export async function createActivity(activityData: ActivityData) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
+    // Verificar primeiro se estamos em modo privado antes de fazer a requisição
     const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
     const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
     
@@ -89,6 +89,15 @@ export async function createActivity(activityData: ActivityData) {
     return response.data;
   } catch (error) {
     console.error('Error creating activity:', error);
+    // Verificar se o erro está relacionado ao modo privado/anônimo
+    if ((error as any)?.response?.status === 401) {
+      const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
+      const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+      if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
+        console.warn('⚠️ Erro 401 relacionado a modo privado detectado');
+        throw new Error('Não é possível criar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+      }
+    }
     throw new Error('Não foi possível criar a atividade.');
   }
 }

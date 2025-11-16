@@ -250,16 +250,16 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
             <Label htmlFor="subject" className="text-right">
               Disciplina
             </Label>
-            <Select onValueChange={setSelectedSubject} value={selectedSubject}>
+            <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!subjects || subjects.length === 0}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Selecione a disciplina" />
+                <SelectValue placeholder={subjects && subjects.length > 0 ? "Selecione a disciplina" : "Nenhuma disciplina disponível"} />
               </SelectTrigger>
               <SelectContent>
-                {subjects?.map((subject) => (
+                {subjects && subjects.length > 0 ? subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id.toString()}>
                     {subject.name}
                   </SelectItem>
-                )) || []}
+                )) : []}
               </SelectContent>
             </Select>
           </div>
