@@ -23,8 +23,6 @@ import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContex
 import { updateActivity, deleteActivity, ActivityData } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 
 interface EditActivityModalProps {
   isOpen: boolean;
@@ -347,28 +345,12 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               Descrição
             </Label>
             <div className="col-span-3">
-              <ReactQuill
+              <textarea
                 id="description"
-                theme="snow"
                 value={description}
-                onChange={setDescription}
-                placeholder="Descrição da atividade com formatação..."
-                modules={{
-                  toolbar: [
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['clean']
-                  ]
-                }}
-                formats={[
-                  'bold', 'italic', 'underline', 'strike',
-                  'color', 'background',
-                  'list', 'bullet',
-                  'align'
-                ]}
-                className="bg-background"
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descrição da atividade..."
+                className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Use a barra de ferramentas para formatar o texto com negrito, itálico, cores, listas, etc.

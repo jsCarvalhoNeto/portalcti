@@ -1,7 +1,4 @@
 import { useState, useEffect } from 'react';
-// React-Quill WYSIWYG editor
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -473,20 +470,12 @@ export default function StudentActivitiesTab() {
               <div>
                 <Label htmlFor="text_submission">Texto de Submissão</Label>
                 <div className="mt-2">
-                  <ReactQuill
+                  <textarea
                     id="text_submission"
-                    theme="snow"
                     value={submissionData.text_submission || ''}
-                    onChange={(content) => setSubmissionData(prev => ({ ...prev, text_submission: content }))}
-                    modules={{
-                      toolbar: [
-                        ['bold', 'italic', 'underline'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['clean']
-                      ]
-                    }}
-                    formats={[ 'bold', 'italic', 'underline', 'list', 'bullet' ]}
-                    className="bg-background/50"
+                    onChange={(e) => setSubmissionData(prev => ({ ...prev, text_submission: e.target.value }))}
+                    placeholder="Texto de submissão da atividade..."
+                    className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background/50"
                   />
                   <p className="text-xs text-muted-foreground mt-1">Use o campo acima para digitar trabalhos manuscritos. A formatação básica (negrito, itálico, sublinhado e listas) está disponível.</p>
                 </div>
