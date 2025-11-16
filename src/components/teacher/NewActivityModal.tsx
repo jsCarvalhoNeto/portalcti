@@ -255,11 +255,11 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
                 <SelectValue placeholder="Selecione a disciplina" />
               </SelectTrigger>
               <SelectContent>
-                {subjects.map((subject) => (
+                {subjects?.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id.toString()}>
                     {subject.name}
                   </SelectItem>
-                ))}
+                )) || []}
               </SelectContent>
             </Select>
           </div>
