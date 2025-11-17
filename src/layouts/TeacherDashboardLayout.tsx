@@ -7,6 +7,7 @@ import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, Graduatio
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import TeacherReportsTab from '@/components/teacher/TeacherReportsTab';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 
 interface TeacherDashboardLayoutProps {
@@ -113,15 +114,19 @@ export default function TeacherDashboardLayout({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-4xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
+            <TabsList className="hidden md:grid w-full grid-cols-8 gap-2">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
               <TabsTrigger value="utilitarios">Utilitários</TabsTrigger>
+              <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
+            <TabsContent value="relatorios" className="space-y-8">
+              <TeacherReportsTab />
+            </TabsContent>
             
             {/* Menu mobile - Sheet (hamburger) */}
             <div className="md:hidden">
@@ -194,6 +199,17 @@ export default function TeacherDashboardLayout({
                         >
                           <Menu className="w-4 h-4 mr-2" />
                           Utilitários
+                        </Button>
+                        <Button
+                          variant={activeTab === 'relatorios' ? "secondary" : "ghost"}
+                          className="w-full justify-start min-h-12"
+                          onClick={() => {
+                            setActiveTab('relatorios');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Relatórios
                         </Button>
                         <Button
                           variant={activeTab === 'calendar' ? "secondary" : "ghost"}
