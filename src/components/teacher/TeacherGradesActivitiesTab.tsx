@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +14,11 @@ export default function TeacherGradesActivitiesTab() {
   const { activities, loading } = useTeacherDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [isGradesModalOpen, setIsGradesModalOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [pendingActivity, setPendingActivity] = useState<Activity | null>(null);
+  const editModalTimeout = useRef<number | null>(null);
   
   // Estados para modais de equipe
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
@@ -44,6 +47,41 @@ export default function TeacherGradesActivitiesTab() {
     console.log('Equipe criada com sucesso!');
   };
 
+  // Controla delay para desmontar o modal de edição, mesmo ao trocar rapidamente de atividade
+  const handleEditModalChange = (open: boolean) => {
+    setIsEditModalOpen(open);
+    if (open) {
+      setShowEditModal(true);
+      if (editModalTimeout.current) {
+        clearTimeout(editModalTimeout.current);
+        editModalTimeout.current = null;
+      }
+      if (pendingActivity) {
+        setSelectedActivity(pendingActivity);
+        setPendingActivity(null);
+      }
+    } else {
+      editModalTimeout.current = window.setTimeout(() => {
+        setShowEditModal(false);
+        setSelectedActivity(null);
+      }, 300); // tempo típico de animação do Dialog
+    }
+  };
+
+  // Se usuário clicar em outra atividade enquanto modal está aberto, aguarda fechar antes de trocar
+  useEffect(() => {
+    if (pendingActivity && !isEditModalOpen && showEditModal) {
+      // Modal está fechando, aguarda desmontar para trocar
+      return;
+    }
+    if (pendingActivity && !showEditModal) {
+      setSelectedActivity(pendingActivity);
+      setShowEditModal(true);
+      setIsEditModalOpen(true);
+      setPendingActivity(null);
+    }
+  }, [pendingActivity, isEditModalOpen, showEditModal]);
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -66,10 +104,10 @@ export default function TeacherGradesActivitiesTab() {
           subjectId={selectedActivity.subject_id}
         />
       )}
-      {selectedActivity && (
+      {selectedActivity && showEditModal && (
         <EditActivityModal 
           isOpen={isEditModalOpen} 
-          onOpenChange={setIsEditModalOpen} 
+          onOpenChange={handleEditModalChange} 
           activity={selectedActivity}
         />
       )}
@@ -148,8 +186,14 @@ export default function TeacherGradesActivitiesTab() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setSelectedActivity(activity);
-                          setIsEditModalOpen(true);
+                          if (showEditModal) {
+                            setPendingActivity(activity);
+                            setIsEditModalOpen(false); // fecha o modal atual, depois troca
+                          } else {
+                            setSelectedActivity(activity);
+                            setShowEditModal(true);
+                            setIsEditModalOpen(true);
+                          }
                         }}
                         className="flex items-center gap-1"
                       >

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContext';
 import { updateActivity, deleteActivity, ActivityData } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,8 +69,9 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-   // Carregar dados da atividade quando o modal for aberto
+  // Corrige desmontagem abrupta do Select ao fechar o Dialog
   useEffect(() => {
+    let timeout: number | undefined;
     if (activity && isOpen) {
       setActivityName(activity.name || '');
       setSelectedSubject(activity.subject_id?.toString() || '');
@@ -84,18 +85,23 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
         setFileName(activity.file_name);
       }
     } else {
-      // Limpar campos quando o modal for fechado
-      setActivityName('');
-      setSelectedSubject('');
-      setSelectedGrade('');
-      setActivityType('individual');
-      setDescription('');
-      setDeadline('');
-      setPeriod('');
-      setEvaluationType('');
-      setFile(null);
-      setFileName('');
+      // Aguarda animação do Dialog antes de limpar campos
+      timeout = window.setTimeout(() => {
+        setActivityName('');
+        setSelectedSubject('');
+        setSelectedGrade('');
+        setActivityType('individual');
+        setDescription('');
+        setDeadline('');
+        setPeriod('');
+        setEvaluationType('');
+        setFile(null);
+        setFileName('');
+      }, 300);
     }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [activity, isOpen]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

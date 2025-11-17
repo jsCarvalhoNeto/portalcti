@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,11 +38,22 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
   const [subjectsSnapshot, setSubjectsSnapshot] = useState(subjects);
   const [gradesSnapshot, setGradesSnapshot] = useState(grades);
 
+  // Corrige desmontagem abrupta do Select ao fechar o Dialog
   useEffect(() => {
+    let timeout: number | undefined;
     if (isOpen) {
       setSubjectsSnapshot(subjects);
       setGradesSnapshot(grades);
+    } else {
+      // Aguarda animação do Dialog antes de limpar snapshots
+      timeout = setTimeout(() => {
+        setSubjectsSnapshot([]);
+        setGradesSnapshot([]);
+      }, 300); // 300ms = tempo típico de animação do Dialog
     }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [isOpen, subjects, grades]);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -51,20 +64,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
   const [description, setDescription] = useState('');
    const [deadline, setDeadline] = useState('');
 
-  // Função para formatar data para o formato datetime-local (YYYY-MM-DDTHH:mm)
-  const formatDateTimeLocal = (dateString: string): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    // Verificar se a data é válida
-    if (isNaN(date.getTime())) return '';
-    // Formatar para YYYY-MM-DDTHH:mm
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
+  // ...
 
   // Função para converter datetime-local para ISO string (formato que o backend espera)
   const convertToISO = (datetimeLocal: string): string => {
@@ -355,15 +355,30 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
               Descrição
             </Label>
             <div className="col-span-3">
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descrição da atividade..."
-                className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background"
-              />
+              <div className="bg-background rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500">
+                <ReactQuill
+                  id="description"
+                  theme="snow"
+                  value={typeof description === 'string' ? description : ''}
+                  onChange={value => setDescription(typeof value === 'string' ? value : '')}
+                  placeholder="Descrição da atividade..."
+                  style={{ minHeight: 120 }}
+                  modules={{
+                    toolbar: [
+                      [{ 'header': [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
+                      [{ 'color': [] }, { 'background': [] }],
+                      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                      [{ 'align': [] }],
+                      ['blockquote', 'code-block'],
+                      ['link', 'image'],
+                      ['clean']
+                    ]
+                  }}
+                />
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Use a barra de ferramentas para formatar o texto com negrito, itálico, cores, listas, etc.
+                Use a barra de ferramentas para formatar o texto com negrito, itálico, listas, links, etc.
               </p>
             </div>
           </div>
