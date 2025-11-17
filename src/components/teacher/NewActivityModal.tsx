@@ -362,7 +362,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
                   value={typeof description === 'string' ? description : ''}
                   onChange={value => setDescription(typeof value === 'string' ? value : '')}
                   placeholder="Descrição da atividade..."
-                  style={{ minHeight: 120 }}
+                  style={{ minHeight: 200, maxHeight: 400, resize: 'vertical', overflow: 'auto' }}
                   modules={{
                     toolbar: [
                       [{ 'header': [1, 2, 3, false] }],
