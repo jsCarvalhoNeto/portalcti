@@ -1,3 +1,15 @@
+/**
+ * Busca todos os estudantes de uma série específica (usando API real)
+ */
+export async function getStudentsByGrade(grade: string) {
+  try {
+    const response = await api.get(`/students/grade/${encodeURIComponent(grade)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar estudantes por série:', error);
+    throw error;
+  }
+}
 import api from './api';
 
 /**

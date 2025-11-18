@@ -1,11 +1,19 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Settings, Calculator, FileText, Key, BarChart3 } from 'lucide-react';
+import { Settings, Calculator, FileText, Key, BarChart3, Users } from 'lucide-react';
 import { useState } from 'react';
 import PollUtility from '@/components/teacher/PollUtility';
+import SorteadorCard from '@/components/teacher/SorteadorCard';
+import SorteadorEquipes from '@/components/teacher/SorteadorEquipes';
 
 const utilities = [
+    {
+      name: 'Sorteador de Equipes',
+      description: 'Sorteie alunos para equipes, defina líderes e edite as equipes facilmente.',
+      icon: Users,
+      color: '#f43f5e'
+    },
   {
     name: 'Pesquisa Online',
     description: 'Crie pesquisas enquetes para seus alunos com resultados em tempo real.',
@@ -46,7 +54,7 @@ export default function TeacherUtilities() {
   };
 
   const handleUtilityClick = (name: string) => {
-    if (name === 'Pesquisa Online') {
+    if (name === 'Pesquisa Online' || name === 'Sorteador de Equipes') {
       setActiveUtility(name);
     } else {
       console.log(`Acessando ${name}`);
@@ -74,6 +82,19 @@ export default function TeacherUtilities() {
             </Button>
           </div>
           <PollUtility />
+        </div>
+      ) : activeUtility === 'Sorteador de Equipes' ? (
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Sorteador de Equipes</h2>
+            <Button
+              variant="outline"
+              onClick={() => setActiveUtility(null)}
+            >
+              Voltar
+            </Button>
+          </div>
+          <SorteadorEquipes />
         </div>
       ) : (
         <Card>
