@@ -1,6 +1,7 @@
 // Utilitário para detectar e lidar com problemas de navegação privada
 export const PrivacyModeUtils = {
   /**
+  /**
    * Verifica se o navegador está em modo de navegação privada
    */
   async isPrivateMode(): Promise<boolean> {
@@ -15,7 +16,12 @@ export const PrivacyModeUtils = {
       sessionStorage.removeItem(testKey);
       
       return false;
-    } catch (e) {
+    } catch (e: any) {
+      // Ignorar erros de cota excedida (não é modo privado)
+      if (e.name === 'QuotaExceededError' || 
+          e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        return false;
+      }
       return true;
     }
   },
@@ -45,6 +51,11 @@ export const PrivacyModeUtils = {
    * Exibe aviso sobre navegação privada e problemas de cookies
    */
   showPrivacyModeWarning(): void {
+    // Se o usuário já fechou o aviso nesta sessão, não mostrar novamente
+    if (sessionStorage.getItem('privacy_warning_dismissed')) {
+      return;
+    }
+
     const warningId = 'privacy-mode-warning';
     
     // Remove aviso existente se houver
@@ -69,22 +80,27 @@ export const PrivacyModeUtils = {
       z-index: 9999;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       animation: slideDown 0.3s ease-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     `;
 
     warning.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
         <span>⚠️</span>
         <span>
-          <strong>Navegação Privada Detectada:</strong> 
-          Alguns recursos podem não funcionar corretamente. 
-          Para melhor experiência, use o navegador normal.
+          <strong>Aviso do Sistema:</strong> 
+          Detectamos restrições de armazenamento (Modo Privado ou Bloqueador).
+          Alguns recursos podem não funcionar.
         </span>
-        <button onclick="this.parentElement.parentElement.remove()" 
-                style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); 
-                       color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-          ✕
-        </button>
       </div>
+      <button id="dismiss-privacy-warning" 
+              style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); 
+                     color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
+                     transition: background 0.2s;">
+        Entendi
+      </button>
     `;
 
     // Adicionar CSS da animação
@@ -102,13 +118,23 @@ export const PrivacyModeUtils = {
 
     document.body.appendChild(warning);
 
-    // Auto-remove após 10 segundos
+    // Adicionar evento de clique ao botão
+    const btn = warning.querySelector('#dismiss-privacy-warning');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        sessionStorage.setItem('privacy_warning_dismissed', 'true');
+        warning.style.animation = 'slideDown 0.3s ease-out reverse';
+        setTimeout(() => warning.remove(), 300);
+      });
+    }
+
+    // Auto-remove após 15 segundos (aumentado de 10)
     setTimeout(() => {
       if (document.getElementById(warningId)) {
         warning.style.animation = 'slideDown 0.3s ease-out reverse';
         setTimeout(() => warning.remove(), 300);
       }
-    }, 10000);
+    }, 15000);
   },
 
   /**

@@ -12,10 +12,12 @@ export default function TeacherStudentsTab() {
   const initialLoading = loading.students;
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
- const [displayedStudents, setDisplayedStudents] = useState<Student[]>([]);
+  const [displayedStudents, setDisplayedStudents] = useState<Student[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchStudents = async () => {
       setDataLoading(true);
       try {
@@ -24,25 +26,39 @@ export default function TeacherStudentsTab() {
           const grades: ('1º Ano' | '2º Ano' | '3º Ano')[] = ['1º Ano', '2º Ano', '3º Ano'];
           const studentPromises = grades.map(grade => getStudentsByGrade(grade));
           const studentsByGrade = await Promise.all(studentPromises);
+
+          if (!isMounted) return;
+
           const allStudents = studentsByGrade.flat();
-          
+
           // Remove duplicatas com base no ID do aluno
           const uniqueStudents = Array.from(new Map(allStudents.map(student => [student.id, student])).values());
           setDisplayedStudents(uniqueStudents);
         } else {
           // Busca alunos para a série específica selecionada
           const data = await getStudentsByGrade(selectedGrade as '1º Ano' | '2º Ano' | '3º Ano');
+
+          if (!isMounted) return;
+
           setDisplayedStudents(data);
         }
       } catch (error) {
         console.error('Erro ao buscar alunos:', error);
-        setDisplayedStudents([]); // Limpa a lista em caso de erro
+        if (isMounted) {
+          setDisplayedStudents([]); // Limpa a lista em caso de erro
+        }
       } finally {
-        setDataLoading(false);
+        if (isMounted) {
+          setDataLoading(false);
+        }
       }
     };
 
     fetchStudents();
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedGrade]);
 
   const filteredStudents = useMemo(() => {
@@ -52,7 +68,7 @@ export default function TeacherStudentsTab() {
     if (!searchTerm) {
       return displayedStudents;
     }
-    return displayedStudents.filter(student => 
+    return displayedStudents.filter(student =>
       student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.student_registration?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -64,34 +80,34 @@ export default function TeacherStudentsTab() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold">Meus Alunos</h2>
-        <p className="text-muted-foreground">Alunos matriculados em suas disciplinas</p>
+        <h2 className="text-2xl font-bold"><span>Meus Alunos</span></h2>
+        <p className="text-muted-foreground"><span>Alunos matriculados em suas disciplinas</span></p>
       </div>
 
       {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busque e filtre alunos por série</CardDescription>
+          <CardTitle><span>Filtros</span></CardTitle>
+          <CardDescription><span>Busque e filtre alunos por série</span></CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Filtrar por Série</label>
+              <label className="text-sm font-medium"><span>Filtrar por Série</span></label>
               <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as séries" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as séries</SelectItem>
-                  <SelectItem value="1º Ano">1º Ano</SelectItem>
-                  <SelectItem value="2º Ano">2º Ano</SelectItem>
-                  <SelectItem value="3º Ano">3º Ano</SelectItem>
+                  <SelectItem value="all"><span>Todas as séries</span></SelectItem>
+                  <SelectItem value="1º Ano"><span>1º Ano</span></SelectItem>
+                  <SelectItem value="2º Ano"><span>2º Ano</span></SelectItem>
+                  <SelectItem value="3º Ano"><span>3º Ano</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Buscar Aluno</label>
+              <label className="text-sm font-medium"><span>Buscar Aluno</span></label>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <input
@@ -109,10 +125,10 @@ export default function TeacherStudentsTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Alunos</CardTitle>
+          <CardTitle><span>Lista de Alunos</span></CardTitle>
           <CardDescription>
-            {selectedGrade !== 'all' ? `Alunos de ${selectedGrade}` : 'Todos os alunos'}
-            {searchTerm && ` - Buscando por: "${searchTerm}"`}
+            <span>{selectedGrade !== 'all' ? `Alunos de ${selectedGrade}` : 'Todos os alunos'}</span>
+            {searchTerm && <span>{` - Buscando por: "${searchTerm}"`}</span>}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,7 +137,7 @@ export default function TeacherStudentsTab() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" translate="no">
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((student) => (
                   <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -132,23 +148,23 @@ export default function TeacherStudentsTab() {
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium">{student.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{student.email}</p>
+                        <p className="font-medium"><span>{student.full_name}</span></p>
+                        <p className="text-sm text-muted-foreground"><span>{student.email}</span></p>
                         {student.student_registration && (
                           <p className="text-xs text-muted-foreground">
-                            Matrícula: {student.student_registration}
+                            <span>Matrícula: </span><span>{student.student_registration}</span>
                           </p>
                         )}
                         {student.grade && (
                           <p className="text-xs text-muted-foreground">
-                            Série: {student.grade}
+                            <span>Série: </span><span>{student.grade}</span>
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="default" className="capitalize">
-                        {student.grade || 'Sem série'}
+                        <span>{student.grade || 'Sem série'}</span>
                       </Badge>
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" title="Enviar e-mail">
@@ -166,8 +182,9 @@ export default function TeacherStudentsTab() {
                 ))
               ) : (
                 <p className="text-center text-muted-foreground py-8">
-                  Nenhum aluno encontrado {selectedGrade !== 'all' && `em ${selectedGrade}`}
-                  {searchTerm && ` com o termo "${searchTerm}"`}
+                  <span>Nenhum aluno encontrado </span>
+                  {selectedGrade !== 'all' && <span>{`em ${selectedGrade}`}</span>}
+                  {searchTerm && <span>{` com o termo "${searchTerm}"`}</span>}
                 </p>
               )}
             </div>
