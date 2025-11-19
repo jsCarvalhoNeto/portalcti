@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Mail, Phone, GraduationCap, Search } from 'lucide-react';
+import { Mail, Phone, GraduationCap, Search } from 'lucide-react';
 import { getStudentsByGrade } from '@/services/teacherDashboardService';
 
 export default function TeacherStudentsTab() {

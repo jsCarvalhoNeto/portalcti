@@ -35,35 +35,20 @@ const NewsEventsSection = () => {
     }
  ];
 
-const events = [
-    {
-      title: "Workshop: Desenvolvimento com TypeScript Avançado",
-      date: "2025-10-25",
-      time: "14:00",
-      location: "Lab 3 - Informática",
-      attendees: 30,
-      type: "Workshop",
-      description: "Aprenda técnicas avançadas de tipagem e melhores práticas em TypeScript para projetos escaláveis."
-    },
-    {
-      title: "Hackathon: Inteligência Artificial Aplicada",
-      date: "2025-11-02",
-      time: "09:00",
-      location: "Auditório Principal",
-      attendees: 40,
-      type: "Competição",
-      description: "Desafio de 24 horas para criar soluções inovadoras usando IA generativa e machine learning."
-    },
-    {
-      title: "Palestra: Carreira em Engenharia de Software",
-      date: "2025-11-08",
-      time: "19:00",
-      location: "Online",
-      attendees: 150,
-      type: "Palestra",
-      description: "Profissionais sênior compartilham insights sobre carreira, tendências e oportunidades no mercado tech."
-    }
-  ];
+// Evento principal do menu Eventos
+const mainEvent = {
+  title: 'Saberes em Conexão',
+  subtitle: 'Escola, Ciência e Sociedade 2025',
+  description: 'Um evento que conecta conhecimento acadêmico, pesquisa científica e aplicação prática na sociedade, promovendo a integração entre escola, universidade e comunidade.',
+  date: {
+    start: '2025-12-08',
+    end: '2025-12-12'
+  },
+  location: 'EEEP Balbina Viana Arraes',
+  attendees: 0, // Pode ser atualizado se necessário
+  type: 'Evento',
+  status: 'registration-closed',
+};
 
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
@@ -156,47 +141,40 @@ const events = [
             </div>
 
             <div className="space-y-6 mb-8">
-              {events.map((event, index) => (
-                <Card 
-                  key={index} 
-                  className="group hover:shadow-medium transition-all duration-300 bg-card border-none"
-                >
+              <a href="/eventos" style={{ textDecoration: 'none' }}>
+                <Card className="group hover:shadow-medium transition-all duration-300 bg-card border-none cursor-pointer">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-3">
-                      <Badge className={getEventTypeColor(event.type)}>
-                        {event.type}
+                      <Badge className="bg-blue-100 text-blue-700">
+                        {mainEvent.type}
                       </Badge>
                       <div className="flex items-center text-muted-foreground text-sm">
                         <Users className="w-4 h-4 mr-1" />
-                        {event.attendees} vagas
+                        Evento principal
                       </div>
                     </div>
-                    
                     <h3 className="text-xl font-semibold text-foreground mb-3 group-hover:text-primary transition-colors">
-                      {event.title}
+                      {mainEvent.title}
                     </h3>
-                    
                     <p className="text-muted-foreground mb-4">
-                      {event.description}
+                      {mainEvent.description}
                     </p>
-                    
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4 mr-2" />
-                        {new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}
+                        {new Date(mainEvent.date.start).toLocaleDateString('pt-BR')} a {new Date(mainEvent.date.end).toLocaleDateString('pt-BR')}
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <MapPin className="w-4 h-4 mr-2" />
-                        {event.location}
+                        {mainEvent.location}
                       </div>
                     </div>
-                    
-                    <Button variant="hero" size="sm" className="w-full">
-                      Inscrever-se
+                    <Button variant="hero" size="sm" className="w-full" disabled>
+                      Inscrição Encerrada
                     </Button>
                   </CardContent>
                 </Card>
-              ))}
+              </a>
             </div>
 
             <Button variant="outline" className="w-full">

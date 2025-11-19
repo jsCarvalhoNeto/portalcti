@@ -2,8 +2,8 @@
 import { PrivacyModeUtils } from './privacyMode';
 
 // Mock localStorage and sessionStorage
-const originalLocalStorage = global.localStorage;
-const originalSessionStorage = global.sessionStorage;
+const originalLocalStorage = globalThis.localStorage;
+const originalSessionStorage = globalThis.sessionStorage;
 
 const mockStorage = (shouldThrow: boolean, errorName: string = 'Error') => {
     const storage = {
@@ -18,9 +18,11 @@ const mockStorage = (shouldThrow: boolean, errorName: string = 'Error') => {
         getItem: () => null,
     };
 
-    Object.defineProperty(global, 'localStorage', { value: storage, writable: true });
-    Object.defineProperty(global, 'sessionStorage', { value: storage, writable: true });
+    Object.defineProperty(globalThis, 'localStorage', { value: storage, writable: true });
+    Object.defineProperty(globalThis, 'sessionStorage', { value: storage, writable: true });
 };
+
+declare const process: { exit: (code?: number) => void };
 
 const runTests = async () => {
     console.log('🧪 Starting Privacy Mode Tests...');
@@ -58,8 +60,8 @@ const runTests = async () => {
     assert(isPrivate4 === false, 'Should return false for NS_ERROR_DOM_QUOTA_REACHED');
 
     // Restore original storage
-    Object.defineProperty(global, 'localStorage', { value: originalLocalStorage, writable: true });
-    Object.defineProperty(global, 'sessionStorage', { value: originalSessionStorage, writable: true });
+    Object.defineProperty(globalThis, 'localStorage', { value: originalLocalStorage, writable: true });
+    Object.defineProperty(globalThis, 'sessionStorage', { value: originalSessionStorage, writable: true });
 
     console.log(`\n📊 Test Results: ${passed} Passed, ${failed} Failed`);
 
