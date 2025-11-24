@@ -143,11 +143,11 @@ export default function StudentActivitiesTab() {
         return;
       }
 
-      // Verificar limite de arquivos (máximo 5 para alunos)
-      if (selectedFiles.length > 5) {
+      // Verificar limite de arquivos (máximo 15 para alunos)
+      if (selectedFiles.length > 15) {
         toast({
           title: "Muitos arquivos selecionados",
-          description: "Máximo de 5 arquivos permitidos por submissão.",
+          description: "Máximo de 15 arquivos permitidos por submissão.",
           variant: "destructive",
         });
         return;
@@ -492,7 +492,7 @@ export default function StudentActivitiesTab() {
                     accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
                   />
                   <p className="text-xs text-muted-foreground">
-                    📁 Selecione até 5 arquivos (máx. 50MB cada). 
+                    📁 Selecione até 15 arquivos (máx. 50MB cada). 
                     Suporta: código (HTML, CSS, JS, Python, SQL, Java, etc.), documentos (PDF, DOC, PPT), imagens e compactados.
                   </p>
                   
