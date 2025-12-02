@@ -80,14 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       try {
         // Verificar primeiro se estamos em modo privado antes de tentar obter usuário
-        const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-        const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-        
-        if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-          console.log('🔒 Modo privado detectado - pulando verificação de sessão');
-          setLoading(false);
-          return;
-        }
+        // Verificação de modo privado removida para evitar falsos positivos em produção
+        // O sistema tentará autenticar normalmente
 
         // Tentar obter informações do usuário atual via API usando cookies
         const currentUser = await getCurrentUser();
