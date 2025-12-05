@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette, GraduationCap } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, Gamepad, Users, Edit3, Lock, BookOpen, FileText, Menu, Palette, GraduationCap, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -52,7 +52,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { loadUserColors: loadUserColorsHook } = useUserColors();
-  
+
   // Estados para modal de cor pessoal
   const [showPersonalColorModal, setShowPersonalColorModal] = useState(false);
   const [selectedSubjectForPersonalColor, setSelectedSubjectForPersonalColor] = useState<any>(null);
@@ -220,9 +220,9 @@ export default function StudentDashboard() {
       const data = await gamificationService.getStudentGamification(user.id);
       const total = Number(data?.total?.total_points || 0);
       setTotalPoints(total);
-  const badges = data?.badges || [];
-  const nextBadge = badges && badges.length > 0 ? badges.slice().sort((a:any,b:any)=> (a.threshold_points||0)-(b.threshold_points||0)).find((b:any)=> (b.threshold_points||0) > total) : null;
-      const nextThreshold = nextBadge?.threshold_points || Math.ceil((total + 100)/100)*100;
+      const badges = data?.badges || [];
+      const nextBadge = badges && badges.length > 0 ? badges.slice().sort((a: any, b: any) => (a.threshold_points || 0) - (b.threshold_points || 0)).find((b: any) => (b.threshold_points || 0) > total) : null;
+      const nextThreshold = nextBadge?.threshold_points || Math.ceil((total + 100) / 100) * 100;
       const progress = nextThreshold ? Math.min(100, Math.round((total / nextThreshold) * 100)) : 0;
       setProgressPercent(progress);
       setUnlockedBadges(data?.unlocked_badges || []);
@@ -256,7 +256,7 @@ export default function StudentDashboard() {
       } catch (e) {
         console.warn('Erro ao popular subjectNamesMap', e);
       }
-      
+
       // Buscar atividades para atualizar o contador de pendentes
       if (user) {
         await fetchPendingActivities();
@@ -275,7 +275,7 @@ export default function StudentDashboard() {
 
   const fetchPendingActivities = async () => {
     if (!user) return;
-    
+
     try {
       // Usar o service para buscar atividades do aluno
       const activities = await getStudentActivities();
@@ -315,7 +315,7 @@ export default function StudentDashboard() {
         variant: "destructive",
       });
     }
- };
+  };
 
   const handleChangePassword = async () => {
     if (!user || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword) {
@@ -366,7 +366,7 @@ export default function StudentDashboard() {
     { title: 'Minhas Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Atividades Pendentes', value: pendingActivities.toString(), icon: BarChart3, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
     { title: 'Notificações', value: notifications.length.toString(), icon: Users, color: 'text-accent', bgColor: 'bg-accent/10' },
-  { title: 'Progresso Geral', value: '0%', icon: Gamepad, color: 'text-green-500', bgColor: 'bg-green-500/10' }
+    { title: 'Progresso Geral', value: '0%', icon: Gamepad, color: 'text-green-500', bgColor: 'bg-green-500/10' }
   ];
 
   return (
@@ -393,8 +393,8 @@ export default function StudentDashboard() {
                 <BookOpen className="w-3 h-3" />
                 Aluno
               </Badge>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="hidden lg:flex"
                 onClick={() => window.location.reload()}
@@ -402,6 +402,12 @@ export default function StudentDashboard() {
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Atualizar
+              </Button>
+              <Button variant="outline" size="sm" className="hidden lg:flex" asChild>
+                <Link to="/student/career">
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Carreira
+                </Link>
               </Button>
               <Button variant="outline" size="sm" className="hidden lg:flex" asChild>
                 <Link to="/gamification">
@@ -437,7 +443,7 @@ export default function StudentDashboard() {
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
-            
+
             {/* Menu mobile - Sheet (hamburger) */}
             <div className="md:hidden">
               <div className="w-full">
@@ -659,7 +665,7 @@ export default function StudentDashboard() {
                 </CardHeader>
                 <CardContent>
                   {unlockedBadges && unlockedBadges.length > 0 ? (
-                    <BadgeGrid badges={unlockedBadges.slice(0,6)} cols={3} compact />
+                    <BadgeGrid badges={unlockedBadges.slice(0, 6)} cols={3} compact />
                   ) : (
                     <div className="text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
                   )}
@@ -674,7 +680,7 @@ export default function StudentDashboard() {
                 <CardContent>
                   {unlockedBySubject && unlockedBySubject.length > 0 ? (
                     <div className="space-y-3">
-                      {unlockedBySubject.map((s:any) => (
+                      {unlockedBySubject.map((s: any) => (
                         <div key={s.subject_id} className="p-2 border rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <SubjectName subjectId={s.subject_id} subjectNameFromApi={s.subject_name} />
@@ -757,7 +763,7 @@ export default function StudentDashboard() {
                 {subjects.map((subject) => {
                   // Cor do card - usa cor personalizada do usuário ou cor da disciplina ou padrão
                   const cardColor = getSubjectColor(subject);
-                  
+
                   // Determina se a cor é clara ou escura para ajustar o texto
                   const isLightColor = (hex: string) => {
                     const rgb = parseInt(hex.slice(1), 16);
@@ -769,11 +775,11 @@ export default function StudentDashboard() {
                   };
 
                   const textColor = isLightColor(cardColor) ? '#1f2937' : '#ffffff';
-                  
+
                   return (
-                    <Card 
-                      key={subject.id} 
-                      className="hover:shadow-glow transition-all duration-300 cursor-pointer border-0 relative overflow-hidden" 
+                    <Card
+                      key={subject.id}
+                      className="hover:shadow-glow transition-all duration-300 cursor-pointer border-0 relative overflow-hidden"
                       onClick={() => navigate(`/disciplinas/${subject.id}`)}
                       style={{
                         background: `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
@@ -781,28 +787,28 @@ export default function StudentDashboard() {
                       }}
                     >
                       {/* Barra de cor no topo do card */}
-                      <div 
+                      <div
                         className="absolute top-0 left-0 right-0 h-1"
                         style={{ backgroundColor: cardColor }}
                       />
-                      
+
                       <CardHeader className="relative">
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle 
-                              className="text-lg" 
+                            <CardTitle
+                              className="text-lg"
                               style={{ color: textColor }}
                             >
                               {subject.name}
                             </CardTitle>
-                            <CardDescription 
+                            <CardDescription
                               style={{ color: `${textColor}B3` }}
                             >
                               Professor: {subject.teacher_name}
                             </CardDescription>
                             {subject.schedule && (
-                              <p 
-                                className="text-sm mt-1" 
+                              <p
+                                className="text-sm mt-1"
                                 style={{ color: `${textColor}CC` }}
                               >
                                 {subject.schedule}
@@ -814,26 +820,26 @@ export default function StudentDashboard() {
                       <CardContent className="relative">
                         <div className="space-y-3">
                           {subject.description && (
-                            <p 
-                              className="text-sm" 
+                            <p
+                              className="text-sm"
                               style={{ color: `${textColor}CC` }}
                             >
                               {subject.description}
                             </p>
                           )}
                           <div className="space-y-3">
-                            <div 
+                            <div
                               className="text-sm"
                               style={{ color: `${textColor}B3` }}
                             >
                               Semestre: {subject.semester || 'Não informado'}
                             </div>
-                            
+
                             {/* Botões organizados em grid responsivo para estudantes */}
                             <div className="grid grid-cols-2 gap-2 mt-4">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
                                 style={{ color: textColor }}
                                 onClick={(e) => {
@@ -844,9 +850,9 @@ export default function StudentDashboard() {
                                 <BookOpen className="w-4 h-4" />
                                 <span className="text-sm font-medium">Conteúdo</span>
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
                                 style={{ color: textColor }}
                                 onClick={(e) => {
@@ -857,9 +863,9 @@ export default function StudentDashboard() {
                                 <GraduationCap className="w-4 h-4" />
                                 <span className="text-sm font-medium">Notas</span>
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
                                 style={{ color: textColor }}
                                 onClick={(e) => {
@@ -870,9 +876,9 @@ export default function StudentDashboard() {
                                 <FileText className="w-4 h-4" />
                                 <span className="text-sm font-medium">Atividades</span>
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
                                 style={{ color: textColor }}
                                 onClick={(e) => {
@@ -932,15 +938,16 @@ export default function StudentDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </main >
 
       {/* Modal de Cor Pessoal */}
-      <PersonalColorModal
+      < PersonalColorModal
         isOpen={showPersonalColorModal}
-        onClose={() => setShowPersonalColorModal(false)}
+        onClose={() => setShowPersonalColorModal(false)
+        }
         subject={selectedSubjectForPersonalColor}
         onColorChanged={handlePersonalColorChanged}
       />
-    </div>
+    </div >
   );
 }

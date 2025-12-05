@@ -29,6 +29,7 @@ import EventRegistration from './pages/EventRegistration';
 import EventThematicAxes from './pages/EventThematicAxes';
 import EventTeamForm from './pages/EventTeamForm';
 import EventConfirmation from './pages/EventConfirmation';
+import StudentCareer from './pages/StudentCareer';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -77,6 +78,7 @@ const App = () => (
                 </ErrorBoundary>
               } />
               <Route path="/student" element={<StudentDashboard />} />
+              <Route path="/student/career" element={<StudentCareer />} />
               <Route path="/teacher" element={<TeacherDashboard />} />
               <Route path="/teacher/achievements" element={<TeacherAchievements />} />
               <Route path="/teacher/daily-challenges" element={<TeacherDailyChallenges />} />
