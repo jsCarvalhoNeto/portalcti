@@ -31,6 +31,19 @@ const createAPI = () => {
     }
   });
 
+  // Interceptor para injetar token de cabeçalho (fallback para cookies bloqueados)
+  instance.interceptors.request.use(
+    (config) => {
+      // Tentar obter token dos headers de armazenamento local (definido no login)
+      const storedSessionId = localStorage.getItem('user_session_header');
+      if (storedSessionId) {
+        config.headers['X-Session-Id'] = storedSessionId;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+
   // Interceptor para lidar com erros 401 (navegação privada)
   instance.interceptors.response.use(
     (response) => response,

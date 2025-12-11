@@ -21,7 +21,7 @@ interface AuthContextType {
   userRole: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
- signUp: (email: string, password: string, fullName: string, studentRegistration?: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, studentRegistration?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isStudent: boolean;
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
- const [hasTempPassword, setHasTempPassword] = useState(false);
+  const [hasTempPassword, setHasTempPassword] = useState(false);
 
   const setUserData = useCallback((authUser: AuthUserProfile | null) => {
     if (!authUser) {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
     setProfile(profileData);
     setUserRole(authUser.role as UserRole);
- }, []);
+  }, []);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -103,11 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     setLoading(true);
-    
+
     try {
       const result = await login({ email, password });
-      
+
       if (result.success && result.user) {
+        // Salvar ID para fallback de header (caso cookies falhem)
+        localStorage.setItem('user_session_header', result.user.id);
+
         setUserData(result.user);
         setLoading(false);
         return { error: null };
@@ -123,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, studentRegistration?: string): Promise<{ error: string | null }> => {
     setLoading(true);
-    
+
     try {
       const credentials: SignUpCredentials = {
         email,
@@ -133,8 +136,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       const result = await apiSignUp(credentials);
-      
+
       if (result.success && result.user) {
+        // Salvar ID para fallback de header (caso cookies falhem)
+        localStorage.setItem('user_session_header', result.user.id);
+
         setUserData(result.user);
         setLoading(false);
         return { error: null };
@@ -154,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
+    localStorage.removeItem('user_session_header');
     setUserData(null);
     setHasTempPassword(false);
   };
