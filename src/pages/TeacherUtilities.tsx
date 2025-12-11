@@ -12,7 +12,8 @@ const utilities = [
     name: 'Roleta de Temas',
     description: 'Sorteie temas de forma interativa com uma roleta giratória colorida.',
     icon: Sparkles,
-    color: '#f59e0b'
+    color: '#f59e0b',
+    textColor: '#1f2937'
   },
   {
     name: 'Sorteador de Equipes',
@@ -30,7 +31,8 @@ const utilities = [
     name: 'Conversor de Notas',
     description: 'Converta notas entre diferentes escalas de avaliação.',
     icon: Calculator,
-    color: '#10b981'
+    color: '#10b981',
+    textColor: '#1f2937'
   },
   {
     name: 'Relatórios Personalizados',
@@ -124,8 +126,14 @@ export default function TeacherUtilities() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {utilities.map((utility, index) => {
-                const textColor = isLightColor(utility.color) ? '#1f2937' : '#ffffff';
+                // Use explicit override if provided, otherwise calculate
+                const textColor = (utility as any).textColor || (isLightColor(utility.color) ? '#1f2937' : '#ffffff');
+                const isDarkText = textColor === '#1f2937';
                 const Icon = utility.icon;
+
+                // Adjust secondary colors based on text color for better contrast
+                const badgeBg = isDarkText ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)';
+                const badgeBorder = isDarkText ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
 
                 return (
                   <Card
@@ -152,7 +160,7 @@ export default function TeacherUtilities() {
                             {utility.name}
                           </CardTitle>
                           <CardDescription
-                            style={{ color: `${textColor}B3` }}
+                            style={{ color: isDarkText ? 'rgba(31, 41, 55, 0.7)' : 'rgba(255, 255, 255, 0.7)' }}
                           >
                             Ferramenta do Professor
                           </CardDescription>
@@ -160,6 +168,11 @@ export default function TeacherUtilities() {
                         <Badge
                           variant="outline"
                           className="border-white/30 text-white bg-white/20"
+                          style={{
+                            color: textColor,
+                            borderColor: badgeBorder,
+                            backgroundColor: badgeBg
+                          }}
                         >
                           Disponível
                         </Badge>
@@ -169,7 +182,7 @@ export default function TeacherUtilities() {
                       <div className="space-y-4">
                         <p
                           className="text-sm"
-                          style={{ color: `${textColor}CC` }}
+                          style={{ color: isDarkText ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)' }}
                         >
                           {utility.description}
                         </p>
@@ -179,8 +192,12 @@ export default function TeacherUtilities() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-3 px-6"
-                            style={{ color: textColor }}
+                            className="flex items-center justify-center gap-2 hover:bg-white/30 transition-all py-3 px-6"
+                            style={{
+                              color: textColor,
+                              borderColor: badgeBorder,
+                              backgroundColor: badgeBg
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleUtilityClick(utility.name);

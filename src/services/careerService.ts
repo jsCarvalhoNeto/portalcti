@@ -1,5 +1,30 @@
 import api from './api';
 
+export interface Education {
+    institution: string;
+    course: string;
+    status: 'Em andamento' | 'Concluído' | 'Trancado';
+    completion_date: string;
+}
+
+export interface Project {
+    name: string;
+    description: string;
+    technologies: string[];
+    link: string;
+}
+
+export interface Language {
+    name: string;
+    level: 'Básico' | 'Intermediário' | 'Avançado' | 'Fluente';
+}
+
+export interface Certification {
+    name: string;
+    institution: string;
+    year: string;
+}
+
 export interface CareerProfile {
     id?: number;
     student_id: string;
@@ -13,6 +38,10 @@ export interface CareerProfile {
     is_available: boolean;
     is_public: boolean;
     views: number;
+    education?: Education[];
+    projects?: Project[];
+    languages?: Language[];
+    certifications?: Certification[];
 }
 
 export const careerService = {
@@ -37,7 +66,11 @@ export const careerService = {
                     resume_url: null,
                     is_available: false,
                     is_public: false,
-                    views: 0
+                    views: 0,
+                    education: [],
+                    projects: [],
+                    languages: [],
+                    certifications: []
                 };
             }
             throw error;

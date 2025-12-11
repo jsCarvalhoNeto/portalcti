@@ -4,12 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { careerService, type CareerProfile } from '@/services/careerService';
+import { careerService, type CareerProfile, type Education, type Project, type Language, type Certification } from '@/services/careerService';
 import {
     Briefcase,
     Upload,
@@ -22,7 +23,13 @@ import {
     Eye,
     Share2,
     X,
-    Plus
+    Plus,
+    GraduationCap,
+    Code,
+    Languages,
+    Award,
+    Trash2,
+    ExternalLink
 } from 'lucide-react';
 
 export default function StudentCareer() {
@@ -44,6 +51,19 @@ export default function StudentCareer() {
     const [isAvailable, setIsAvailable] = useState(false);
     const [skills, setSkills] = useState<string[]>([]);
     const [newSkill, setNewSkill] = useState('');
+
+    // New Sections State
+    const [education, setEducation] = useState<Education[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [languages, setLanguages] = useState<Language[]>([]);
+    const [certifications, setCertifications] = useState<Certification[]>([]);
+
+    // Temporary states for new items
+    const [newEducation, setNewEducation] = useState<Partial<Education>>({ status: 'Em andamento' });
+    const [newProject, setNewProject] = useState<Partial<Project>>({ technologies: [] });
+    const [newProjectTech, setNewProjectTech] = useState('');
+    const [newLanguage, setNewLanguage] = useState<Partial<Language>>({ level: 'Básico' });
+    const [newCertification, setNewCertification] = useState<Partial<Certification>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,6 +89,12 @@ export default function StudentCareer() {
             setIsPublic(data.is_public);
             setIsAvailable(data.is_available);
             setSkills(data.skills || []);
+
+            // Init new sections
+            setEducation(data.education || []);
+            setProjects(data.projects || []);
+            setLanguages(data.languages || []);
+            setCertifications(data.certifications || []);
         } catch (error) {
             toast({
                 title: "Erro",
@@ -84,7 +110,7 @@ export default function StudentCareer() {
         if (!user) return;
         try {
             setSaving(true);
-            const updatedData = {
+            const updatedData: Partial<CareerProfile> = {
                 bio,
                 title,
                 linkedin_url: linkedin,
@@ -92,7 +118,11 @@ export default function StudentCareer() {
                 portfolio_url: portfolio,
                 is_public: isPublic,
                 is_available: isAvailable,
-                skills
+                skills,
+                education,
+                projects,
+                languages,
+                certifications
             };
 
             const result = await careerService.updateProfile(user.id, updatedData);
@@ -113,6 +143,7 @@ export default function StudentCareer() {
         }
     };
 
+    // --- Skills Helpers ---
     const handleAddSkill = () => {
         if (newSkill.trim() && !skills.includes(newSkill.trim())) {
             setSkills([...skills, newSkill.trim()]);
@@ -124,12 +155,71 @@ export default function StudentCareer() {
         setSkills(skills.filter(s => s !== skillToRemove));
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDownSkill = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleAddSkill();
         }
     };
+
+    // --- Education Helpers ---
+    const handleAddEducation = () => {
+        if (newEducation.institution && newEducation.course) {
+            setEducation([...education, newEducation as Education]);
+            setNewEducation({ status: 'Em andamento', institution: '', course: '', completion_date: '' });
+        }
+    };
+
+    const handleRemoveEducation = (index: number) => {
+        setEducation(education.filter((_, i) => i !== index));
+    };
+
+    // --- Project Helpers ---
+    const handleAddProject = () => {
+        if (newProject.name) {
+            setProjects([...projects, newProject as Project]);
+            setNewProject({ technologies: [], name: '', description: '', link: '' });
+        }
+    };
+
+    const handleRemoveProject = (index: number) => {
+        setProjects(projects.filter((_, i) => i !== index));
+    };
+
+    const handleAddProjectTech = () => {
+        if (newProjectTech.trim() && !newProject.technologies?.includes(newProjectTech.trim())) {
+            setNewProject({
+                ...newProject,
+                technologies: [...(newProject.technologies || []), newProjectTech.trim()]
+            });
+            setNewProjectTech('');
+        }
+    };
+
+    // --- Language Helpers ---
+    const handleAddLanguage = () => {
+        if (newLanguage.name) {
+            setLanguages([...languages, newLanguage as Language]);
+            setNewLanguage({ level: 'Básico', name: '' });
+        }
+    };
+
+    const handleRemoveLanguage = (index: number) => {
+        setLanguages(languages.filter((_, i) => i !== index));
+    };
+
+    // --- Certification Helpers ---
+    const handleAddCertification = () => {
+        if (newCertification.name) {
+            setCertifications([...certifications, newCertification as Certification]);
+            setNewCertification({ name: '', institution: '', year: '' });
+        }
+    };
+
+    const handleRemoveCertification = (index: number) => {
+        setCertifications(certifications.filter((_, i) => i !== index));
+    };
+
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -172,7 +262,6 @@ export default function StudentCareer() {
             });
         } finally {
             setUploading(false);
-            // Reset input
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -225,26 +314,26 @@ export default function StudentCareer() {
                             <CardHeader>
                                 <CardTitle>Informações Profissionais</CardTitle>
                                 <CardDescription>
-                                    Destaque suas qualidades para potenciais empregadores
+                                    Como estudante, destaque sua formação e objetivos.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="title">Título Profissional</Label>
+                                    <Label htmlFor="title">Título / Objetivo Profissional</Label>
                                     <Input
                                         id="title"
-                                        placeholder="Ex: Desenvolvedor Front-end Junior"
+                                        placeholder="Ex: Estudante de Técnico em Informática | Foco em Front-end"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                     />
-                                    <p className="text-xs text-muted-foreground">Uma frase curta que resume seu objetivo.</p>
+                                    <p className="text-xs text-muted-foreground">Uma frase curta que resume seu status atual e objetivo.</p>
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="bio">Resumo (Bio)</Label>
                                     <Textarea
                                         id="bio"
-                                        placeholder="Conte um pouco sobre você, seus interesses e objetivos de carreira..."
+                                        placeholder="Fale sobre sua paixão pela tecnologia, o que tem aprendido no curso, projetos que realizou e seus objetivos de carreira..."
                                         className="min-h-[120px]"
                                         value={bio}
                                         onChange={(e) => setBio(e.target.value)}
@@ -252,7 +341,7 @@ export default function StudentCareer() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Habilidades</Label>
+                                    <Label>Habilidades Técnicas</Label>
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         {skills.map((skill, index) => (
                                             <Badge key={index} variant="secondary" className="px-3 py-1 text-sm flex items-center gap-1">
@@ -265,10 +354,10 @@ export default function StudentCareer() {
                                     </div>
                                     <div className="flex gap-2">
                                         <Input
-                                            placeholder="Adicionar habilidade..."
+                                            placeholder="Ex: React, Python, SQL..."
                                             value={newSkill}
                                             onChange={(e) => setNewSkill(e.target.value)}
-                                            onKeyDown={handleKeyDown}
+                                            onKeyDown={handleKeyDownSkill}
                                             className="max-w-[200px]"
                                         />
                                         <Button variant="outline" size="icon" onClick={handleAddSkill}>
@@ -279,11 +368,202 @@ export default function StudentCareer() {
                             </CardContent>
                         </Card>
 
+                        {/* Education Section - CRITICAL for Students */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <GraduationCap className="w-5 h-5 text-indigo-600" />
+                                    Formação Acadêmica
+                                </CardTitle>
+                                <CardDescription>Seu curso técnico e escolaridade são seus principais diferenciais agora.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* List of Education */}
+                                {education.map((edu, index) => (
+                                    <div key={index} className="flex justify-between items-start border-b pb-4 last:border-0 last:pb-0">
+                                        <div>
+                                            <h4 className="font-semibold">{edu.course}</h4>
+                                            <p className="text-sm text-gray-600">{edu.institution}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Badge variant="outline" className="text-xs">{edu.status}</Badge>
+                                                <span className="text-xs text-muted-foreground">Conclusão: {edu.completion_date}</span>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveEducation(index)}>
+                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                ))}
+
+                                {/* Add New Education Form */}
+                                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                                    <h4 className="text-sm font-medium">Adicionar Formação</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <Input
+                                            placeholder="Instituição (Ex: Escola Técnica...)"
+                                            value={newEducation.institution || ''}
+                                            onChange={e => setNewEducation({ ...newEducation, institution: e.target.value })}
+                                        />
+                                        <Input
+                                            placeholder="Curso (Ex: Técnica em Informática)"
+                                            value={newEducation.course || ''}
+                                            onChange={e => setNewEducation({ ...newEducation, course: e.target.value })}
+                                        />
+                                        <Select
+                                            value={newEducation.status}
+                                            onValueChange={(val: any) => setNewEducation({ ...newEducation, status: val })}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Em andamento">Em andamento</SelectItem>
+                                                <SelectItem value="Concluído">Concluído</SelectItem>
+                                                <SelectItem value="Trancado">Trancado</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input
+                                            placeholder="Prev. Formatura (Ex: Dez/2024)"
+                                            value={newEducation.completion_date || ''}
+                                            onChange={e => setNewEducation({ ...newEducation, completion_date: e.target.value })}
+                                        />
+                                    </div>
+                                    <Button size="sm" variant="secondary" onClick={handleAddEducation} className="w-full">
+                                        <Plus className="w-4 h-4 mr-2" /> Adicionar Formação
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Projects Section - SHOWCASE */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Code className="w-5 h-5 text-emerald-600" />
+                                    Projetos de Destaque
+                                </CardTitle>
+                                <CardDescription>Mostre o que você sabe fazer. Adicione projetos de aula, TCC ou pessoais.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {projects.map((proj, index) => (
+                                    <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
+                                        <div className="flex justify-between items-start">
+                                            <h4 className="font-semibold flex items-center gap-2">
+                                                {proj.name}
+                                                {proj.link && (
+                                                    <a href={proj.link} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
+                                                        <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                )}
+                                            </h4>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveProject(index)}>
+                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                            </Button>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">{proj.description}</p>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {proj.technologies.map((tech, i) => (
+                                                <span key={i} className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-700">{tech}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Add Project Form */}
+                                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                                    <h4 className="text-sm font-medium">Adicionar Projeto</h4>
+                                    <Input
+                                        placeholder="Nome do Projeto"
+                                        value={newProject.name || ''}
+                                        onChange={e => setNewProject({ ...newProject, name: e.target.value })}
+                                    />
+                                    <Textarea
+                                        placeholder="Descrição breve do que o projeto faz..."
+                                        value={newProject.description || ''}
+                                        onChange={e => setNewProject({ ...newProject, description: e.target.value })}
+                                    />
+                                    <Input
+                                        placeholder="Link (GitHub ou Deploy) - Opcional"
+                                        value={newProject.link || ''}
+                                        onChange={e => setNewProject({ ...newProject, link: e.target.value })}
+                                    />
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Tecnologias usadas</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Ex: React"
+                                                value={newProjectTech}
+                                                onChange={e => setNewProjectTech(e.target.value)}
+                                                className="h-8 text-sm"
+                                            />
+                                            <Button size="sm" variant="outline" onClick={handleAddProjectTech}>Add</Button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {newProject.technologies?.map((t, i) => (
+                                                <Badge key={i} variant="outline" className="text-xs">{t}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <Button size="sm" variant="secondary" onClick={handleAddProject} className="w-full mt-2">
+                                        <Plus className="w-4 h-4 mr-2" /> Adicionar Projeto
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Certifications Card */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Award className="w-5 h-5 text-yellow-600" />
+                                    Cursos e Certificações
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {certifications.map((cert, index) => (
+                                    <div key={index} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+                                        <div>
+                                            <p className="font-medium text-sm">{cert.name}</p>
+                                            <p className="text-xs text-muted-foreground">{cert.institution} • {cert.year}</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveCertification(index)}>
+                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                ))}
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2">
+                                    <Input
+                                        placeholder="Nome do Curso"
+                                        className="md:col-span-1"
+                                        value={newCertification.name || ''}
+                                        onChange={e => setNewCertification({ ...newCertification, name: e.target.value })}
+                                    />
+                                    <Input
+                                        placeholder="Instituição"
+                                        value={newCertification.institution || ''}
+                                        onChange={e => setNewCertification({ ...newCertification, institution: e.target.value })}
+                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Ano"
+                                            className="w-20"
+                                            value={newCertification.year || ''}
+                                            onChange={e => setNewCertification({ ...newCertification, year: e.target.value })}
+                                        />
+                                        <Button size="icon" variant="secondary" onClick={handleAddCertification}>
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* Links Card */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Links e Portfólio</CardTitle>
-                                <CardDescription>Onde as empresas podem ver seu trabalho?</CardDescription>
+                                <CardTitle>Links de Rede Social</CardTitle>
+                                <CardDescription>Onde as empresas podem te encontrar?</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
@@ -333,6 +613,9 @@ export default function StudentCareer() {
                                     <FileText className="w-5 h-5 text-orange-500" />
                                     Currículo em PDF
                                 </CardTitle>
+                                <CardDescription className="text-xs">
+                                    Mantenha seu CV sempre atualizado.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {profile?.resume_url ? (
@@ -381,6 +664,50 @@ export default function StudentCareer() {
                                         Enviando arquivo...
                                     </div>
                                 )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Languages Card - small & on the side */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <Languages className="w-5 h-5 text-sky-500" />
+                                    Idiomas
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {languages.map((lang, index) => (
+                                    <div key={index} className="flex justify-between items-center text-sm">
+                                        <span>{lang.name} <span className="text-muted-foreground text-xs">({lang.level})</span></span>
+                                        <button onClick={() => handleRemoveLanguage(index)} className="text-muted-foreground hover:text-red-500">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <div className="flex gap-2 pt-2">
+                                    <Input
+                                        placeholder="Idioma"
+                                        className="h-8 text-sm"
+                                        value={newLanguage.name || ''}
+                                        onChange={e => setNewLanguage({ ...newLanguage, name: e.target.value })}
+                                    />
+                                    <Select
+                                        value={newLanguage.level}
+                                        onValueChange={(val: any) => setNewLanguage({ ...newLanguage, level: val })}
+                                    >
+                                        <SelectTrigger className="h-8 w-[100px] text-xs"><SelectValue placeholder="Nível" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Básico">Básico</SelectItem>
+                                            <SelectItem value="Intermediário">Intermediário</SelectItem>
+                                            <SelectItem value="Avançado">Avançado</SelectItem>
+                                            <SelectItem value="Fluente">Fluente</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleAddLanguage}>
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
 

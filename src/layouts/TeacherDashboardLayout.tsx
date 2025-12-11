@@ -23,18 +23,18 @@ interface TeacherDashboardLayoutProps {
   setActiveTab: (tab: string) => void;
 }
 
-export default function TeacherDashboardLayout({ 
-  children, 
-  stats, 
-  activeTab, 
-  setActiveTab 
+export default function TeacherDashboardLayout({
+  children,
+  stats,
+  activeTab,
+  setActiveTab
 }: TeacherDashboardLayoutProps) {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const getTabLabel = (tabValue: string) => {
-      const labels: Record<string, string> = {
+    const labels: Record<string, string> = {
       overview: 'Visão Geral',
       subjects: 'Minhas Disciplinas',
       students: 'Meus Alunos',
@@ -114,12 +114,11 @@ export default function TeacherDashboardLayout({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-4xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-8 gap-2">
+            <TabsList className="hidden md:grid w-full grid-cols-7 gap-2">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
-              <TabsTrigger value="utilitarios">Utilitários</TabsTrigger>
               <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -127,7 +126,7 @@ export default function TeacherDashboardLayout({
             <TabsContent value="relatorios" className="space-y-8">
               <TeacherReportsTab />
             </TabsContent>
-            
+
             {/* Menu mobile - Sheet (hamburger) */}
             <div className="md:hidden">
               <div className="w-full">
