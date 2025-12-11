@@ -6,7 +6,8 @@ export const API_URL = import.meta.env.VITE_API_URL;
 const createAPI = () => {
   // Force localhost for testing new backend features locally
   // TODO: Revert this before deploying to production if you want to use the .env variable again
-  let baseURL = API_URL; // import.meta.env.VITE_API_URL;
+  let baseURL = 'http://localhost:4002/api'; // Force local backend for debugging
+  // let baseURL = API_URL; // import.meta.env.VITE_API_URL;
 
   // Validar se VITE_API_URL está definida
   if (!baseURL) {
