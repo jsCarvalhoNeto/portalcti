@@ -767,7 +767,14 @@ export default function StudentCareer() {
                                     <p className="text-xs text-muted-foreground">Copie o link do seu perfil público</p>
                                 </div>
                                 <Button size="icon" variant="secondary" onClick={() => {
-                                    toast({ description: "Link copiado para a área de transferência!" });
+                                    if (user?.id) {
+                                        const url = `${window.location.origin}/talento/${user.id}`;
+                                        navigator.clipboard.writeText(url);
+                                        toast({
+                                            title: "Link Copiado!",
+                                            description: "O link do seu perfil público foi copiado para a área de transferência."
+                                        });
+                                    }
                                 }}>
                                     <Share2 className="w-4 h-4" />
                                 </Button>

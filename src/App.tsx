@@ -30,6 +30,7 @@ import EventThematicAxes from './pages/EventThematicAxes';
 import EventTeamForm from './pages/EventTeamForm';
 import EventConfirmation from './pages/EventConfirmation';
 import StudentCareer from './pages/StudentCareer';
+import PublicCareerProfile from './pages/PublicCareerProfile';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -85,6 +86,10 @@ const App = () => (
               <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/poll/:pollId" element={<PollVotingPage />} />
+
+              {/* Rota pública para perfil de carreira */}
+              <Route path="/talento/:studentId" element={<PublicCareerProfile />} />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
