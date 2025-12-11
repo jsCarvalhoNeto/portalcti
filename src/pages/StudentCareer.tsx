@@ -80,7 +80,7 @@ export default function StudentCareer() {
             const data = await careerService.getProfile(user.id);
             setProfile(data);
 
-            // Init form
+            // Init form (Backend Data)
             setBio(data.bio || '');
             setTitle(data.title || '');
             setLinkedin(data.linkedin_url || '');
@@ -90,11 +90,12 @@ export default function StudentCareer() {
             setIsAvailable(data.is_available);
             setSkills(data.skills || []);
 
-            // Init new sections
+            // Init new sections (Backend Data)
             setEducation(data.education || []);
             setProjects(data.projects || []);
             setLanguages(data.languages || []);
             setCertifications(data.certifications || []);
+
         } catch (error) {
             toast({
                 title: "Erro",
@@ -110,6 +111,8 @@ export default function StudentCareer() {
         if (!user) return;
         try {
             setSaving(true);
+
+            // Salvar dados completos na API
             const updatedData: Partial<CareerProfile> = {
                 bio,
                 title,
@@ -130,7 +133,7 @@ export default function StudentCareer() {
 
             toast({
                 title: "Sucesso!",
-                description: "Seu perfil profissional foi atualizado.",
+                description: "Seu perfil foi atualizado com sucesso.",
             });
         } catch (error) {
             toast({
@@ -141,6 +144,12 @@ export default function StudentCareer() {
         } finally {
             setSaving(false);
         }
+    };
+
+    // Função para gerar o link limpo
+    const generateShareLink = () => {
+        if (!user) return '';
+        return `${window.location.origin}/talento/${user.id}`;
     };
 
     // --- Skills Helpers ---
@@ -768,11 +777,11 @@ export default function StudentCareer() {
                                 </div>
                                 <Button size="icon" variant="secondary" onClick={() => {
                                     if (user?.id) {
-                                        const url = `${window.location.origin}/talento/${user.id}`;
+                                        const url = generateShareLink();
                                         navigator.clipboard.writeText(url);
                                         toast({
                                             title: "Link Copiado!",
-                                            description: "O link do seu perfil público foi copiado para a área de transferência."
+                                            description: "O link do seu perfil (com seus dados completos) foi copiado."
                                         });
                                     }
                                 }}>
