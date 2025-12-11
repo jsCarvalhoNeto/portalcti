@@ -24,6 +24,9 @@ import {
     Share2,
     X,
     Plus,
+    User,
+    Calendar,
+    Camera,
     GraduationCap,
     Code,
     Languages,
@@ -40,13 +43,18 @@ export default function StudentCareer() {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [profile, setProfile] = useState<CareerProfile | null>(null);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
     // Form states
+    const [fullName, setFullName] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [bio, setBio] = useState('');
     const [title, setTitle] = useState('');
     const [linkedin, setLinkedin] = useState('');
     const [github, setGithub] = useState('');
     const [portfolio, setPortfolio] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
+    const [contactPhone, setContactPhone] = useState('');
     const [isPublic, setIsPublic] = useState(false);
     const [isAvailable, setIsAvailable] = useState(false);
     const [skills, setSkills] = useState<string[]>([]);
@@ -66,6 +74,7 @@ export default function StudentCareer() {
     const [newCertification, setNewCertification] = useState<Partial<Certification>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const photoInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (user && isStudent) {
@@ -81,11 +90,15 @@ export default function StudentCareer() {
             setProfile(data);
 
             // Init form (Backend Data)
+            setFullName(data.full_name || '');
+            setBirthDate(data.birth_date ? data.birth_date.split('T')[0] : ''); // Format YYYY-MM-DD
             setBio(data.bio || '');
             setTitle(data.title || '');
             setLinkedin(data.linkedin_url || '');
             setGithub(data.github_url || '');
             setPortfolio(data.portfolio_url || '');
+            setContactEmail(data.contact_email || '');
+            setContactPhone(data.contact_phone || '');
             setIsPublic(data.is_public);
             setIsAvailable(data.is_available);
             setSkills(data.skills || []);
@@ -114,11 +127,15 @@ export default function StudentCareer() {
 
             // Salvar dados completos na API
             const updatedData: Partial<CareerProfile> = {
+                full_name: fullName,
+                birth_date: birthDate,
                 bio,
                 title,
                 linkedin_url: linkedin,
                 github_url: github,
                 portfolio_url: portfolio,
+                contact_email: contactEmail,
+                contact_phone: contactPhone,
                 is_public: isPublic,
                 is_available: isAvailable,
                 skills,
@@ -275,6 +292,40 @@ export default function StudentCareer() {
         }
     };
 
+    const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        // Validar tipo imagem
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: "Formato inválido",
+                description: "Por favor, envie apenas arquivos de imagem (JPG, PNG).",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        try {
+            setUploadingPhoto(true);
+            const url = await careerService.uploadPhoto(user.id, file);
+            setProfile(prev => prev ? ({ ...prev, photo_url: url }) : null);
+            toast({
+                title: "Foto Atualizada!",
+                description: "Sua foto de perfil foi atualizada com sucesso.",
+            });
+        } catch (error) {
+            toast({
+                title: "Erro no upload",
+                description: "Não foi possível enviar a foto.",
+                variant: "destructive"
+            });
+        } finally {
+            setUploadingPhoto(false);
+            if (photoInputRef.current) photoInputRef.current.value = '';
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -323,10 +374,70 @@ export default function StudentCareer() {
                             <CardHeader>
                                 <CardTitle>Informações Profissionais</CardTitle>
                                 <CardDescription>
-                                    Como estudante, destaque sua formação e objetivos.
+                                    Crie sua identidade profissional.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-6">
+
+                                {/* Photo & Basic Info Row */}
+                                <div className="flex flex-col md:flex-row gap-6 items-start">
+                                    <div className="flex flex-col items-center space-y-2">
+                                        <div
+                                            className="w-32 h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 overflow-hidden relative group"
+                                            onClick={() => photoInputRef.current?.click()}
+                                        >
+                                            {profile?.photo_url ? (
+                                                <img src={profile.photo_url} alt="Foto de Perfil" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <User className="w-10 h-10 text-gray-400" />
+                                            )}
+
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Camera className="w-8 h-8 text-white" />
+                                            </div>
+
+                                            {uploadingPhoto && (
+                                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground text-center">Foto 3x4</p>
+                                        <input
+                                            type="file"
+                                            ref={photoInputRef}
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handlePhotoChange}
+                                        />
+                                    </div>
+
+                                    <div className="flex-1 space-y-4 w-full">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fullname">Nome Completo (Profissional)</Label>
+                                            <Input
+                                                id="fullname"
+                                                placeholder="Seu nome como gostaria de ser chamado"
+                                                value={fullName}
+                                                onChange={(e) => setFullName(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="birthdate">Data de Nascimento</Label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    id="birthdate"
+                                                    type="date"
+                                                    className="pl-9"
+                                                    value={birthDate}
+                                                    onChange={(e) => setBirthDate(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label htmlFor="title">Título / Objetivo Profissional</Label>
                                     <Input
@@ -571,11 +682,28 @@ export default function StudentCareer() {
                         {/* Links Card */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Links de Rede Social</CardTitle>
-                                <CardDescription>Onde as empresas podem te encontrar?</CardDescription>
+                                <CardTitle>Contato e Redes Sociais</CardTitle>
+                                <CardDescription>Facilite o contato de recrutadores.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Email de Contato</Label>
+                                        <Input
+                                            placeholder="Ex: contato@email.com"
+                                            value={contactEmail}
+                                            onChange={(e) => setContactEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Telefone / WhatsApp</Label>
+                                        <Input
+                                            placeholder="Ex: (11) 99999-9999"
+                                            value={contactPhone}
+                                            onChange={(e) => setContactPhone(e.target.value)}
+                                        />
+                                    </div>
+
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2">
                                             <Linkedin className="w-4 h-4 text-blue-600" /> LinkedIn

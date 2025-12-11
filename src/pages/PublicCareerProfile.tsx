@@ -11,6 +11,7 @@ import {
     Globe,
     FileText,
     Mail,
+    Phone,
     ArrowLeft,
     GraduationCap,
     Code,
@@ -80,6 +81,18 @@ export default function PublicCareerProfile() {
         );
     }
 
+    const calculateAge = (dateString: string | null) => {
+        if (!dateString) return null;
+        const today = new Date();
+        const birthDate = new Date(dateString);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
             {/* Header / Top Bar (Public View) */}
@@ -103,13 +116,24 @@ export default function PublicCareerProfile() {
 
                         {/* Banner / Header Card */}
                         <Card className="overflow-hidden border-t-4 border-t-primary">
-                            <CardContent className="pt-8 text-center pb-8">
-                                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-primary text-primary font-bold text-3xl">
-                                    {/* Initials placeholder since we might not have a photo */}
-                                    <Briefcase className="w-10 h-10" />
+                            <CardContent className="pt-8 pb-8 flex flex-col items-center">
+                                <div className="w-32 h-40 bg-gray-100 rounded-lg border-4 border-white shadow-lg overflow-hidden mb-4 flex-shrink-0 relative">
+                                    {profile.photo_url ? (
+                                        <img src={profile.photo_url} alt={profile.full_name || "Foto"} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full h-full bg-gray-200 text-gray-400">
+                                            <Briefcase className="w-10 h-10" />
+                                        </div>
+                                    )}
                                 </div>
-                                <h1 className="text-3xl font-bold mb-1">Estudante Técnico</h1>
-                                <p className="text-xl text-primary font-medium mb-4">{profile.title || 'Estudante de Tecnologia'}</p>
+
+                                <h1 className="text-3xl font-bold mb-1 text-center">{profile.full_name || 'Estudante Técnico'}</h1>
+                                <div className="flex items-center gap-2 text-gray-500 mb-4">
+                                    {calculateAge(profile.birth_date) && (
+                                        <span className="text-sm border px-2 py-0.5 rounded-full bg-gray-50">{calculateAge(profile.birth_date)} anos</span>
+                                    )}
+                                    <span className="text-sm text-primary font-medium">{profile.title || 'Estudante de Tecnologia'}</span>
+                                </div>
 
                                 {profile.is_available && (
                                     <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
@@ -251,6 +275,22 @@ export default function PublicCareerProfile() {
                                 <CardTitle>Contato e Links</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {profile.contact_email && (
+                                    <a href={`mailto:${profile.contact_email}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border transition-colors group">
+                                        <Mail className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
+                                        <span className="text-sm font-medium text-gray-700">{profile.contact_email}</span>
+                                    </a>
+                                )}
+
+                                {profile.contact_phone && (
+                                    <a href={`https://wa.me/55${profile.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border transition-colors group">
+                                        <Phone className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform" />
+                                        <span className="text-sm font-medium text-gray-700">{profile.contact_phone}</span>
+                                        <ExternalLink className="w-3 h-3 text-gray-400 ml-auto" />
+                                    </a>
+                                )}
+
                                 {profile.linkedin_url && (
                                     <a href={profile.linkedin_url} target="_blank" rel="noreferrer"
                                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border transition-colors group">

@@ -28,6 +28,8 @@ export interface Certification {
 export interface CareerProfile {
     id?: number;
     student_id: string;
+    full_name: string | null;
+    birth_date: string | null;
     bio: string;
     title: string;
     skills: string[];
@@ -35,9 +37,12 @@ export interface CareerProfile {
     github_url: string;
     portfolio_url: string;
     resume_url: string | null;
+    photo_url: string | null;
     is_available: boolean;
     is_public: boolean;
     views: number;
+    contact_email?: string;
+    contact_phone?: string;
     education?: Education[];
     projects?: Project[];
     languages?: Language[];
@@ -57,6 +62,8 @@ export const careerService = {
                 // Retornar perfil vazio se não existir ainda
                 return {
                     student_id: studentId,
+                    full_name: '',
+                    birth_date: '',
                     bio: '',
                     title: '',
                     skills: [],
@@ -64,13 +71,16 @@ export const careerService = {
                     github_url: '',
                     portfolio_url: '',
                     resume_url: null,
+                    photo_url: null,
                     is_available: false,
                     is_public: false,
                     views: 0,
                     education: [],
                     projects: [],
                     languages: [],
-                    certifications: []
+                    certifications: [],
+                    contact_email: '',
+                    contact_phone: ''
                 };
             }
             throw error;
@@ -93,6 +103,22 @@ export const careerService = {
         formData.append('resume', file);
 
         const response = await api.post(`/career/${studentId}/resume`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        return response.data.url;
+    },
+
+    /**
+     * Faz upload da foto (Imagem)
+     */
+    uploadPhoto: async (studentId: string, file: File): Promise<string> => {
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        const response = await api.post(`/career/${studentId}/photo`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
