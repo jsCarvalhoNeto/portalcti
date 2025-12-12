@@ -14,7 +14,7 @@ export default function TeacherSubjectsTab() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showColorEditModal, setShowColorEditModal] = useState(false);
   const [userColors, setUserColors] = useState<Record<number, string>>({});
-  
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -102,149 +102,150 @@ export default function TeacherSubjectsTab() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subject) => {
-            // Cor do card - usa cor personalizada ou padrão
-            const cardColor = getSubjectColor(subject);
-            
-            // Determina se a cor é clara ou escura para ajustar o texto
-            const isLightColor = (hex: string) => {
-              const rgb = parseInt(hex.slice(1), 16);
-              const r = (rgb >> 16) & 255;
-              const g = (rgb >> 8) & 255;
-              const b = rgb & 255;
-              const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-              return brightness > 128;
-            };
+              {subjects.map((subject) => {
+                // Cor do card - usa cor personalizada ou padrão
+                const cardColor = getSubjectColor(subject);
 
-            const textColor = isLightColor(cardColor) ? '#1f2937' : '#ffffff';
-            
-            return (
-              <Card 
-                key={subject.id} 
-                className="hover:shadow-glow transition-all duration-300 border-0 relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
-                  color: textColor
-                }}
-              >
-                {/* Barra de cor no topo do card */}
-                <div 
-                  className="absolute top-0 left-0 right-0 h-1"
-                  style={{ backgroundColor: cardColor }}
-                />
-                
-                <CardHeader className="relative">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle 
-                        className="text-lg" 
-                        style={{ color: textColor }}
-                      >
-                        {subject.name}
-                      </CardTitle>
-                      <CardDescription 
-                        style={{ color: `${textColor}B3` }}
-                      >
-                        ID: {subject.id}
-                      </CardDescription>
-                    </div>
-                    <Badge 
-                      variant="outline" 
-                      className="border-white/30 text-white bg-white/20"
-                    >
-                      Ativo
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative">
-                  <div className="space-y-4">
-                    {subject.description && (
-                      <p 
-                        className="text-sm" 
-                        style={{ color: `${textColor}CC` }}
-                      >
-                        {subject.description}
-                      </p>
-                    )}
-                    
-                    {subject.description && (
-                      <div 
-                        className="text-sm mt-2"
-                        style={{ color: `${textColor}B3` }}
-                      >
-                        ID: {subject.id}
+                // Determina se a cor é clara ou escura para ajustar o texto
+                const isLightColor = (hex: string) => {
+                  const rgb = parseInt(hex.slice(1), 16);
+                  const r = (rgb >> 16) & 255;
+                  const g = (rgb >> 8) & 255;
+                  const b = rgb & 255;
+                  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                  return brightness > 128;
+                };
+
+                const textColor = isLightColor(cardColor) ? '#1f2937' : '#ffffff';
+
+                return (
+                  <Card
+                    key={subject.id}
+                    className="hover:shadow-glow transition-all duration-300 border-0 relative overflow-hidden"
+                    style={{
+                      background: `linear-gradient(135deg, ${cardColor}CC 0%, ${cardColor}AA 100%)`,
+                      color: textColor
+                    }}
+                  >
+                    {/* Barra de cor no topo do card */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1"
+                      style={{ backgroundColor: cardColor }}
+                    />
+
+                    <CardHeader className="relative">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle
+                            className="text-lg"
+                            style={{ color: textColor }}
+                          >
+                            {subject.name}
+                          </CardTitle>
+                          <CardDescription
+                            style={{ color: `${textColor}B3` }}
+                          >
+                            ID: {subject.id}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                            style={{ color: textColor }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditColor(subject);
+                            }}
+                            title="Alterar cor"
+                          >
+                            <Palette className="h-3 w-3" />
+                          </Button>
+                          <Badge
+                            variant="outline"
+                            className="border-white/30 text-white bg-white/20"
+                          >
+                            Ativo
+                          </Badge>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Botões organizados em grid responsivo para professores */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
-                        style={{ color: textColor }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/teacher/subjects/${subject.id}/edit`);
-                        }}
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        <span className="text-sm font-medium">Conteúdo</span>
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
-                        style={{ color: textColor }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewDetails(subject);
-                        }}
-                      >
-                        <GraduationCap className="w-4 h-4" />
-                        <span className="text-sm font-medium">Notas</span>
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
-                        style={{ color: textColor }}
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span className="text-sm font-medium">Atividades</span>
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
-                        style={{ color: textColor }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditColor(subject);
-                        }}
-                        title="Editar cor do card"
-                      >
-                        <Palette className="w-4 h-4" />
-                        <span className="text-sm font-medium">Cor</span>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              );
-            })}
-            {subjects.length === 0 && !subjectsLoading && (
-              <div className="col-span-full text-center py-8">
-                <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => refetch.subjects()}
-                >
-                  Recarregar Disciplinas
-                </Button>
-              </div>
-            )}
+                    </CardHeader>
+                    <CardContent className="relative">
+                      <div className="space-y-4">
+                        {subject.description && (
+                          <p
+                            className="text-sm"
+                            style={{ color: `${textColor}CC` }}
+                          >
+                            {subject.description}
+                          </p>
+                        )}
+
+                        {subject.description && (
+                          <div
+                            className="text-sm mt-2"
+                            style={{ color: `${textColor}B3` }}
+                          >
+                            ID: {subject.id}
+                          </div>
+                        )}
+
+                        {/* Botões organizados em grid responsivo para professores */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                            style={{ color: textColor }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/teacher/subjects/${subject.id}/edit`);
+                            }}
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            <span className="text-sm font-medium">Conteúdo</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                            style={{ color: textColor }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(subject);
+                            }}
+                          >
+                            <GraduationCap className="w-4 h-4" />
+                            <span className="text-sm font-medium">Notas</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5 col-span-2"
+                            style={{ color: textColor }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span className="text-sm font-medium">Atividades</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {subjects.length === 0 && !subjectsLoading && (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => refetch.subjects()}
+                  >
+                    Recarregar Disciplinas
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

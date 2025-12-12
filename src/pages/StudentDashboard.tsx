@@ -815,6 +815,19 @@ export default function StudentDashboard() {
                               </p>
                             )}
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                            style={{ color: textColor }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePersonalizeColor(subject);
+                            }}
+                            title="Personalizar cor"
+                          >
+                            <Palette className="h-3 w-3" />
+                          </Button>
                         </div>
                       </CardHeader>
                       <CardContent className="relative">
@@ -866,7 +879,7 @@ export default function StudentDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
+                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5 col-span-2"
                                 style={{ color: textColor }}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -875,20 +888,6 @@ export default function StudentDashboard() {
                               >
                                 <FileText className="w-4 h-4" />
                                 <span className="text-sm font-medium">Atividades</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex items-center justify-center gap-2 bg-white/20 border-white/30 hover:bg-white/30 transition-all py-5"
-                                style={{ color: textColor }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePersonalizeColor(subject);
-                                }}
-                                title="Personalizar cor (apenas para você)"
-                              >
-                                <Palette className="w-4 h-4" />
-                                <span className="text-sm font-medium">Cor</span>
                               </Button>
                             </div>
                           </div>
