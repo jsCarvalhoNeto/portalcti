@@ -772,10 +772,13 @@ export default function StudentCareer() {
                                                     </a>
                                                     {profile.resume_url.includes('cloudinary') && (
                                                         <a
-                                                            href={profile.resume_url.replace('/upload/', '/upload/fl_attachment/')}
+                                                            href={profile.resume_url.includes('/raw/')
+                                                                ? profile.resume_url
+                                                                : profile.resume_url.replace('/upload/', '/upload/fl_attachment/')}
                                                             target="_blank"
                                                             rel="noreferrer"
                                                             className="text-xs text-green-600 hover:underline flex items-center gap-1"
+                                                            download // Dica para o navegador tentar baixar
                                                         >
                                                             <Upload className="w-3 h-3 rotate-180" /> Baixar
                                                         </a>
