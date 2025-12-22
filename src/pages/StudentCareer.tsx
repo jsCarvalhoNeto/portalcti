@@ -761,14 +761,26 @@ export default function StudentCareer() {
                                             <FileText className="w-8 h-8 text-red-500 mr-3" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-sm truncate">Currículo Cadastrado</p>
-                                                <a
-                                                    href={profile.resume_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-xs text-primary hover:underline"
-                                                >
-                                                    Visualizar arquivo atual
-                                                </a>
+                                                <div className="flex gap-3 mt-1">
+                                                    <a
+                                                        href={profile.resume_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                                                    >
+                                                        <Eye className="w-3 h-3" /> Visualizar
+                                                    </a>
+                                                    {profile.resume_url.includes('cloudinary') && (
+                                                        <a
+                                                            href={profile.resume_url.replace('/upload/', '/upload/fl_attachment/')}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-green-600 hover:underline flex items-center gap-1"
+                                                        >
+                                                            <Upload className="w-3 h-3 rotate-180" /> Baixar
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="text-center">
