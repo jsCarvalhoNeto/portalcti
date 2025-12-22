@@ -53,6 +53,17 @@ export const careerService = {
     /**
      * Obtém o perfil de carreira de um estudante
      */
+    /**
+     * Lista todos os perfis de carreira (Para professores)
+     */
+    listProfiles: async (): Promise<CareerProfile[]> => {
+        const response = await api.get('/career/list');
+        return response.data;
+    },
+
+    /**
+     * Obtém o perfil de carreira de um estudante
+     */
     getProfile: async (studentId: string): Promise<CareerProfile> => {
         try {
             const response = await api.get(`/career/${studentId}`);

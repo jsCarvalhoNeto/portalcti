@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu } from 'lucide-react';
+import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +38,7 @@ export default function TeacherDashboardLayout({
       overview: 'Visão Geral',
       subjects: 'Minhas Disciplinas',
       students: 'Meus Alunos',
+      talentos: 'Banco de Talentos',
       grades: 'Atividades & Notas',
       gamificacao: 'Gamificação',
       utilitarios: 'Utilitários',
@@ -118,6 +119,7 @@ export default function TeacherDashboardLayout({
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
               <TabsTrigger value="students">Meus Alunos</TabsTrigger>
+              <TabsTrigger value="talentos">Banco de Talentos</TabsTrigger>
               <TabsTrigger value="grades">Atividades & Notas</TabsTrigger>
               <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
               <TabsTrigger value="calendar">Calendário</TabsTrigger>
@@ -175,6 +177,17 @@ export default function TeacherDashboardLayout({
                         >
                           <Users className="w-4 h-4 mr-2" />
                           Meus Alunos
+                        </Button>
+                        <Button
+                          variant={activeTab === 'talentos' ? "secondary" : "ghost"}
+                          className="w-full justify-start min-h-12"
+                          onClick={() => {
+                            setActiveTab('talentos');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Briefcase className="w-4 h-4 mr-2" />
+                          Banco de Talentos
                         </Button>
                         <Button
                           variant={activeTab === 'grades' ? "secondary" : "ghost"}
@@ -352,20 +365,23 @@ export default function TeacherDashboardLayout({
           <TabsContent value="students" className="space-y-8">
             {children && Array.isArray(children) ? children[1] : null}
           </TabsContent>
-          <TabsContent value="grades" className="space-y-8">
+          <TabsContent value="talentos" className="space-y-8">
             {children && Array.isArray(children) ? children[2] : null}
           </TabsContent>
-          <TabsContent value="gamificacao" className="space-y-8">
+          <TabsContent value="grades" className="space-y-8">
             {children && Array.isArray(children) ? children[3] : null}
           </TabsContent>
-          <TabsContent value="utilitarios" className="space-y-8">
+          <TabsContent value="gamificacao" className="space-y-8">
             {children && Array.isArray(children) ? children[4] : null}
           </TabsContent>
-          <TabsContent value="calendar" className="space-y-8">
+          <TabsContent value="utilitarios" className="space-y-8">
             {children && Array.isArray(children) ? children[5] : null}
           </TabsContent>
-          <TabsContent value="settings" className="space-y-8">
+          <TabsContent value="calendar" className="space-y-8">
             {children && Array.isArray(children) ? children[6] : null}
+          </TabsContent>
+          <TabsContent value="settings" className="space-y-8">
+            {children && Array.isArray(children) ? children[7] : null}
           </TabsContent>
         </Tabs>
       </main>
