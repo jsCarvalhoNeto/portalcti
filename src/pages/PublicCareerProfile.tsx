@@ -135,11 +135,18 @@ export default function PublicCareerProfile() {
                                     <span className="text-sm text-primary font-medium">{profile.title || 'Estudante de Tecnologia'}</span>
                                 </div>
 
-                                {profile.is_available && (
-                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
-                                        Disponível para Oportunidades
-                                    </Badge>
-                                )}
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {profile.is_available && (
+                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                                            Disponível para Oportunidades
+                                        </Badge>
+                                    )}
+                                    {profile.is_employed && (
+                                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">
+                                            Atualmente Trabalhando
+                                        </Badge>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -169,6 +176,37 @@ export default function PublicCareerProfile() {
                                             </Badge>
                                         ))}
                                     </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Professional Experience */}
+                        {profile.experiences && profile.experiences.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Briefcase className="w-5 h-5 text-blue-600" />
+                                        Experiência Profissional
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    {profile.experiences.map((exp, index) => (
+                                        <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b pb-4 last:border-0 last:pb-0">
+                                            <div>
+                                                <h4 className="font-semibold text-lg">{exp.role}</h4>
+                                                <p className="text-gray-600 font-medium">{exp.company}</p>
+                                                {exp.description && <p className="text-sm text-gray-700 mt-2 whitespace-pre-line">{exp.description}</p>}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1 mt-2 sm:mt-0 min-w-[120px]">
+                                                {exp.is_current ? (
+                                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50">Atualmente</Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">Terminado</span>
+                                                )}
+                                                <span className="text-xs text-muted-foreground">{exp.start_date} {exp.end_date ? `- ${exp.end_date}` : ''}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </CardContent>
                             </Card>
                         )}

@@ -120,6 +120,11 @@ export default function TeacherTalentBankTab() {
                                             Disponível
                                         </Badge>
                                     )}
+                                    {profile.is_employed && (
+                                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                            Empregado
+                                        </Badge>
+                                    )}
                                 </div>
                                 <div className="flex flex-col items-center text-center pt-4">
                                     <Avatar className="h-24 w-24 border-4 border-white shadow-lg mb-4">

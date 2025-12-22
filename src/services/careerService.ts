@@ -25,6 +25,15 @@ export interface Certification {
     year: string;
 }
 
+export interface Experience {
+    company: string;
+    role: string;
+    start_date: string;
+    end_date: string;
+    description: string;
+    is_current: boolean;
+}
+
 export interface CareerProfile {
     id?: number;
     student_id: string;
@@ -40,6 +49,7 @@ export interface CareerProfile {
     photo_url: string | null;
     is_available: boolean;
     is_public: boolean;
+    is_employed: boolean;
     views: number;
     contact_email?: string;
     contact_phone?: string;
@@ -47,6 +57,7 @@ export interface CareerProfile {
     projects?: Project[];
     languages?: Language[];
     certifications?: Certification[];
+    experiences?: Experience[];
 }
 
 export const careerService = {
@@ -85,11 +96,13 @@ export const careerService = {
                     photo_url: null,
                     is_available: false,
                     is_public: false,
+                    is_employed: false,
                     views: 0,
                     education: [],
                     projects: [],
                     languages: [],
                     certifications: [],
+                    experiences: [],
                     contact_email: '',
                     contact_phone: ''
                 };

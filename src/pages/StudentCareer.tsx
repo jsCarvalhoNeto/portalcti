@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { careerService, type CareerProfile, type Education, type Project, type Language, type Certification } from '@/services/careerService';
+import { careerService, type CareerProfile, type Education, type Project, type Language, type Certification, type Experience } from '@/services/careerService';
 import {
     Briefcase,
     Upload,
@@ -57,6 +57,7 @@ export default function StudentCareer() {
     const [contactPhone, setContactPhone] = useState('');
     const [isPublic, setIsPublic] = useState(false);
     const [isAvailable, setIsAvailable] = useState(false);
+    const [isEmployed, setIsEmployed] = useState(false);
     const [skills, setSkills] = useState<string[]>([]);
     const [newSkill, setNewSkill] = useState('');
 
@@ -65,6 +66,7 @@ export default function StudentCareer() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [languages, setLanguages] = useState<Language[]>([]);
     const [certifications, setCertifications] = useState<Certification[]>([]);
+    const [experiences, setExperiences] = useState<Experience[]>([]);
 
     // Temporary states for new items
     const [newEducation, setNewEducation] = useState<Partial<Education>>({ status: 'Em andamento' });
@@ -72,6 +74,7 @@ export default function StudentCareer() {
     const [newProjectTech, setNewProjectTech] = useState('');
     const [newLanguage, setNewLanguage] = useState<Partial<Language>>({ level: 'Básico' });
     const [newCertification, setNewCertification] = useState<Partial<Certification>>({});
+    const [newExperience, setNewExperience] = useState<Partial<Experience>>({ is_current: false });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const photoInputRef = useRef<HTMLInputElement>(null);
@@ -99,8 +102,10 @@ export default function StudentCareer() {
             setPortfolio(data.portfolio_url || '');
             setContactEmail(data.contact_email || '');
             setContactPhone(data.contact_phone || '');
+            setContactPhone(data.contact_phone || '');
             setIsPublic(data.is_public);
             setIsAvailable(data.is_available);
+            setIsEmployed(data.is_employed);
             setSkills(data.skills || []);
 
             // Init new sections (Backend Data)
@@ -108,6 +113,7 @@ export default function StudentCareer() {
             setProjects(data.projects || []);
             setLanguages(data.languages || []);
             setCertifications(data.certifications || []);
+            setExperiences(data.experiences || []);
 
         } catch (error) {
             toast({
@@ -138,9 +144,11 @@ export default function StudentCareer() {
                 contact_phone: contactPhone,
                 is_public: isPublic,
                 is_available: isAvailable,
+                is_employed: isEmployed,
                 skills,
                 education,
                 projects,
+                experiences,
                 languages,
                 certifications
             };
@@ -244,6 +252,18 @@ export default function StudentCareer() {
 
     const handleRemoveCertification = (index: number) => {
         setCertifications(certifications.filter((_, i) => i !== index));
+    };
+
+    // --- Experience Helpers ---
+    const handleAddExperience = () => {
+        if (newExperience.company && newExperience.role) {
+            setExperiences([...experiences, newExperience as Experience]);
+            setNewExperience({ is_current: false, company: '', role: '', start_date: '', end_date: '', description: '' });
+        }
+    };
+
+    const handleRemoveExperience = (index: number) => {
+        setExperiences(experiences.filter((_, i) => i !== index));
     };
 
 
@@ -515,6 +535,8 @@ export default function StudentCareer() {
                                     </div>
                                 ))}
 
+
+
                                 {/* Add New Education Form */}
                                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                                     <h4 className="text-sm font-medium">Adicionar Formação</h4>
@@ -548,6 +570,79 @@ export default function StudentCareer() {
                                     </div>
                                     <Button size="sm" variant="secondary" onClick={handleAddEducation} className="w-full">
                                         <Plus className="w-4 h-4 mr-2" /> Adicionar Formação
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+
+
+                        {/* Experience Section */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Briefcase className="w-5 h-5 text-blue-600" />
+                                    Experiência Profissional
+                                </CardTitle>
+                                <CardDescription>Liste suas experiências de trabalho, estágios ou voluntariado.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {experiences.map((exp, index) => (
+                                    <div key={index} className="flex justify-between items-start border-b pb-4 last:border-0 last:pb-0">
+                                        <div>
+                                            <h4 className="font-semibold">{exp.role}</h4>
+                                            <p className="text-sm font-medium text-gray-700">{exp.company}</p>
+                                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                                <span>{exp.start_date} - {exp.is_current ? 'Atualmente' : exp.end_date}</span>
+                                            </div>
+                                            {exp.description && <p className="text-sm text-gray-600 mt-2">{exp.description}</p>}
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveExperience(index)}>
+                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                ))}
+
+                                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                                    <h4 className="text-sm font-medium">Adicionar Experiência</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <Input
+                                            placeholder="Cargo (Ex: Desenvolvedor Jr)"
+                                            value={newExperience.role || ''}
+                                            onChange={e => setNewExperience({ ...newExperience, role: e.target.value })}
+                                        />
+                                        <Input
+                                            placeholder="Empresa"
+                                            value={newExperience.company || ''}
+                                            onChange={e => setNewExperience({ ...newExperience, company: e.target.value })}
+                                        />
+                                        <Input
+                                            placeholder="Data Início (Ex: Jan/2023)"
+                                            value={newExperience.start_date || ''}
+                                            onChange={e => setNewExperience({ ...newExperience, start_date: e.target.value })}
+                                        />
+                                        <Input
+                                            placeholder="Data Término (Deixe vazio se atual)"
+                                            value={newExperience.end_date || ''}
+                                            onChange={e => setNewExperience({ ...newExperience, end_date: e.target.value })}
+                                            disabled={newExperience.is_current}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="current-job"
+                                            checked={newExperience.is_current}
+                                            onCheckedChange={(checked) => setNewExperience({ ...newExperience, is_current: checked, end_date: checked ? '' : newExperience.end_date })}
+                                        />
+                                        <Label htmlFor="current-job">Trabalho Atual</Label>
+                                    </div>
+                                    <Textarea
+                                        placeholder="Descrição das atividades..."
+                                        value={newExperience.description || ''}
+                                        onChange={e => setNewExperience({ ...newExperience, description: e.target.value })}
+                                    />
+                                    <Button size="sm" variant="secondary" onClick={handleAddExperience} className="w-full">
+                                        <Plus className="w-4 h-4 mr-2" /> Adicionar Experiência
                                     </Button>
                                 </div>
                             </CardContent>
@@ -935,7 +1030,7 @@ export default function StudentCareer() {
 
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
