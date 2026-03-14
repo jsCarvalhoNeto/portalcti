@@ -1,11 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Settings, Calculator, FileText, BarChart3, Users, Sparkles } from 'lucide-react';
+import { Settings, Calculator, FileText, BarChart3, Users, Sparkles, Gauge } from 'lucide-react';
 import { useState } from 'react';
 import PollUtility from '@/components/teacher/PollUtility';
 import SorteadorEquipes from '@/components/teacher/SorteadorEquipes';
 import SpinWheel from '@/components/teacher/SpinWheel';
+import QuickVoteUtility from '@/components/teacher/QuickVoteUtility';
 
 const utilities = [
   {
@@ -26,6 +27,12 @@ const utilities = [
     description: 'Crie pesquisas enquetes para seus alunos com resultados em tempo real.',
     icon: BarChart3,
     color: '#3b82f6'
+  },
+  {
+    name: 'Votacao Rapida',
+    description: 'Gere um link por turma para os alunos avaliarem de 0 a 10 com painel sincronizado.',
+    icon: Gauge,
+    color: '#0ea5e9'
   },
   {
     name: 'Conversor de Notas',
@@ -62,7 +69,7 @@ export default function TeacherUtilities() {
   };
 
   const handleUtilityClick = (name: string) => {
-    if (name === 'Pesquisa Online' || name === 'Sorteador de Equipes' || name === 'Roleta de Temas') {
+    if (name === 'Pesquisa Online' || name === 'Sorteador de Equipes' || name === 'Roleta de Temas' || name === 'Votacao Rapida') {
       setActiveUtility(name);
     } else {
       console.log(`Acessando ${name}`);
@@ -116,6 +123,19 @@ export default function TeacherUtilities() {
             </Button>
           </div>
           <SpinWheel />
+        </div>
+      ) : activeUtility === 'Votacao Rapida' ? (
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Votacao Rapida</h2>
+            <Button
+              variant="outline"
+              onClick={() => setActiveUtility(null)}
+            >
+              Voltar
+            </Button>
+          </div>
+          <QuickVoteUtility />
         </div>
       ) : (
         <Card>

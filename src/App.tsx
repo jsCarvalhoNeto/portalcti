@@ -24,6 +24,7 @@ import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 import PollVotingPage from './pages/PollVotingPage';
+import QuickVotePublicPage from './pages/QuickVotePublicPage';
 import EventsPage from './components/pages/EventsPage';
 import EventRegistration from './pages/EventRegistration';
 import EventThematicAxes from './pages/EventThematicAxes';
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/poll/:pollId" element={<PollVotingPage />} />
+              <Route path="/votar/:hash" element={<QuickVotePublicPage />} />
 
               {/* Rota pública para perfil de carreira */}
               <Route path="/talento/:studentId" element={<PublicCareerProfile />} />

@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, BookOpen } from "lucide-react";
-import heroImage from "@/assets/hero-education.jpg";
+import heroImage from "@/assets/hero-education.png";
 
 const HeroSection = () => {
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src={heroImage} 
+        <img
+          src={heroImage}
           alt="Estudantes de informática aprendendo tecnologia"
           className="w-full h-full object-cover"
         />
@@ -28,9 +28,9 @@ const HeroSection = () => {
                 em Informática
               </span>
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto">
-              Sua jornada para se tornar um profissional de tecnologia começa aqui. 
+              Sua jornada para se tornar um profissional de tecnologia começa aqui.
               Acesse disciplinas, projetos, notícias e muito mais.
             </p>
 
@@ -40,7 +40,7 @@ const HeroSection = () => {
                 Explorar Disciplinas
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              
+
               <Button variant="glass" size="lg" className="group">
                 <Play className="w-5 h-5 mr-2" />
                 Assistir Apresentação
