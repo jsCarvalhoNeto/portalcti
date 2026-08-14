@@ -1,4 +1,10 @@
-import api from './api';
+import { supabase } from '../lib/supabaseClient';
+
+export interface ActivityFileItem {
+  file_name: string;
+  file_url: string;
+  file_path: string;
+}
 
 export interface ActivityData {
   name: string;
@@ -8,6 +14,8 @@ export interface ActivityData {
   description?: string;
   file_path?: string;
   file_name?: string;
+  files?: File[] | ActivityFileItem[];
+  rawFiles?: File[];
   deadline?: string;
   period?: string;
   evaluation_type?: string;
@@ -34,7 +42,7 @@ export interface ActivityGrade {
   id: number | null; // Pode ser nulo para alunos que ainda não submeteram
   activity_id: number | null; // Pode ser nulo para alunos que ainda não submeteram
   enrollment_id: number;
-  student_id: number;
+  student_id: string;
   grade: number | null;
   graded_at: string | null;
   graded_by: string | null;
@@ -71,159 +79,445 @@ export interface StudentActivity {
   file_path: string | null;
   file_name: string | null;
   created_at: string;
+  deadline?: string | null;
+  period?: string | null;
+  evaluation_type?: string | null;
   status: 'pending' | 'submitted' | 'completed';
+  student_grade?: number | string | null;
+  grade?: number | null;
+  grade_date?: string | null;
+  submitted_at?: string | null;
+  teacher_observation?: string | null;
+}
+
+export async function uploadActivityFile(file: File, folder: string = 'activities'): Promise<{ fileName: string; filePath: string; publicUrl: string }> {
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const path = `${folder}/${Date.now()}_${sanitizedName}`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('activities')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error('Erro no upload para o Supabase Storage:', uploadError);
+    throw uploadError;
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('activities')
+    .getPublicUrl(path);
+
+  return {
+    fileName: file.name,
+    filePath: path,
+    publicUrl: publicUrl
+  };
 }
 
 export async function createActivity(activityData: ActivityData) {
   try {
-    // Verificar primeiro se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando criação de atividade');
-      throw new Error('Não é possível criar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Não autenticado');
+
+    let grade = activityData.grade;
+    if (!grade) {
+      const { data: sub } = await supabase
+        .from('subjects')
+        .select('grade')
+        .eq('id', activityData.subject_id)
+        .single();
+      grade = sub?.grade || '';
     }
 
-    const response = await api.post('/activities', activityData, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating activity:', error);
-    // Verificar se o erro está relacionado ao modo privado/anônimo
-    if ((error as any)?.response?.status === 401) {
-      const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-      const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-      if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-        console.warn('⚠️ Erro 401 relacionado a modo privado detectado');
-        throw new Error('Não é possível criar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    let filesList: ActivityFileItem[] = [];
+    let mainFilePath = activityData.file_path || null;
+    let mainFileName = activityData.file_name || null;
+
+    const filesToUpload = activityData.rawFiles || (Array.isArray(activityData.files) && activityData.files.length > 0 && activityData.files[0] instanceof File ? (activityData.files as File[]) : []);
+
+    if (filesToUpload && filesToUpload.length > 0) {
+      for (const file of filesToUpload) {
+        try {
+          const uploaded = await uploadActivityFile(file, `teacher_${user.id}`);
+          filesList.push({
+            file_name: uploaded.fileName,
+            file_path: uploaded.filePath,
+            file_url: uploaded.publicUrl
+          });
+        } catch (upErr) {
+          console.error('Erro no upload de arquivo:', upErr);
+        }
+      }
+      if (filesList.length > 0) {
+        mainFilePath = filesList[0].file_url || filesList[0].file_path;
+        mainFileName = filesList[0].file_name;
       }
     }
-    throw new Error('Não foi possível criar a atividade.');
+
+    const { data, error } = await supabase
+      .from('activities')
+      .insert({
+        name: activityData.name,
+        subject_id: activityData.subject_id,
+        grade: grade,
+        type: activityData.type,
+        description: activityData.description || null,
+        deadline: activityData.deadline || null,
+        period: activityData.period || null,
+        evaluation_type: activityData.evaluation_type || null,
+        file_path: mainFilePath,
+        file_name: mainFileName,
+        files: filesList,
+        teacher_id: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao criar atividade no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível criar a atividade.');
+  }
+}
+
+export async function getAvailableStudentsForActivity(activityId: number) {
+  try {
+    const { data: act, error: actErr } = await supabase
+      .from('activities')
+      .select('subject_id')
+      .eq('id', activityId)
+      .single();
+
+    if (actErr || !act) throw actErr || new Error('Atividade não encontrada');
+
+    const { data: studentRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'student');
+
+    const studentIds = (studentRoles || []).map(r => r.user_id);
+    if (studentIds.length === 0) return [];
+
+    const { data: enrollments, error: enrollErr } = await supabase
+      .from('enrollments')
+      .select(`
+        id,
+        student_id,
+        profiles!inner(
+          id,
+          full_name,
+          email,
+          student_registration,
+          grade
+        )
+      `)
+      .eq('subject_id', act.subject_id)
+      .in('student_id', studentIds);
+
+    if (enrollErr) throw enrollErr;
+
+    const { data: grades } = await supabase
+      .from('activity_grades')
+      .select('enrollment_id')
+      .eq('activity_id', activityId);
+
+    const gradedEnrollmentIds = new Set((grades || []).map(g => Number(g.enrollment_id)));
+
+    if (!enrollments || enrollments.length === 0) {
+      const { data: students } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, student_registration, grade')
+        .in('id', studentIds);
+
+      return (students || []).map((s: any) => ({
+        id: s.id,
+        full_name: s.full_name,
+        email: s.email || '',
+        student_registration: s.student_registration || '',
+        grade: s.grade || '',
+        already_has_grade: false
+      }));
+    }
+
+    return enrollments.map((item: any) => ({
+      id: item.profiles.id,
+      enrollment_id: Number(item.id),
+      full_name: item.profiles.full_name,
+      email: item.profiles.email || '',
+      student_registration: item.profiles.student_registration || '',
+      grade: item.profiles.grade || '',
+      already_has_grade: gradedEnrollmentIds.has(Number(item.id))
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar alunos disponíveis no Supabase:', error);
+    return [];
+  }
+}
+
+export async function getEnrollmentForActivityStudent(activityId: number, studentId: string) {
+  try {
+    const { data: act } = await supabase
+      .from('activities')
+      .select('subject_id')
+      .eq('id', activityId)
+      .single();
+
+    if (!act) throw new Error('Atividade não encontrada');
+
+    let { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('subject_id', act.subject_id)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (!enrollment) {
+      const { data: newEnrollment, error: createError } = await supabase
+        .from('enrollments')
+        .insert({
+          subject_id: act.subject_id,
+          student_id: studentId,
+          enrollment_date: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      enrollment = newEnrollment;
+    }
+
+    return { enrollment_id: Number(enrollment.id) };
+  } catch (error) {
+    console.error('Erro ao obter matrícula do aluno:', error);
+    throw error;
   }
 }
 
 export async function assignActivityGrade(gradeData: ActivityGradeData) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando atribuição de nota de atividade');
-      throw new Error('Não é possível atribuir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { data: existing } = await supabase
+      .from('activity_grades')
+      .select('id')
+      .eq('activity_id', gradeData.activity_id)
+      .eq('enrollment_id', gradeData.enrollment_id)
+      .maybeSingle();
 
-    const response = await api.post('/activities/activity-grades', gradeData, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error assigning activity grade:', error);
-    throw new Error('Não foi possível atribuir a nota à atividade.');
+    if (existing) {
+      const { data, error } = await supabase
+        .from('activity_grades')
+        .update({
+          grade: gradeData.grade,
+          status: 'graded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } else {
+      const { data, error } = await supabase
+        .from('activity_grades')
+        .insert({
+          activity_id: gradeData.activity_id,
+          enrollment_id: gradeData.enrollment_id,
+          grade: gradeData.grade,
+          status: 'graded',
+          submitted_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  } catch (error: any) {
+    console.error('Erro ao atribuir nota de atividade no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível atribuir a nota à atividade.');
   }
 }
 
 export async function getActivityGrades(activityId: number): Promise<ActivityGrade[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de notas de atividade');
-      return []; // Retornar array vazio em modo privado
-    }
+    const { data, error } = await supabase
+      .from('activity_grades')
+      .select(`
+        id,
+        activity_id,
+        enrollment_id,
+        grade,
+        submitted_at,
+        student_name,
+        team_members,
+        text_submission,
+        file_path,
+        file_name,
+        files,
+        status,
+        teacher_observation,
+        enrollments!inner(
+          student_id,
+          profiles!inner(full_name, email)
+        )
+      `)
+      .eq('activity_id', activityId);
 
-    const response = await api.get(`/activities/${activityId}/grades`, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching activity grades:', error);
-    throw new Error('Não foi possível buscar as notas da atividade.');
+    if (error) throw error;
+
+    return (data || []).map((grade: any) => ({
+      grade_id: Number(grade.id),
+      id: Number(grade.id),
+      activity_id: Number(grade.activity_id),
+      enrollment_id: Number(grade.enrollment_id),
+      student_id: grade.enrollments.student_id,
+      grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
+      graded_at: grade.submitted_at,
+      graded_by: null,
+      student_name: grade.student_name || grade.enrollments.profiles.full_name,
+      student_name_display: grade.student_name || grade.enrollments.profiles.full_name,
+      student_email: grade.enrollments.profiles.email || '',
+      subject_name: '',
+      activity_name: '',
+      team_members: grade.team_members || null,
+      file_path: grade.file_path || null,
+      file_name: grade.file_name || null,
+      files: grade.files || [],
+      text_submission: grade.text_submission || null,
+      submitted_at: grade.submitted_at,
+      status: grade.status || (grade.grade !== null ? 'graded' : 'submitted'),
+      teacher_observation: grade.teacher_observation || null,
+      has_teacher_observation: !!grade.teacher_observation
+    }));
+  } catch (error: any) {
+    console.error('Erro ao buscar notas no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível buscar as notas da atividade.');
   }
 }
 
 export async function updateActivity(activityId: number, activityData: ActivityData) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando atualização de atividade');
-      throw new Error('Não é possível atualizar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Não autenticado');
+
+    let filesList: ActivityFileItem[] = Array.isArray(activityData.files) && activityData.files.length > 0 && !(activityData.files[0] instanceof File)
+      ? (activityData.files as ActivityFileItem[])
+      : [];
+    let mainFilePath = activityData.file_path || null;
+    let mainFileName = activityData.file_name || null;
+
+    const filesToUpload = activityData.rawFiles || (Array.isArray(activityData.files) && activityData.files.length > 0 && activityData.files[0] instanceof File ? (activityData.files as File[]) : []);
+
+    if (filesToUpload && filesToUpload.length > 0) {
+      for (const file of filesToUpload) {
+        try {
+          const uploaded = await uploadActivityFile(file, `teacher_${user.id}`);
+          filesList.push({
+            file_name: uploaded.fileName,
+            file_path: uploaded.filePath,
+            file_url: uploaded.publicUrl
+          });
+        } catch (upErr) {
+          console.error('Erro no upload de arquivo:', upErr);
+        }
+      }
+      if (filesList.length > 0) {
+        mainFilePath = filesList[0].file_url || filesList[0].file_path;
+        mainFileName = filesList[0].file_name;
+      }
     }
 
-    const response = await api.put(`/activities/${activityId}`, activityData, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error updating activity:', error);
-    throw new Error('Não foi possível atualizar a atividade.');
+    const updatePayload: any = {
+      name: activityData.name,
+      type: activityData.type,
+      description: activityData.description || null,
+      deadline: activityData.deadline || null,
+      period: activityData.period || null,
+      evaluation_type: activityData.evaluation_type || null,
+    };
+
+    if (activityData.grade) {
+      updatePayload.grade = activityData.grade;
+    }
+    if (mainFilePath) {
+      updatePayload.file_path = mainFilePath;
+    }
+    if (mainFileName) {
+      updatePayload.file_name = mainFileName;
+    }
+    if (filesList.length > 0) {
+      updatePayload.files = filesList;
+    }
+
+    const { data, error } = await supabase
+      .from('activities')
+      .update(updatePayload)
+      .eq('id', activityId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao atualizar atividade no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível atualizar a atividade.');
   }
 }
 
 export async function updateActivityGrade(gradeId: number, grade: number) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando atualização de nota de atividade');
-      throw new Error('Não é possível atualizar notas no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { data, error } = await supabase
+      .from('activity_grades')
+      .update({ grade, status: 'graded', updated_at: new Date().toISOString() })
+      .eq('id', gradeId)
+      .select()
+      .single();
 
-    console.log('Tentando atualizar nota da atividade:', { gradeId, grade });
-    const response = await api.put(`/activities/activity-grades/${gradeId}`, { grade }, { withCredentials: true });
-    console.log('Nota atualizada com sucesso:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating activity grade:', error);
-    throw new Error('Não foi possível atualizar a nota da atividade.');
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Erro ao atualizar nota no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível atualizar a nota da atividade.');
   }
 }
 
 export async function setActivityTeacherObservation(gradeId: number, teacher_observation: string | null) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando definição de observação de atividade');
-      throw new Error('Não é possível definir observações no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { data, error } = await supabase
+      .from('activity_grades')
+      .update({
+        teacher_observation,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', gradeId)
+      .select()
+      .single();
 
-    const response = await api.put(`/activities/activity-grades/${gradeId}/observation`, { teacher_observation }, { withCredentials: true });
-    return response.data;
+    if (error) throw error;
+    return { success: true, data };
   } catch (error) {
-    console.error('Error setting teacher observation:', error);
+    console.error('Erro ao salvar observação:', error);
     throw new Error('Não foi possível salvar a observação.');
   }
 }
 
 export async function deleteActivityGrade(gradeId: number) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando exclusão de nota de atividade');
-      throw new Error('Não é possível excluir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { error } = await supabase
+      .from('activity_grades')
+      .delete()
+      .eq('id', gradeId);
 
-    const response = await api.delete(`/activities/activity-grades/${gradeId}`, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting activity grade:', error);
-    throw new Error('Não foi possível excluir a nota da atividade.');
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro ao excluir nota no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível excluir a nota da atividade.');
   }
 }
 
-/**
- * 🎯 ATRIBUIÇÃO MANUAL DE NOTAS PARA MEMBROS DE EQUIPE
- * 
- * Permite que o professor atribua notas manualmente para membros 
- * específicos de uma equipe que não enviaram a atividade
- */
 export interface ManualTeamGradeData {
   activity_id: number;
   enrollment_id: number;
@@ -234,107 +528,441 @@ export interface ManualTeamGradeData {
 
 export async function assignManualGradeToTeamMember(gradeData: ManualTeamGradeData) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando atribuição de nota manual para membro da equipe');
-      throw new Error('Não é possível atribuir notas no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
-
-    const response = await api.post('/activities/team-grades/manual', gradeData, { withCredentials: true });
-    return response.data;
+    return await assignActivityGrade({
+      activity_id: gradeData.activity_id,
+      enrollment_id: gradeData.enrollment_id,
+      grade: gradeData.grade,
+      graded_by: ''
+    });
   } catch (error: any) {
-    console.error('Error assigning manual grade to team member:', error);
-    if (error.response?.data?.error) {
-      throw new Error(error.response.data.error);
-    }
-    throw new Error('Não foi possível atribuir a nota manual ao membro da equipe.');
+    console.error('Erro ao atribuir nota manual no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível atribuir a nota manual.');
   }
 }
 
 export async function deleteActivity(activityId: number) {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando exclusão de atividade');
-      throw new Error('Não é possível excluir atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', activityId);
 
-    const response = await api.delete(`/activities/${activityId}`, { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting activity:', error);
-    throw new Error('Não foi possível excluir atividade.');
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro ao deletar atividade no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível excluir atividade.');
   }
 }
 
 export async function getStudentActivities(): Promise<StudentActivity[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // 1. Obter as matrículas do aluno logado
+    const { data: enrolls } = await supabase
+      .from('enrollments')
+      .select('id, subject_id')
+      .eq('student_id', user.id);
+
+    const enrollmentMap = new Map<number, number>();
+    (enrolls || []).forEach(e => enrollmentMap.set(Number(e.subject_id), Number(e.id)));
+
+    const subjectIds = Array.from(enrollmentMap.keys());
+    if (subjectIds.length === 0) return [];
+
+    // 2. Buscar submissões existentes do aluno
+    const enrollmentIds = (enrolls || []).map(e => e.id);
+    const { data: userGrades } = await supabase
+      .from('activity_grades')
+      .select('activity_id, grade, status, submitted_at, teacher_observation')
+      .in('enrollment_id', enrollmentIds);
+
+    const gradeMap = new Map<number, {
+      grade: number | null;
+      status: string;
+      submitted_at: string | null;
+      teacher_observation: string | null;
+    }>();
     
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de atividades do aluno');
-      return []; // Retornar array vazio em modo privado
+    (userGrades || []).forEach(g => {
+      gradeMap.set(Number(g.activity_id), {
+        grade: g.grade !== null && g.grade !== undefined ? Number(g.grade) : null,
+        status: g.status || (g.grade !== null ? 'completed' : 'submitted'),
+        submitted_at: g.submitted_at || null,
+        teacher_observation: g.teacher_observation || null
+      });
+    });
+
+    // 3. Buscar atividades associadas às matérias matriculadas
+    const { data, error } = await supabase
+      .from('activities')
+      .select(`
+        id,
+        name,
+        subject_id,
+        type,
+        description,
+        file_path,
+        file_name,
+        deadline,
+        period,
+        evaluation_type,
+        created_at,
+        subjects!inner(
+          name,
+          teacher_id
+        )
+      `)
+      .in('subject_id', subjectIds)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // 4. Buscar nomes dos professores
+    const teacherIds = Array.from(new Set((data || []).map((a: any) => a.subjects?.teacher_id).filter(Boolean)));
+    const teacherMap = new Map<string, string>();
+    if (teacherIds.length > 0) {
+      const { data: teacherProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', teacherIds);
+      (teacherProfiles || []).forEach((t: any) => teacherMap.set(t.id, t.full_name));
     }
 
-    const response = await api.get('/activities/student', { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching student activities:', error);
-    throw new Error('Não foi possível buscar as atividades.');
+    return (data || []).map((activity: any) => {
+      const actId = Number(activity.id);
+      const subInfo = gradeMap.get(actId);
+      let status: 'pending' | 'submitted' | 'completed' = 'pending';
+      if (subInfo) {
+        if (subInfo.grade !== null && subInfo.grade !== undefined) {
+          status = 'completed';
+        } else {
+          status = 'submitted';
+        }
+      }
+
+      const teacherName = (activity.subjects?.teacher_id && teacherMap.get(activity.subjects.teacher_id)) || 'Professor';
+
+      return {
+        id: actId,
+        subject_id: Number(activity.subject_id),
+        name: activity.name,
+        subject_name: activity.subjects?.name || 'Disciplina',
+        teacher_name: teacherName,
+        type: activity.type || 'individual',
+        description: activity.description || null,
+        file_path: activity.file_path || null,
+        file_name: activity.file_name || null,
+        created_at: activity.created_at,
+        deadline: activity.deadline || null,
+        period: activity.period || null,
+        evaluation_type: activity.evaluation_type || null,
+        status: status,
+        student_grade: subInfo?.grade !== null && subInfo?.grade !== undefined ? subInfo.grade : null,
+        grade: subInfo?.grade !== null && subInfo?.grade !== undefined ? subInfo.grade : null,
+        grade_date: subInfo?.submitted_at || null,
+        submitted_at: subInfo?.submitted_at || null,
+        teacher_observation: subInfo?.teacher_observation || null
+      };
+    });
+  } catch (error: any) {
+    console.error('Erro ao obter atividades do estudante no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível buscar as atividades.');
   }
 }
 
 export async function submitStudentActivity(activityData: FormData): Promise<any> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando envio de atividade do aluno');
-      throw new Error('Não é possível enviar atividades no modo anônimo. Por favor, desative o modo de navegação privada.');
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Não autenticado');
 
-    const response = await api.post('/activities/student-activities', activityData, {
-      withCredentials: true,
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const activityId = activityData.get('activity_id');
+    if (!activityId) throw new Error('ID da atividade não informado');
+
+    const studentName = (activityData.get('student_name') as string) || '';
+    const teamMembers = (activityData.get('team_members') as string) || '';
+    const textSubmission = (activityData.get('text_submission') as string) || '';
+
+    // Coletar arquivos do FormData (seja 'files' ou 'file')
+    const filesEntries: File[] = [];
+    const filesGetAll = activityData.getAll('files');
+    const fileGetAll = activityData.getAll('file');
+
+    [...filesGetAll, ...fileGetAll].forEach((item) => {
+      if (item instanceof File && item.name && item.size > 0) {
+        filesEntries.push(item);
       }
     });
-    return response.data;
-  } catch (error: any) {
-    console.error('Error submitting student activity:', error);
-    // Verificar se há uma mensagem específica do backend
-    if (error.response && error.response.data && error.response.data.error) {
-      throw new Error(error.response.data.error);
+
+    if (!textSubmission.trim() && filesEntries.length === 0) {
+      throw new Error('Informe o texto da submissão ou anexe ao menos um arquivo.');
     }
-    throw new Error('Não foi possível enviar a atividade.');
+
+    // 1. Upload de arquivos se existirem para o bucket 'submissions'
+    const filesList: StudentActivityFile[] = [];
+    for (const file of filesEntries) {
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `submissions/${activityId}/${user.id}/${Date.now()}_${sanitizedName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('submissions')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Erro no upload de arquivo da submissão:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('submissions')
+        .getPublicUrl(filePath);
+
+      filesList.push({
+        enrollment_id: 0,
+        file_id: `${Date.now()}`,
+        file_name: file.name,
+        file_url: publicUrl,
+        file_type: file.type || 'application/octet-stream',
+        file_uploaded_at: new Date().toISOString()
+      });
+    }
+
+    // 2. Obter disciplina da atividade
+    const { data: activity, error: actErr } = await supabase
+      .from('activities')
+      .select('subject_id')
+      .eq('id', Number(activityId))
+      .single();
+
+    if (actErr || !activity) throw actErr || new Error('Atividade não encontrada');
+
+    // 3. Obter ou criar matrícula do aluno para essa disciplina
+    let { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('student_id', user.id)
+      .eq('subject_id', activity.subject_id)
+      .maybeSingle();
+
+    if (!enrollment) {
+      const { data: newEnrollment, error: createError } = await supabase
+        .from('enrollments')
+        .insert({
+          student_id: user.id,
+          subject_id: activity.subject_id,
+          enrollment_date: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      enrollment = newEnrollment;
+    }
+
+    // Atualizar enrollment_id nos arquivos
+    filesList.forEach(f => f.enrollment_id = Number(enrollment.id));
+
+    // 4. Verificar se já existe submissão para atualizar ou inserir
+    const { data: existingSubmission } = await supabase
+      .from('activity_grades')
+      .select('id, grade')
+      .eq('activity_id', Number(activityId))
+      .eq('enrollment_id', Number(enrollment.id))
+      .maybeSingle();
+
+    const submissionPayload = {
+      activity_id: Number(activityId),
+      enrollment_id: Number(enrollment.id),
+      student_name: studentName || null,
+      team_members: teamMembers || null,
+      text_submission: textSubmission || null,
+      file_path: filesList.length > 0 ? filesList[0].file_url : null,
+      file_name: filesList.length > 0 ? filesList[0].file_name : null,
+      files: filesList,
+      status: 'submitted',
+      submitted_at: new Date().toISOString()
+    };
+
+    let resultData;
+    if (existingSubmission) {
+      const { data, error } = await supabase
+        .from('activity_grades')
+        .update(submissionPayload)
+        .eq('id', existingSubmission.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      resultData = data;
+    } else {
+      const { data, error } = await supabase
+        .from('activity_grades')
+        .insert({
+          ...submissionPayload,
+          grade: null
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      resultData = data;
+    }
+
+    return resultData;
+  } catch (error: any) {
+    console.error('Erro ao submeter atividade no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível enviar a atividade.');
   }
 }
 
 export async function getStudentActivityGrades(): Promise<ActivityGrade[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de notas de atividades do aluno');
-      return []; // Retornar array vazio em modo privado
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
 
-    const response = await api.get('/activities/student/grades', { withCredentials: true });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching student activity grades:', error);
-    throw new Error('Não foi possível buscar as notas das atividades.');
+    const { data: enrolls } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('student_id', user.id);
+
+    const enrollmentIds = (enrolls || []).map(e => e.id);
+
+    if (enrollmentIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('activity_grades')
+      .select(`
+        id,
+        activity_id,
+        enrollment_id,
+        grade,
+        submitted_at,
+        student_name,
+        team_members,
+        text_submission,
+        file_path,
+        file_name,
+        files,
+        status,
+        teacher_observation,
+        activities!inner(
+          name,
+          subjects!inner(name)
+        )
+      `)
+      .in('enrollment_id', enrollmentIds);
+
+    if (error) throw error;
+
+    return (data || []).map((grade: any) => ({
+      grade_id: Number(grade.id),
+      id: Number(grade.id),
+      activity_id: Number(grade.activity_id),
+      enrollment_id: Number(grade.enrollment_id),
+      student_id: user.id,
+      grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
+      graded_at: grade.submitted_at,
+      graded_by: null,
+      student_name: grade.student_name || '',
+      student_name_display: grade.student_name || '',
+      student_email: '',
+      subject_name: grade.activities?.subjects?.name || '',
+      activity_name: grade.activities?.name || '',
+      team_members: grade.team_members || null,
+      file_path: grade.file_path || null,
+      file_name: grade.file_name || null,
+      files: grade.files || [],
+      text_submission: grade.text_submission || null,
+      submitted_at: grade.submitted_at,
+      status: grade.status || (grade.grade !== null ? 'graded' : 'submitted'),
+      teacher_observation: grade.teacher_observation || null,
+      has_teacher_observation: !!grade.teacher_observation
+    }));
+  } catch (error: any) {
+    console.error('Erro ao obter notas no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível buscar as notas das atividades.');
   }
 }
+
+export async function getActivityTeams(activityId: number) {
+  try {
+    const { data: act } = await supabase
+      .from('activities')
+      .select('id, name, type')
+      .eq('id', activityId)
+      .single();
+
+    if (!act) throw new Error('Atividade não encontrada');
+
+    if (act.type !== 'team') {
+      return {
+        activity_id: activityId,
+        activity_name: act.name,
+        activity_type: 'individual',
+        teams: [],
+        total_teams: 0,
+        total_students: 0
+      };
+    }
+
+    const { data: submissions } = await supabase
+      .from('activity_grades')
+      .select(`
+        id,
+        activity_id,
+        grade,
+        submitted_at,
+        enrollments!inner(
+          profiles!inner(
+            full_name,
+            email,
+            student_registration
+          )
+        )
+      `)
+      .eq('activity_id', activityId);
+
+    const teams = (submissions || []).map((sub: any, index: number) => ({
+      team_id: sub.id,
+      team_name: `Equipe ${index + 1}`,
+      leader: {
+        id: sub.id,
+        name: sub.enrollments?.profiles?.full_name || 'Líder',
+        email: sub.enrollments?.profiles?.email || '',
+        student_registration: sub.enrollments?.profiles?.student_registration || '',
+        is_leader: true,
+        grade: sub.grade,
+        status: 'graded'
+      },
+      members: [],
+      grade: sub.grade,
+      status: 'graded',
+      submitted_at: sub.submitted_at
+    }));
+
+    return {
+      activity_id: activityId,
+      activity_name: act.name,
+      activity_type: 'team',
+      teams: teams,
+      total_teams: teams.length,
+      total_students: teams.length
+    };
+  } catch (error) {
+    console.error('Erro ao buscar equipes no Supabase:', error);
+    return {
+      activity_id: activityId,
+      activity_name: '',
+      activity_type: 'team',
+      teams: [],
+      total_teams: 0,
+      total_students: 0
+    };
+  }
+}
+

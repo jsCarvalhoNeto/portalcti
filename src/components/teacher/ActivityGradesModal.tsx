@@ -77,45 +77,11 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
 
   const fetchStudentsWithoutGrades = async () => {
     try {
-      // Buscar todos os alunos disponíveis para a atividade
-      const response = await fetch(`${API_URL}/activities/${activityId}/available-students`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const allStudents = await response.json();
-        
-        // Filtrar alunos que ainda não têm nota e buscar seus enrollment_ids
-        const studentsWithoutNotes = allStudents.filter((student: any) => !student.already_has_grade);
-        
-        // Para cada aluno, buscar seu enrollment_id
-        const studentsWithEnrollmentIds = await Promise.all(
-          studentsWithoutNotes.map(async (student: any) => {
-            try {
-              const enrollmentResponse = await fetch(`${API_URL}/activities/${activityId}/enrollments?student_id=${student.id}`, {
-                credentials: 'include'
-              });
-              
-              if (enrollmentResponse.ok) {
-                const enrollmentData = await enrollmentResponse.json();
-                return {
-                  ...student,
-                  enrollment_id: enrollmentData.enrollment_id
-                };
-              }
-              return student;
-            } catch (error) {
-              console.error('Error fetching enrollment for student:', student.id, error);
-              return student;
-            }
-          })
-        );
-        
-        setStudentsWithoutGrades(studentsWithEnrollmentIds);
-      }
+      const allStudents = await getAvailableStudentsForActivity(activityId);
+      const studentsWithoutNotes = allStudents.filter((student: any) => !student.already_has_grade);
+      setStudentsWithoutGrades(studentsWithoutNotes);
     } catch (error) {
       console.error('Error fetching students without grades:', error);
-      // Não mostrar erro - esta é uma funcionalidade adicional
     }
   };
 

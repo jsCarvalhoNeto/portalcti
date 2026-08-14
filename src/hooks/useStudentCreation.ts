@@ -1,7 +1,5 @@
-import { API_URL } from '@/services/api';
-
 /**
- * Hook customizado para gerenciar criação de estudantes
+ * Hook customizado para gerenciar criação e edição de estudantes via Supabase
  */
 
 import { useState, useCallback } from 'react';
@@ -12,7 +10,7 @@ import {
   ERROR_MESSAGES 
 } from '@/types/student';
 import { validateField, sanitizeStudentData } from '@/services/validationService';
-import { createStudent, canCreateStudent } from '@/services/studentService';
+import { createStudent, updateStudent, canCreateStudent } from '@/services/studentService';
 import { useToast } from '@/hooks/use-toast';
 
 const initialFormData: StudentFormData = {
@@ -60,7 +58,7 @@ export function useStudentCreation(): UseStudentCreationReturn {
     const value = formData[field];
     
     // Não validar campos vazios em tempo real
-    if (!value.trim()) {
+    if (!value?.trim()) {
       return;
     }
 
@@ -108,7 +106,6 @@ export function useStudentCreation(): UseStudentCreationReturn {
       // Validar todos os campos antes de enviar
       const sanitizedData = sanitizeStudentData(formData);
       
-      // Validação básica de campos obrigatórios (matrícula não é mais obrigatória)
       const newErrors: Record<string, string> = {};
       
       if (!sanitizedData.fullName) {
@@ -174,7 +171,6 @@ export function useStudentCreation(): UseStudentCreationReturn {
       // Validar todos os campos antes de enviar
       const sanitizedData = sanitizeStudentData(formData);
       
-      // Validação básica de campos obrigatórios (matrícula não é mais obrigatória para atualização)
       const newErrors: Record<string, string> = {};
       
       if (!sanitizedData.fullName) {
@@ -194,29 +190,8 @@ export function useStudentCreation(): UseStudentCreationReturn {
         return;
       }
 
-      // Atualizar estudante no banco de dados real (API)
-      // Obter conexão e atualizar no banco de dados real
-      const response = await fetch(`${API_URL}/students/${studentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: sanitizedData.fullName,
-          email: sanitizedData.email,
-          studentRegistration: sanitizedData.studentRegistration, // Mantendo a matrícula existente
-          grade: sanitizedData.grade
-          // Não atualizar senha a menos que seja especificamente fornecida
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao atualizar estudante');
-      }
-
-      const result = await response.json();
-      console.log('Estudante atualizado com sucesso:', result);
+      // Atualizar estudante diretamente no Supabase
+      await updateStudent(studentId, sanitizedData);
 
       toast({
         title: "Estudante Atualizado com Sucesso!",
@@ -248,7 +223,7 @@ export function useStudentCreation(): UseStudentCreationReturn {
     setShowCredentials(false);
   }, []);
 
- const closeCredentials = useCallback(() => {
+  const closeCredentials = useCallback(() => {
     setShowCredentials(false);
     setGeneratedCredentials(null);
   }, []);

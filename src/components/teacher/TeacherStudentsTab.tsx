@@ -21,31 +21,13 @@ export default function TeacherStudentsTab() {
     const fetchStudents = async () => {
       setDataLoading(true);
       try {
-        if (selectedGrade === 'all') {
-          // Busca todos os alunos combinando os resultados de todas as séries
-          const grades: ('1º Ano' | '2º Ano' | '3º Ano')[] = ['1º Ano', '2º Ano', '3º Ano'];
-          const studentPromises = grades.map(grade => getStudentsByGrade(grade));
-          const studentsByGrade = await Promise.all(studentPromises);
-
-          if (!isMounted) return;
-
-          const allStudents = studentsByGrade.flat();
-
-          // Remove duplicatas com base no ID do aluno
-          const uniqueStudents = Array.from(new Map(allStudents.map(student => [student.id, student])).values());
-          setDisplayedStudents(uniqueStudents);
-        } else {
-          // Busca alunos para a série específica selecionada
-          const data = await getStudentsByGrade(selectedGrade as '1º Ano' | '2º Ano' | '3º Ano');
-
-          if (!isMounted) return;
-
-          setDisplayedStudents(data);
-        }
+        const data = await getStudentsByGrade(selectedGrade);
+        if (!isMounted) return;
+        setDisplayedStudents(data || []);
       } catch (error) {
         console.error('Erro ao buscar alunos:', error);
         if (isMounted) {
-          setDisplayedStudents([]); // Limpa a lista em caso de erro
+          setDisplayedStudents([]);
         }
       } finally {
         if (isMounted) {

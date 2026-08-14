@@ -90,7 +90,7 @@ interface TeacherDashboardProviderProps {
 }
 
 export function TeacherDashboardProvider({ children }: TeacherDashboardProviderProps) {
-  const { user, isTeacher } = useAuth();
+  const { user, profile: authProfile, isTeacher } = useAuth();
   const { subjects, loading: subjectsLoading, error: subjectsError, refetch: refetchSubjects } = useTeacherData();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -124,103 +124,61 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
   const fetchStudents = useCallback(async () => {
     if (!user) return;
     
-    // Verificar primeiro se estamos em modo privado
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando busca de alunos do professor');
-      setLoading(prev => ({ ...prev, students: false }));
-      return;
-    }
-
     setLoading(prev => ({ ...prev, students: true }));
     setError(prev => ({ ...prev, students: null }));
     
     try {
       const data = await getTeacherStudents(user.id);
-      setStudents(data);
+      setStudents(data || []);
     } catch (err) {
+      console.error('Erro ao carregar alunos do professor:', err);
       setError(prev => ({ ...prev, students: 'Erro ao carregar alunos' }));
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar alunos",
-        variant: "destructive",
-      });
     } finally {
       setLoading(prev => ({ ...prev, students: false }));
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   const fetchActivities = useCallback(async () => {
     if (!user) return;
     
-    // Verificar primeiro se estamos em modo privado
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando busca de atividades do professor');
-      setLoading(prev => ({ ...prev, activities: false }));
-      return;
-    }
-
     setLoading(prev => ({ ...prev, activities: true }));
     setError(prev => ({ ...prev, activities: null }));
     
     try {
       const data = await getTeacherActivities(user.id);
-      setActivities(data);
+      setActivities(data || []);
     } catch (err) {
+      console.error('Erro ao carregar atividades do professor:', err);
       setError(prev => ({ ...prev, activities: 'Erro ao carregar atividades' }));
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar atividades",
-        variant: "destructive",
-      });
     } finally {
       setLoading(prev => ({ ...prev, activities: false }));
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   const fetchCalendarEvents = useCallback(async () => {
     if (!user) return;
     
-    // Verificar primeiro se estamos em modo privado
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando busca de eventos do calendário');
-      setLoading(prev => ({ ...prev, calendar: false }));
-      return;
-    }
-
     setLoading(prev => ({ ...prev, calendar: true }));
     setError(prev => ({ ...prev, calendar: null }));
     
     try {
       const data = await getTeacherCalendarEvents(user.id);
-      setCalendarEvents(data);
+      setCalendarEvents(data || []);
     } catch (err) {
+      console.error('Erro ao carregar eventos do calendário:', err);
       setError(prev => ({ ...prev, calendar: 'Erro ao carregar eventos' }));
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar eventos do calendário",
-        variant: "destructive",
-      });
     } finally {
       setLoading(prev => ({ ...prev, calendar: false }));
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (isTeacher) {
+    if (isTeacher && user) {
       fetchStudents();
       fetchActivities();
       fetchCalendarEvents();
     }
-  }, [isTeacher, fetchStudents, fetchActivities, fetchCalendarEvents]);
+  }, [isTeacher, user, fetchStudents, fetchActivities, fetchCalendarEvents]);
 
   const value: TeacherDashboardContextType = {
     subjects,
@@ -228,7 +186,11 @@ export function TeacherDashboardProvider({ children }: TeacherDashboardProviderP
     activities,
     calendarEvents,
     grades,
-    profile: user ? { full_name: user.email, email: user.email, phone: undefined } : null,
+    profile: authProfile ? {
+      full_name: authProfile.full_name,
+      email: authProfile.email,
+      phone: authProfile.phone || undefined
+    } : (user ? { full_name: user.email, email: user.email, phone: undefined } : null),
     loading: {
       subjects: subjectsLoading,
       students: loading.students,

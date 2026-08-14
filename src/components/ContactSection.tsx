@@ -68,25 +68,37 @@ const ContactSection = () => {
     {
       icon: MapPin,
       title: "Localização",
-      details: ["Rua da Tecnologia, 123", "Centro - São Paulo/SP", "CEP: 01234-567"],
+      details: [
+        "EEEP Balbina Viana Arraes",
+        "R. Leonor Rufino, 943 - Sol Nascente",
+        "Brejo Santo - CE, CEP: 63260-000"
+      ],
       color: "from-blue-500 to-purple-600"
     },
     {
       icon: Phone,
-      title: "Telefones",
-      details: ["(11) 3456-7890", "(11) 9 8765-4321", "WhatsApp disponível"],
+      title: "Telefones & WhatsApp",
+      details: ["(88) 99849-9645", "Coordenação do Curso", "Atendimento via WhatsApp"],
       color: "from-purple-500 to-pink-600"
     },
     {
       icon: Mail,
-      title: "E-mails",
-      details: ["contato@techportal.edu.br", "secretaria@techportal.edu.br", "suporte@techportal.edu.br"],
+      title: "E-mails Oficiais",
+      details: [
+        "professorsantosbva@gmail.com",
+        "eeepbalbinaviana@escola.ce.gov.br",
+        "informatica.bva@escola.ce.gov.br"
+      ],
       color: "from-pink-500 to-red-600"
     },
     {
       icon: Clock,
-      title: "Horário de Atendimento",
-      details: ["Segunda a Sexta: 8h às 22h", "Sábado: 8h às 12h", "Suporte online 24/7"],
+      title: "Horário de Funcionamento",
+      details: [
+        "Segunda a Sexta: 07:30 às 17:00",
+        "Ensino Médio Integrado (Tempo Integral)",
+        "Portal Online: Acesso 24/7"
+      ],
       color: "from-red-500 to-orange-600"
     }
   ];
@@ -100,8 +112,7 @@ const ContactSection = () => {
             Entre em Contato
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Estamos aqui para ajudar você em sua jornada educacional. 
-            Entre em contato conosco através dos canais disponíveis.
+            Tem dúvidas sobre o Curso Técnico em Informática ou sobre o processo seletivo? Fale com nossa coordenação e equipe pedagógica.
           </p>
         </div>
 
@@ -146,7 +157,7 @@ const ContactSection = () => {
                       Telefone
                     </label>
                     <Input 
-                      placeholder="(11) 9 9999-9999"
+                      placeholder="(88) 9 9999-9999"
                       className="bg-background/50 border-border focus:border-primary"
                       value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -243,15 +254,15 @@ const ContactSection = () => {
           </div>
         </div>
 
-
-        {/* Map Placeholder */}
-        <div className="bg-muted rounded-2xl h-64 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Mapa interativo da localização será carregado aqui
-            </p>
-          </div>
+        {/* Google Maps Real Embed */}
+        <div className="bg-card rounded-2xl overflow-hidden shadow-md border border-border h-80 relative">
+          <iframe
+            title="Localização da EEEP Balbina Viana Arraes"
+            className="w-full h-full border-0 filter contrast-105"
+            src="https://maps.google.com/maps?q=EEEP%20Balbina%20Viana%20Arraes%20Brejo%20Santo&t=&z=16&ie=UTF8&iwloc=&output=embed"
+            loading="lazy"
+            allowFullScreen
+          ></iframe>
         </div>
       </div>
     </section>

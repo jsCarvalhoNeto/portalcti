@@ -1,5 +1,5 @@
-import { API_URL } from '@/services/api';
 import { useState, useEffect } from 'react';
+import { getAllTeachers } from '@/services/teacherService';
 
 interface Teacher {
   id: string;
@@ -16,15 +16,11 @@ export function useTeachers() {
     const fetchTeachers = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/teachers`);
-        if (!response.ok) {
-          throw new Error('Erro ao buscar professores');
-        }
-        const data = await response.json();
-        setTeachers(data);
+        const data = await getAllTeachers();
+        setTeachers(data as Teacher[]);
         setError(null);
       } catch (err) {
-        console.error('Erro ao buscar professores:', err);
+        console.error('Erro ao buscar professores no Supabase:', err);
         setError(err instanceof Error ? err.message : 'Erro ao buscar professores');
       } finally {
         setLoading(false);

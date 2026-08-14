@@ -76,17 +76,26 @@ export default function Auth() {
     const { error } = await signUp(email, password, fullName, studentRegistration);
 
     if (error) {
+      let description = "Ocorreu um erro ao tentar fazer o cadastro.";
+      if (error.includes('already registered') || error.includes('User already registered')) {
+        description = "Este e-mail já está cadastrado. Faça login com suas credenciais.";
+      } else if (error.includes('rate limit')) {
+        description = "Muitas tentativas em pouco tempo. Por favor, aguarde alguns instantes e tente novamente.";
+      } else if (error.includes('Password') || error.includes('password')) {
+        description = "A senha deve ter pelo menos 6 caracteres.";
+      } else if (error) {
+        description = error;
+      }
+
       toast({
         variant: "destructive",
         title: "Erro no cadastro",
-        description: error === 'User already registered' 
-          ? "Este email já está cadastrado" 
-          : "Ocorreu um erro ao tentar fazer o cadastro"
+        description
       });
     } else {
       toast({
-        title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar a conta"
+        title: "Cadastro realizado com sucesso!",
+        description: "Sua conta foi criada. Entrando no sistema..."
       });
     }
 

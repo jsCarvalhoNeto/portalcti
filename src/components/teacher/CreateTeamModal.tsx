@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import api from '@/services/api';
+import { getAvailableStudentsForActivity, getEnrollmentForActivityStudent, assignActivityGrade } from '@/services/activityService';
 import { Users, Crown, Star, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface CreateTeamModalProps {
@@ -24,7 +24,7 @@ interface CreateTeamModalProps {
 }
 
 interface Student {
-  id: number;
+  id: string | number;
   full_name: string;
   email: string;
   student_registration: string;
@@ -78,8 +78,8 @@ export default function CreateTeamModal({
   const fetchAvailableStudents = async () => {
     setStudentsLoading(true);
     try {
-      const response = await api.get(`/activities/${activityId}/available-students`);
-      setStudents(response.data);
+      const data = await getAvailableStudentsForActivity(activityId);
+      setStudents(data);
     } catch (error) {
       console.error('Erro ao buscar alunos:', error);
       toast({
@@ -129,23 +129,18 @@ export default function CreateTeamModal({
       }
 
       // Buscar enrollment_id
-      const enrollmentResponse = await api.get(`/activities/${activityId}/enrollments?student_id=${selectedLeader}`);
-      const enrollmentData = enrollmentResponse.data;
+      const enrollmentData = await getEnrollmentForActivityStudent(activityId, selectedLeader);
       if (!enrollmentData.enrollment_id) {
         throw new Error('Aluno não está matriculado nesta disciplina');
       }
 
       // Criar a nota da equipe
-      const gradeData = {
+      await assignActivityGrade({
         activity_id: activityId,
         enrollment_id: enrollmentData.enrollment_id,
         grade: parseFloat(grade),
-        student_name: selectedStudent.full_name,
-        team_members: teamMembersText.trim(),
-        teacher_observation: observation.trim() || null
-      };
-
-      await api.post('/activity-grades', gradeData);
+        graded_by: ''
+      });
       
       toast({
         title: "✅ Equipe Criada com Sucesso!",

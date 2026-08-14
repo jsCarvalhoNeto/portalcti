@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -13,35 +13,20 @@ import {
   PenTool, 
   FolderOpen, 
   ClipboardList, 
-  Settings,
-  ArrowLeft,
-  Save,
-  Edit3
+  Settings, 
+  ArrowLeft, 
+  Save, 
+  Edit3 
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
-import { Subject } from '@/services/teacherDashboardService';
-import api from '@/services/api';
+import { subjectService, Subject } from '@/services/subjectService';
+import { 
+  subjectContentService, 
+  SubjectContent, 
+  SubjectResource, 
+  REVERSE_SECTION_TYPE_MAP 
+} from '@/services/subjectContentService';
 import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
-
-interface SubjectContent {
-  id: string;
-  section_type: string;
-  title: string;
-  content: string;
-  order_index: number;
-  is_active: boolean;
-}
-
-interface SubjectResource {
-  id: string;
-  resource_type: string;
-  title: string;
-  file_path?: string;
-  file_url?: string;
-  description: string;
- order_index: number;
-  is_active: boolean;
-}
 
 export default function TeacherSubjectEditor() {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +35,7 @@ export default function TeacherSubjectEditor() {
   const navigate = useNavigate();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('conteudo');
   const [contentData, setContentData] = useState<Record<string, SubjectContent[]>>({
     conteudo: [],
@@ -70,56 +56,21 @@ export default function TeacherSubjectEditor() {
     recursos: []
   });
 
- useEffect(() => {
-    if (id && user && isTeacher) {
-      fetchSubjectData();
-    }
-  }, [id, user, isTeacher]);
+  const fetchSubjectData = useCallback(async () => {
+    if (!id) return;
 
-  const fetchSubjectData = async () => {
     try {
       setLoading(true);
       
-      // Fetch subject details
-      const subjectResponse = await api.get(`/subjects/${id}`);
-      setSubject(subjectResponse.data);
+      // Buscar detalhes da disciplina no Supabase
+      const subjectResponse = await subjectService.getById(id);
+      setSubject(subjectResponse);
 
-      // Mapeamento de seções em português (frontend) para inglês (backend)
-      const sectionMapping: Record<string, string> = {
-        'conteudo': 'content',
-        'material': 'material',
-        'atividades': 'activities',
-        'exercicios': 'exercises',
-        'projetos': 'projects',
-        'avaliacoes': 'evaluations',
-        'recursos': 'resources'
-      };
+      // Buscar todos os conteúdos da disciplina no Supabase
+      const allContents = await subjectContentService.getAllBySubject(id);
 
-      // Fetch content data for all sections
-      const sections = ['conteudo', 'material', 'atividades', 'exercicios', 'projetos', 'avaliacoes', 'recursos'];
-      const contentPromises = sections.map(async (section) => {
-        try {
-          const backendSection = sectionMapping[section] || section;
-          const response = await api.get(`/content/${id}/content/${backendSection}`);
-          return { section, data: response.data };
-        } catch (error) {
-          return { section, data: [] };
-        }
-      });
-
-      const resourcesPromises = sections.map(async (section) => {
-        try {
-          const backendSection = sectionMapping[section] || section;
-          // Para recursos, assumindo que também use a rota correta
-          const response = await api.get(`/content/${id}/resources/${backendSection}`);
-          return { section, data: response.data };
-        } catch (error) {
-          return { section, data: [] };
-        }
-      });
-
-      const contentResults = await Promise.all(contentPromises);
-      const resourcesResults = await Promise.all(resourcesPromises);
+      // Buscar recursos da disciplina no Supabase
+      const allResources = await subjectContentService.getResourcesBySubject(id);
 
       const newContentData: Record<string, SubjectContent[]> = {
         conteudo: [],
@@ -141,12 +92,19 @@ export default function TeacherSubjectEditor() {
         recursos: []
       };
 
-      contentResults.forEach(({ section, data }) => {
-        newContentData[section as keyof typeof newContentData] = data;
+      // Organizar conteúdos pelas abas em português
+      allContents.forEach(item => {
+        const tabKey = REVERSE_SECTION_TYPE_MAP[item.section_type] || item.section_type;
+        if (newContentData[tabKey]) {
+          newContentData[tabKey].push(item);
+        } else {
+          newContentData[tabKey] = [item];
+        }
       });
 
-      resourcesResults.forEach(({ section, data }) => {
-        newResourcesData[section as keyof typeof newResourcesData] = data;
+      // Organizar recursos
+      allResources.forEach(res => {
+        newResourcesData['recursos'].push(res);
       });
 
       setContentData(newContentData);
@@ -161,27 +119,21 @@ export default function TeacherSubjectEditor() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, toast]);
 
-  const handleSaveContent = async (section: string, content: string) => {
-    console.log('🔍 handleSaveContent - Iniciando salvamento', { section, content: content?.substring(0, 100) + '...' });
+  useEffect(() => {
+    if (id && user && isTeacher) {
+      fetchSubjectData();
+    }
+  }, [id, user, isTeacher, fetchSubjectData]);
+
+  const handleSaveContent = async (section: string, content: string, showToast = true) => {
+    if (!id) return;
+    console.log('🔍 handleSaveContent - Salvando no Supabase:', { section, length: content?.length });
+    
     try {
-      // Mapeamento de seções em português (frontend) para inglês (backend)
-      const sectionMapping: Record<string, string> = {
-        'conteudo': 'content',
-        'material': 'material',
-        'atividades': 'activities',
-        'exercicios': 'exercises',
-        'projetos': 'projects',
-        'avaliacoes': 'evaluations',
-        'recursos': 'resources'
-      };
-
-      const backendSection = sectionMapping[section] || section;
-      console.log('🔍 handleSaveContent - Seção mapeada:', { section, backendSection });
-      
       // Limpar tags HTML vazias e espaços em branco
-      const cleanContent = content
+      const cleanContent = (content || '')
         .replace(/<p><br><\/p>/g, '')
         .replace(/<p>\s*<\/p>/g, '')
         .replace(/<br\s*\/?>/g, '')
@@ -190,144 +142,137 @@ export default function TeacherSubjectEditor() {
 
       // Se o conteúdo está vazio após limpeza, limpar a seção
       if (!cleanContent || cleanContent === '<p></p>' || cleanContent === '') {
-        console.log('🗑️ Conteúdo vazio detectado, limpando seção...');
-        return await handleClearContent(section);
+        return await handleClearContent(section, showToast);
       }
       
       const sectionLabels: Record<string, string> = {
-        'content': 'Conteúdo',
+        'conteudo': 'Ementa',
         'material': 'Cronograma',
-        'activities': 'Atividades',
-        'exercises': 'Exercícios',
-        'projects': 'Projetos',
-        'evaluations': 'Avaliações',
-        'resources': 'Recursos'
+        'atividades': 'Escopo',
+        'exercicios': 'Exercícios',
+        'projetos': 'Projetos',
+        'avaliacoes': 'Avaliações',
+        'recursos': 'Recursos'
       };
 
-      const response = await api.post(`/content/${id}/content`, {
-        section_type: backendSection,
-        title: sectionLabels[backendSection] || section,
-        content: cleanContent,
-        order_index: 0
-      });
+      const title = sectionLabels[section] || section;
 
-      console.log('🔍 handleSaveContent - Resposta do servidor:', response.status);
-      if (response.status === 200 || response.status === 201) {
+      await subjectContentService.saveContent(id, section, title, cleanContent);
+
+      if (showToast) {
         toast({
           title: 'Sucesso',
-          description: `Conteúdo de ${section} salvo com sucesso!`,
+          description: `Conteúdo de ${title} salvo com sucesso!`,
         });
-        // Refresh data
         fetchSubjectData();
-      } else {
-        throw new Error('Falha ao salvar conteúdo');
       }
     } catch (error) {
       console.error('❌ handleSaveContent - Erro ao salvar conteúdo:', error);
-      toast({
-        title: 'Erro',
-        description: `Falha ao salvar conteúdo de ${section}`,
-        variant: 'destructive',
-      });
-    }
- };
-
-  const handleClearContent = async (section: string) => {
-    console.log('🗑️ handleClearContent - Limpando conteúdo da seção:', section);
-    
-    // Confirmar com o usuário
-    const confirmed = window.confirm(`Tem certeza que deseja limpar todo o conteúdo de ${section}? Esta ação não pode ser desfeita.`);
-    if (!confirmed) return;
-
-    try {
-      // Mapeamento de seções
-      const sectionMapping: Record<string, string> = {
-        'conteudo': 'content',
-        'material': 'material',
-        'atividades': 'activities',
-        'exercicios': 'exercises',
-        'projetos': 'projects',
-        'avaliacoes': 'evaluations',
-        'recursos': 'resources'
-      };
-
-      const backendSection = sectionMapping[section] || section;
-      console.log('🔍 handleClearContent - Seção mapeada:', { section, backendSection });
-
-      // Enviar conteúdo vazio para o backend
-      const response = await api.delete(`/content/${id}/content/section/${backendSection}`);
-
-      console.log('🔍 handleClearContent - Resposta do servidor:', response.status);
-
-      if (response.status === 200 || response.status === 204) {
-        // Limpar o estado local
-        setContentData(prev => ({
-          ...prev,
-          [section]: []
-        }));
-
+      if (showToast) {
         toast({
-          title: 'Sucesso',
-          description: `Conteúdo de ${section} foi limpo com sucesso!`,
+          title: 'Erro',
+          description: `Falha ao salvar conteúdo de ${section}`,
+          variant: 'destructive',
         });
-
-        // Recarregar os dados para garantir sincronia
-        fetchSubjectData();
-      } else {
-        throw new Error('Falha ao limpar conteúdo');
       }
-    } catch (error) {
-      console.error('❌ handleClearContent - Erro ao limpar conteúdo:', error);
-      toast({
-        title: 'Erro',
-        description: `Falha ao limpar conteúdo de ${section}`,
-        variant: 'destructive',
-      });
+      throw error;
     }
   };
 
-  const handleSave = () => {
-    // Save all content
-    const sections = ['conteudo', 'material', 'atividades', 'exercicios', 'projetos', 'avaliacoes', 'recursos'];
-    sections.forEach(section => {
-      const content = document.querySelector(`#editor-${section}`)?.innerHTML || '';
-      if (content) {
-        handleSaveContent(section, content);
+  const handleClearContent = async (section: string, showToast = true) => {
+    if (!id) return;
+    
+    if (showToast) {
+      const confirmed = window.confirm(`Tem certeza que deseja limpar todo o conteúdo desta seção? Esta ação não pode ser desfeita.`);
+      if (!confirmed) return;
+    }
+
+    try {
+      await subjectContentService.clearSectionContent(id, section);
+
+      setContentData(prev => ({
+        ...prev,
+        [section]: []
+      }));
+
+      if (showToast) {
+        toast({
+          title: 'Sucesso',
+          description: `Conteúdo da seção foi limpo com sucesso!`,
+        });
+        fetchSubjectData();
       }
-    });
- };
+    } catch (error) {
+      console.error('❌ handleClearContent - Erro ao limpar conteúdo:', error);
+      if (showToast) {
+        toast({
+          title: 'Erro',
+          description: `Falha ao limpar conteúdo da seção`,
+          variant: 'destructive',
+        });
+      }
+      throw error;
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      const sections = ['conteudo', 'material', 'atividades', 'exercicios', 'projetos', 'avaliacoes', 'recursos'];
+      for (const section of sections) {
+        const currentContent = contentData[section]?.[0]?.content;
+        if (currentContent !== undefined && currentContent !== null) {
+          await handleSaveContent(section, currentContent, false);
+        }
+      }
+      await fetchSubjectData();
+      toast({
+        title: 'Sucesso',
+        description: 'Todo o conteúdo foi salvo com sucesso!',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Falha ao salvar alguns conteúdos',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       </MainLayout>
     );
   }
 
- if (!user || !isTeacher) {
+  if (!user || !isTeacher) {
     return <Navigate to="/auth" replace />;
   }
 
   if (!subject) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-2">Disciplina não encontrada</h1>
-            <p className="text-muted-foreground">A disciplina que você está procurando não existe.</p>
+            <p className="text-muted-foreground mb-4">A disciplina que você está procurando não existe ou você não tem acesso.</p>
+            <Button onClick={() => navigate('/teacher')}>Voltar ao Painel</Button>
           </div>
         </div>
       </MainLayout>
     );
   }
 
- const navItems = [
-    { value: 'conteudo', label: 'Conteúdo', icon: FileText },
+  const navItems = [
+    { value: 'conteudo', label: 'Ementa', icon: FileText },
     { value: 'material', label: 'Cronograma', icon: BookOpen },
-    { value: 'atividades', label: 'Atividades', icon: Activity },
+    { value: 'atividades', label: 'Escopo', icon: Activity },
     { value: 'exercicios', label: 'Exercícios', icon: PenTool },
     { value: 'projetos', label: 'Projetos', icon: FolderOpen },
     { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardList },
@@ -336,11 +281,11 @@ export default function TeacherSubjectEditor() {
 
   return (
     <MainLayout>
-      <div>
+      <div className="min-h-screen pb-12">
         {/* Header */}
         <header className="bg-card border-b">
           <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <Button 
                   variant="outline" 
@@ -351,12 +296,12 @@ export default function TeacherSubjectEditor() {
                   <ArrowLeft className="w-4 h-4" />
                   Voltar
                 </Button>
-                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Edit3 className="w-8 h-8 text-primary" />
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Edit3 className="w-6 h-6 text-primary" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">{subject.name}</h1>
-                  <p className="text-muted-foreground">Painel de Edição - Professor</p>
+                  <p className="text-sm text-muted-foreground">Painel de Edição de Conteúdo - Professor</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -367,10 +312,11 @@ export default function TeacherSubjectEditor() {
                 <Button 
                   variant="default" 
                   className="flex items-center gap-2"
-                  onClick={handleSave}
+                  onClick={handleSaveAll}
+                  disabled={saving}
                 >
                   <Save className="w-4 h-4" />
-                  Salvar Tudo
+                  {saving ? 'Salvando...' : 'Salvar Tudo'}
                 </Button>
               </div>
             </div>
@@ -378,15 +324,15 @@ export default function TeacherSubjectEditor() {
         </header>
 
         {/* Navigation Tabs */}
-        <div className="bg-primary">
+        <div className="bg-primary/95 shadow-sm">
           <div className="container mx-auto px-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="border-b-0">
-              <TabsList className="w-full justify-start h-auto p-0 bg-transparent">
+              <TabsList className="w-full justify-start h-auto p-0 bg-transparent flex-wrap">
                 {navItems.map(item => (
                   <TabsTrigger 
                     key={item.value}
                     value={item.value} 
-                    className="text-primary-foreground/80 hover:bg-primary-glow data-[state=active]:bg-white/20 data-[state=active]:text-primary-foreground flex-1 md:flex-none flex items-center gap-2 px-4 py-3 rounded-none"
+                    className="text-primary-foreground/80 hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-primary-foreground flex items-center gap-2 px-4 py-3 rounded-none text-sm font-medium transition-colors"
                   >
                     <item.icon className="w-4 h-4" />
                     {item.label}
@@ -401,10 +347,10 @@ export default function TeacherSubjectEditor() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             {navItems.map(item => (
               <TabsContent key={item.value} value={item.value} className="space-y-6">
-                <Card className="bg-card border">
+                <Card className="bg-card border shadow-sm">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <item.icon className="w-5 h-5" />
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <item.icon className="w-5 h-5 text-primary" />
                       {item.label}
                     </CardTitle>
                   </CardHeader>
@@ -412,20 +358,20 @@ export default function TeacherSubjectEditor() {
                     <div className="space-y-4">
                       <MarkdownRichTextEditor
                         content={contentData[item.value] 
-                          ? contentData[item.value].map(content => content.content).join('<br><br>') 
+                          ? contentData[item.value].map(content => content.content).join('\n\n') 
                           : ''
                         }
-                        className="max-h-[60vh] overflow-y-auto"
+                        className="min-h-[250px] max-h-[60vh] overflow-y-auto"
                         onChange={(newContent: string) => {
-                          // Atualizar o contentData localmente para feedback imediato
                           setContentData(prev => ({
                             ...prev,
                             [item.value]: [{
-                              id: '1',
+                              id: prev[item.value]?.[0]?.id || 'new',
+                              subject_id: Number(id),
                               section_type: item.value,
                               title: item.label,
                               content: newContent,
-                              order_index: 1,
+                              order_index: 0,
                               is_active: true
                             }]
                           }));
@@ -433,15 +379,17 @@ export default function TeacherSubjectEditor() {
                         placeholder={`Digite o conteúdo de ${item.label}...`}
                       />
                       
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 pt-2">
                         <Button 
                           variant="destructive" 
+                          size="sm"
                           onClick={() => handleClearContent(item.value)}
                         >
-                          Limpar Conteúdo
+                          Limpar {item.label}
                         </Button>
                         <Button 
-                          variant="outline" 
+                          variant="default" 
+                          size="sm"
                           onClick={() => {
                             const content = contentData[item.value]?.[0]?.content || '';
                             handleSaveContent(item.value, content);
@@ -456,35 +404,31 @@ export default function TeacherSubjectEditor() {
                 </Card>
 
                 {/* Resources Section */}
-                <Card className="bg-card border">
+                <Card className="bg-card border shadow-sm">
                   <CardHeader>
-                    <CardTitle>Recursos de {item.label}</CardTitle>
+                    <CardTitle className="text-base">Recursos de {item.label}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {resourcesData[item.value]?.length > 0 ? 
+                      {resourcesData[item.value]?.length > 0 ? (
                         resourcesData[item.value].map((resource, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                                {resource.resource_type === 'file' && <BookOpen className="w-4 h-4 text-primary" />}
-                                {resource.resource_type === 'link' && <BookOpen className="w-4 h-4 text-primary" />}
-                                {resource.resource_type === 'video' && <BookOpen className="w-4 h-4 text-primary" />}
-                                {resource.resource_type === 'pdf' && <BookOpen className="w-4 h-4 text-primary" />}
+                                <BookOpen className="w-4 h-4 text-primary" />
                               </div>
                               <div>
-                                <h4 className="font-medium">{resource.title}</h4>
+                                <h4 className="font-medium text-sm">{resource.title}</h4>
                                 {resource.description && (
-                                  <p className="text-sm text-muted-foreground">{resource.description}</p>
+                                  <p className="text-xs text-muted-foreground">{resource.description}</p>
                                 )}
                               </div>
                             </div>
-                            <Button variant="outline" size="sm">
-                              Editar
-                            </Button>
                           </div>
                         ))
-                      : <p className="text-muted-foreground/50">Nenhum recurso adicionado ainda...</p>}
+                      ) : (
+                        <p className="text-sm text-muted-foreground/60 italic">Nenhum recurso anexado ainda...</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import ColorPicker from '@/components/ui/ColorPicker';
 import { useToast } from '@/hooks/use-toast';
-import api from '@/services/api';
+import { subjectService } from '@/services/subjectService';
 import { Subject } from '@/contexts/TeacherDashboardContext';
 
 interface SubjectColorEditModalProps {
@@ -79,8 +79,8 @@ export default function SubjectColorEditModal({
     setIsLoading(true);
 
     try {
-      // Atualizar disciplina via API
-      await api.put(`/subjects/${subject.id}`, {
+      // Atualizar disciplina via Supabase
+      await subjectService.update(subject.id, {
         name: formData.name,
         description: formData.description,
         color: formData.color,
@@ -99,7 +99,7 @@ export default function SubjectColorEditModal({
       toast({
         variant: "destructive",
         title: "Erro ao atualizar disciplina",
-        description: error.response?.data?.error || "Ocorreu um erro inesperado. Tente novamente.",
+        description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
       });
     } finally {
       setIsLoading(false);

@@ -179,53 +179,17 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
 
     setIsSubmitting(true);
     try {
-      if (files.length > 0) {
-        // Se houver arquivos, usar FormData para upload
-        const formData = new FormData();
-        formData.append('name', activityName);
-        formData.append('subject_id', selectedSubject);
-        // Não enviar o campo 'grade' - o controller pega a série da disciplina
-        formData.append('type', activityType);
-        formData.append('description', description);
-        if (deadline) {
-          formData.append('deadline', convertToISO(deadline));
-        }
-        if (period) {
-          formData.append('period', period);
-        }
-        if (evaluationType) {
-          formData.append('evaluation_type', evaluationType);
-        }
-        
-        // Adicionar múltiplos arquivos
-        files.forEach((file) => {
-          formData.append('files', file);
-        });
-        
-        const response = await fetch(`${API_URL}/activities`, {
-          method: 'POST',
-          credentials: 'include',
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error('Erro ao criar atividade');
-        }
-
-        await response.json();
-      } else {
-        // Se não houver arquivo, usar a função existente
-        // Não enviar o campo 'grade' - o controller pega a série da disciplina
-        await createActivity({
-          name: activityName,
-          subject_id: parseInt(selectedSubject, 10),
-          type: activityType,
-          description: description || undefined,
-          deadline: deadline || undefined,
-          period: period || undefined,
-          evaluation_type: evaluationType || undefined,
-        });
-      }
+      await createActivity({
+        name: activityName,
+        subject_id: parseInt(selectedSubject, 10),
+        grade: selectedGrade,
+        type: activityType,
+        description: description || undefined,
+        deadline: deadline ? convertToISO(deadline) : undefined,
+        period: period || undefined,
+        evaluation_type: evaluationType || undefined,
+        rawFiles: files.length > 0 ? files : undefined
+      });
 
       toast({
         title: "Sucesso!",

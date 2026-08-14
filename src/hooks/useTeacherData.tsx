@@ -15,22 +15,12 @@ export const useTeacherData = () => {
     }
 
     try {
-      // Verificar primeiro se estamos em modo privado
-      const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-      const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-      
-      if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-        console.log('🔒 Modo privado detectado - pulando busca de dados do professor');
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       setError(null);
       console.log('Buscando disciplinas para o professor:', user.id);
       const teacherSubjects = await getTeacherSubjects(user.id);
-      console.log('Disciplinas retornadas pela API:', teacherSubjects);
-      setSubjects(teacherSubjects);
+      console.log('Disciplinas retornadas pelo Supabase:', teacherSubjects);
+      setSubjects(teacherSubjects || []);
       setLoading(false);
     } catch (err) {
       setError('Falha ao buscar os dados do professor.');

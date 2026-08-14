@@ -1,4 +1,3 @@
-import { API_URL } from '@/services/api';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
@@ -7,16 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import SubjectModal from '@/components/SubjectModal';
 import StudentModal from '@/components/admin/StudentModal';
 import TeacherModal from '@/components/admin/TeacherModal';
-import { getAllStudents } from '@/services/studentService';
-import { getAllUsers } from '@/services/userService';
-import { getAllTeachers } from '@/services/teacherService';
-
+import UserEditModal from '@/components/admin/UserEditModal';
+import { getAllStudents, deleteStudent } from '@/services/studentService';
+import { getAllUsers, updateUserRole } from '@/services/userService';
+import { getAllTeachers, deleteTeacher as deleteTeacherService } from '@/services/teacherService';
 import { subjectService } from '@/services/subjectService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 
@@ -40,18 +41,28 @@ interface Student {
   full_name?: string;
   email: string;
   student_registration?: string;
+  grade?: string | null;
 }
 
 interface AdminSubject {
   id: string;
   name: string;
   description?: string;
+  teacher_id?: string;
   teacher_name?: string;
+  teacher_ids?: string[];
+  teachers?: Array<{ id: string; full_name: string; email?: string }>;
   schedule?: string;
   current_students: number;
   max_students: number;
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
+  semester?: string;
+  period?: string;
+  periods?: string[];
+  year?: number;
+  color?: string;
 }
+
 
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
@@ -61,7 +72,7 @@ export default function AdminDashboard() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
- const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [totalStudents, setTotalStudents] = useState(0);
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
@@ -70,10 +81,105 @@ export default function AdminDashboard() {
   const [editingSubject, setEditingSubject] = useState<AdminSubject | null>(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<AdminSubject | null>(null);
- const { toast } = useToast();
+  const { toast } = useToast();
+
+  // Filtros para Estudantes
+  const [studentGradeFilter, setStudentGradeFilter] = useState('all');
+  const [studentSearch, setStudentSearch] = useState('');
+
+  // Filtros para Disciplinas
+  const [subjectGradeFilter, setSubjectGradeFilter] = useState('all');
+  const [subjectPeriodFilter, setSubjectPeriodFilter] = useState('all');
+  const [subjectYearFilter, setSubjectYearFilter] = useState('all');
+  const [subjectSemesterFilter, setSubjectSemesterFilter] = useState('all');
+  const [subjectSearch, setSubjectSearch] = useState('');
+
+  // Anos e semestres únicos extraídos das disciplinas para alimentar os selects
+  const availableSubjectYears = Array.from(
+    new Set(
+      subjects
+        .map((s) => s.year)
+        .filter((y): y is number => typeof y === 'number' && !isNaN(y))
+    )
+  ).sort((a, b) => b - a);
+
+  const availableSubjectSemesters = Array.from(
+    new Set(
+      subjects
+        .map((s) => s.semester?.trim())
+        .filter((sem): sem is string => Boolean(sem && sem.length > 0))
+    )
+  ).sort();
+
+  // Filtragem de Estudantes
+  const filteredStudents = students.filter((student) => {
+    if (studentGradeFilter !== 'all') {
+      if (studentGradeFilter === 'no-grade') {
+        if (student.grade) return false;
+      } else if (student.grade !== studentGradeFilter) {
+        return false;
+      }
+    }
+    if (studentSearch.trim()) {
+      const searchLower = studentSearch.toLowerCase().trim();
+      const matchName = student.full_name?.toLowerCase().includes(searchLower);
+      const matchEmail = student.email?.toLowerCase().includes(searchLower);
+      const matchReg = student.student_registration?.toLowerCase().includes(searchLower);
+      if (!matchName && !matchEmail && !matchReg) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Filtragem de Disciplinas
+  const filteredSubjects = subjects.filter((subject) => {
+    // Série
+    if (subjectGradeFilter !== 'all') {
+      if (subjectGradeFilter === 'no-grade') {
+        if (subject.grade) return false;
+      } else if (subject.grade !== subjectGradeFilter) {
+        return false;
+      }
+    }
+    // Período
+    if (subjectPeriodFilter !== 'all') {
+      const hasInPeriods = Array.isArray(subject.periods) && subject.periods.some(p => p.toLowerCase().includes(subjectPeriodFilter.toLowerCase()));
+      const hasInPeriod = typeof subject.period === 'string' && subject.period.toLowerCase().includes(subjectPeriodFilter.toLowerCase());
+      if (!hasInPeriods && !hasInPeriod) {
+        return false;
+      }
+    }
+    // Ano
+    if (subjectYearFilter !== 'all') {
+      if (String(subject.year) !== subjectYearFilter) {
+        return false;
+      }
+    }
+    // Semestre
+    if (subjectSemesterFilter !== 'all') {
+      if (subject.semester?.toLowerCase().trim() !== subjectSemesterFilter.toLowerCase().trim()) {
+        return false;
+      }
+    }
+    // Busca textual
+    if (subjectSearch.trim()) {
+      const searchLower = subjectSearch.toLowerCase().trim();
+      const matchName = subject.name?.toLowerCase().includes(searchLower);
+      const matchTeacher = subject.teacher_name?.toLowerCase().includes(searchLower);
+      const matchDesc = subject.description?.toLowerCase().includes(searchLower);
+      const matchSchedule = subject.schedule?.toLowerCase().includes(searchLower);
+      if (!matchName && !matchTeacher && !matchDesc && !matchSchedule) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   const getTabLabel = (tabValue: string) => {
     const labels: Record<string, string> = {
@@ -92,20 +198,14 @@ export default function AdminDashboard() {
       fetchUsers();
       fetchSubjects();
       fetchTeachers();
-      fetchStudents(); // Buscar estudantes também
+      fetchStudents();
     }
   }, [user, isAdmin]);
 
   const fetchTeachers = async () => {
     setLoadingTeachers(true);
-      const API_URL_ENDPOINT = `${API_URL}/teachers`; // URL absoluta para o backend
-
     try {
-      const response = await fetch(API_URL_ENDPOINT);
-      if (!response.ok) {
-        throw new Error('Falha ao buscar professores da API');
-      }
-      const teacherData = await response.json();
+      const teacherData = await getAllTeachers();
       setTeachers(teacherData);
     } catch (error) {
       console.error('Error fetching teachers:', error);
@@ -124,7 +224,6 @@ export default function AdminDashboard() {
     try {
       const allUsers = await getAllUsers();
       setUsers(allUsers);
-      // Contar apenas estudantes ativos (com papel de estudante)
       const activeStudents = allUsers.filter(user => user.roles.some((r: any) => r.role === 'student'));
       setTotalStudents(activeStudents.length);
     } catch (error) {
@@ -157,22 +256,14 @@ export default function AdminDashboard() {
   };
 
   const deleteTeacher = async (teacherId: string) => {
-    const API_URL_ENDPOINT = `${API_URL}/teachers/${teacherId}`;
-
     try {
-      const response = await fetch(API_URL_ENDPOINT, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao deletar professor da API');
-      }
-
+      await deleteTeacherService(teacherId);
       toast({
         title: "Sucesso",
         description: "Professor removido com sucesso do sistema.",
       });
-      fetchTeachers(); // Atualiza a lista de professores
+      fetchTeachers();
+      fetchUsers();
     } catch (error) {
       console.error('Error deleting teacher:', error);
       toast({
@@ -185,28 +276,19 @@ export default function AdminDashboard() {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Remove o estudante via API real
-      const API_URL_ENDPOINT = `${API_URL}/students/${userId}`;
-      const response = await fetch(API_URL_ENDPOINT, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao remover estudante do sistema');
-      }
-
+      await deleteStudent(userId);
       toast({
         title: "Sucesso",
-        description: "Estudante removido com sucesso.",
+        description: "Usuário removido com sucesso.",
       });
       fetchUsers();
       fetchTeachers();
-      fetchStudents(); // Atualiza a lista de estudantes também
+      fetchStudents();
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
         title: "Erro",
-        description: (error as Error).message || "Erro ao deletar estudante",
+        description: (error as Error).message || "Erro ao deletar usuário",
         variant: "destructive",
       });
     }
@@ -216,16 +298,23 @@ export default function AdminDashboard() {
     setLoadingSubjects(true);
     try {
       const data = await subjectService.getAll();
-      // Converter os dados para o formato AdminSubject
-      const adminSubjects = data.map(subject => ({
+      const adminSubjects: AdminSubject[] = data.map(subject => ({
         id: subject.id.toString(),
         name: subject.name,
         description: subject.description,
+        teacher_id: subject.teacher_id ? subject.teacher_id.toString() : undefined,
         teacher_name: subject.teacher_name,
+        teacher_ids: subject.teacher_ids,
+        teachers: subject.teachers,
         schedule: subject.schedule,
         current_students: subject.current_students || 0,
         max_students: subject.max_students || 0,
-        grade: subject.grade
+        grade: subject.grade,
+        semester: subject.semester,
+        period: subject.period,
+        periods: subject.periods,
+        year: subject.year,
+        color: subject.color
       }));
       setSubjects(adminSubjects);
     } catch (error) {
@@ -247,7 +336,7 @@ export default function AdminDashboard() {
         title: "Sucesso",
         description: "Disciplina removida com sucesso do sistema.",
       });
-      fetchSubjects(); // Atualiza a lista de disciplinas
+      fetchSubjects();
       setSubjectToDelete(null);
     } catch (error) {
       console.error('Error deleting subject:', error);
@@ -265,7 +354,6 @@ export default function AdminDashboard() {
   };
 
   const openUserModal = (user?: any) => {
-    // Verifica se é um estudante ou professor e direciona para o modal apropriado
     if (user?.roles?.some((r: any) => r.role === 'student')) {
       setEditingStudent(user);
       setShowStudentModal(true);
@@ -273,10 +361,8 @@ export default function AdminDashboard() {
       setEditingTeacher(user);
       setShowTeacherModal(true);
     } else {
-      // Para outros tipos de usuário, usar o modal de estudante como fallback
-      // ou implementar um modal genérico se necessário
-      setEditingStudent(user);
-      setShowStudentModal(true);
+      setEditingUser(user);
+      setShowUserEditModal(true);
     }
   };
 
@@ -293,29 +379,15 @@ export default function AdminDashboard() {
   const promoteToAdmin = async (userId: string) => {
     try {
       console.log(`Promovendo usuário a admin: ${userId}`);
-      
-      // Chama a API real para atualizar o papel do usuário
-      const response = await fetch(`${API_URL}/users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: 'admin' })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao promover usuário');
-      }
+      await updateUserRole(userId, 'admin');
 
       toast({
         title: "Sucesso",
         description: "Usuário promovido a administrador com sucesso.",
       });
       
-      // Atualiza todas as listas para refletir a mudança
       fetchUsers();
-      fetchStudents(); // Atualiza a lista de estudantes também, pois o usuário pode ter sido um estudante
+      fetchStudents();
     } catch (error) {
       console.error('Erro ao promover usuário:', error);
       toast({
@@ -338,7 +410,6 @@ export default function AdminDashboard() {
     return <Navigate to="/auth" replace />;
   }
 
-  // Stats data using real data
   const stats = [
     { title: 'Estudantes Ativos', value: totalStudents.toString(), icon: Users, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Professores', value: teachers.length.toString(), icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
@@ -347,7 +418,6 @@ export default function AdminDashboard() {
   ];
 
   const getUserStatus = (user: any) => {
-    // Verifica se é admin comparando com o email do admin ou papel de admin
     if (user.email === 'admin@portal.com' || user.roles?.some((r: any) => r.role === 'admin')) return 'Admin';
     if (user.roles?.some((r: any) => r.role === 'student')) return 'Estudante';
     if (user.roles?.some((r: any) => r.role === 'teacher')) return 'Professor';
@@ -410,7 +480,6 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          {/* Menu responsivo - Tabs normais para desktop, hamburger para mobile */}
           <div className="max-w-xl mx-auto mb-8">
             <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
@@ -421,7 +490,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
             
-            {/* Menu mobile - Sheet (hamburger) */}
+            {/* Menu mobile */}
             <div className="md:hidden">
               <div className="w-full">
                 <SwipeableSheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -656,17 +725,16 @@ export default function AdminDashboard() {
                     {users.map((user) => {
                       const status = getUserStatus(user);
                       const isStudent = user.roles.some((r: any) => r.role === 'student');
-                      const isTeacher = user.roles.some((r: any) => r.role === 'teacher');
                       return (
                         <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                               <span className="text-sm font-semibold text-primary">
-                                {user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('') : user.email[0].toUpperCase()}
+                                {user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('') : (user.email ? user.email[0].toUpperCase() : 'U')}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium">{user.full_name || 'Nome não informado'}</p>
+                              <p className="font-medium">{user.full_name || 'Sem nome'}</p>
                               <p className="text-sm text-muted-foreground">{user.email}</p>
                               {isStudent && user.student_registration && (
                                 <p className="text-xs text-muted-foreground">
@@ -689,11 +757,11 @@ export default function AdminDashboard() {
                             <Badge variant={getUserStatusVariant(status)}>
                               {status}
                             </Badge>
- <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1">
                               <Button size="sm" variant="ghost">
                                 <Eye className="w-4 h-4" />
                               </Button>
- <Button size="sm" variant="ghost" onClick={() => openUserModal(user)}>
+                              <Button size="sm" variant="ghost" onClick={() => openUserModal(user)}>
                                 <Edit className="w-4 h-4" />
                               </Button>
                               {status !== 'Admin' && (
@@ -763,7 +831,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                             <span className="text-sm font-semibold text-primary">
-                              {teacher.full_name ? teacher.full_name.split(' ').map((n: string) => n[0]).join('') : teacher.email[0].toUpperCase()}
+                              {teacher.full_name ? teacher.full_name.split(' ').map((n: string) => n[0]).join('') : (teacher.email ? teacher.email[0].toUpperCase() : 'P')}
                             </span>
                           </div>
                           <div>
@@ -776,14 +844,14 @@ export default function AdminDashboard() {
                             Professor
                           </Badge>
                           <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => openTeacherModal(teacher)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
+                            <Button size="sm" variant="ghost">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => openTeacherModal(teacher)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="ghost"
                               onClick={() => deleteTeacher(teacher.id)}
                               title="Remover professor"
@@ -811,7 +879,7 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold">Gerenciar Estudantes</h2>
                 <p className="text-muted-foreground">Adicione, edite ou remova estudantes do sistema</p>
               </div>
-            <Button
+              <Button
                 className="flex items-center gap-2"
                 onClick={() => openStudentModal()}
               >
@@ -821,12 +889,127 @@ export default function AdminDashboard() {
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Lista de Estudantes</CardTitle>
-                <CardDescription>
-                  Todos os estudantes cadastrados no sistema
-                </CardDescription>
+              <CardHeader className="pb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>Lista de Estudantes</CardTitle>
+                    <CardDescription>
+                      {filteredStudents.length === students.length
+                        ? `Total de ${students.length} estudantes cadastrados`
+                        : `Exibindo ${filteredStudents.length} de ${students.length} estudantes`}
+                    </CardDescription>
+                  </div>
+
+                  {/* Filtro rápido por Série (Badges / Pílulas) */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={studentGradeFilter === 'all' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setStudentGradeFilter('all')}
+                    >
+                      Todas as Séries
+                      <Badge variant={studentGradeFilter === 'all' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {students.length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={studentGradeFilter === '1º Ano' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setStudentGradeFilter('1º Ano')}
+                    >
+                      1º Ano
+                      <Badge variant={studentGradeFilter === '1º Ano' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {students.filter((s) => s.grade === '1º Ano').length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={studentGradeFilter === '2º Ano' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setStudentGradeFilter('2º Ano')}
+                    >
+                      2º Ano
+                      <Badge variant={studentGradeFilter === '2º Ano' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {students.filter((s) => s.grade === '2º Ano').length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={studentGradeFilter === '3º Ano' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setStudentGradeFilter('3º Ano')}
+                    >
+                      3º Ano
+                      <Badge variant={studentGradeFilter === '3º Ano' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {students.filter((s) => s.grade === '3º Ano').length}
+                      </Badge>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Barra de Busca e Filtro */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-3">
+                  <div className="relative w-full sm:flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome, email ou matrícula..."
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="pl-9 pr-8 h-9"
+                    />
+                    {studentSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setStudentSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="w-full sm:w-48">
+                    <Select value={studentGradeFilter} onValueChange={setStudentGradeFilter}>
+                      <SelectTrigger className="h-9">
+                        <div className="flex items-center gap-2 truncate">
+                          <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <SelectValue placeholder="Filtrar por série" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as Séries</SelectItem>
+                        <SelectItem value="1º Ano">1º Ano</SelectItem>
+                        <SelectItem value="2º Ano">2º Ano</SelectItem>
+                        <SelectItem value="3º Ano">3º Ano</SelectItem>
+                        <SelectItem value="no-grade">Sem Série Definida</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(studentGradeFilter !== 'all' || studentSearch.trim() !== '') && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setStudentGradeFilter('all');
+                        setStudentSearch('');
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground h-9 px-3 shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
+
               <CardContent>
                 {loadingStudents ? (
                   <div className="flex items-center justify-center py-8">
@@ -834,14 +1017,14 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {students.map((student) => {
-                      const status = 'Ativo'; // Estudantes sempre estão ativos
+                    {filteredStudents.map((student) => {
+                      const status = 'Ativo';
                       return (
-                        <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg hover:border-primary/40 transition-colors">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                               <span className="text-sm font-semibold text-primary">
-                                {student.full_name ? student.full_name.split(' ').map((n: string) => n[0]).join('') : student.email[0].toUpperCase()}
+                                {student.full_name ? student.full_name.split(' ').map((n: string) => n[0]).join('') : (student.email ? student.email[0].toUpperCase() : 'E')}
                               </span>
                             </div>
                             <div>
@@ -850,6 +1033,16 @@ export default function AdminDashboard() {
                               <p className="text-xs text-muted-foreground">
                                 Matrícula: {student.student_registration || 'Não informado'}
                               </p>
+                              {student.grade && (
+                                <Badge variant="secondary" className={`text-xs mt-1 inline-block ${
+                                  student.grade === '1º Ano' ? 'bg-green-100 text-green-800 border-green-200' :
+                                  student.grade === '2º Ano' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                  student.grade === '3º Ano' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                                  'bg-gray-100 text-gray-800 border-gray-200'
+                                }`}>
+                                  {student.grade}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -876,10 +1069,30 @@ export default function AdminDashboard() {
                         </div>
                       );
                     })}
-                    {students.length === 0 && (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhum estudante encontrado
-                      </p>
+                    {filteredStudents.length === 0 && (
+                      <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
+                        <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+                        <p className="text-base font-medium text-foreground">Nenhum estudante encontrado</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {studentGradeFilter !== 'all' || studentSearch
+                            ? 'Nenhum estudante corresponde aos filtros selecionados.'
+                            : 'Nenhum estudante cadastrado no sistema.'}
+                        </p>
+                        {(studentGradeFilter !== 'all' || studentSearch) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => {
+                              setStudentGradeFilter('all');
+                              setStudentSearch('');
+                            }}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                            Limpar filtros
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -899,18 +1112,166 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
+            {/* Painel de Filtros de Disciplinas */}
+            <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="relative w-full sm:flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por disciplina, professor, horário..."
+                      value={subjectSearch}
+                      onChange={(e) => setSubjectSearch(e.target.value)}
+                      className="pl-9 pr-8 h-9"
+                    />
+                    {subjectSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setSubjectSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {(subjectGradeFilter !== 'all' ||
+                    subjectPeriodFilter !== 'all' ||
+                    subjectYearFilter !== 'all' ||
+                    subjectSemesterFilter !== 'all' ||
+                    subjectSearch.trim() !== '') && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSubjectGradeFilter('all');
+                        setSubjectPeriodFilter('all');
+                        setSubjectYearFilter('all');
+                        setSubjectSemesterFilter('all');
+                        setSubjectSearch('');
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground h-9 px-3 shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Limpar Filtros
+                    </Button>
+                  )}
+                </div>
+
+                {/* Grid de Seletores de Filtros */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                  {/* Filtro Série */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Série</span>
+                    <Select value={subjectGradeFilter} onValueChange={setSubjectGradeFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Todas as séries" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as séries</SelectItem>
+                        <SelectItem value="1º Ano">1º Ano</SelectItem>
+                        <SelectItem value="2º Ano">2º Ano</SelectItem>
+                        <SelectItem value="3º Ano">3º Ano</SelectItem>
+                        <SelectItem value="no-grade">Sem série</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Período */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Período</span>
+                    <Select value={subjectPeriodFilter} onValueChange={setSubjectPeriodFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Todos os períodos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os períodos</SelectItem>
+                        <SelectItem value="1º Período">1º Período</SelectItem>
+                        <SelectItem value="2º Período">2º Período</SelectItem>
+                        <SelectItem value="3º Período">3º Período</SelectItem>
+                        <SelectItem value="4º Período">4º Período</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Ano */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Ano</span>
+                    <Select value={subjectYearFilter} onValueChange={setSubjectYearFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Todos os anos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os anos</SelectItem>
+                        {Array.from(new Set([new Date().getFullYear(), ...availableSubjectYears]))
+                          .sort((a, b) => b - a)
+                          .map((year) => (
+                            <SelectItem key={year} value={String(year)}>
+                              Ano {year}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Semestre */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Semestre</span>
+                    <Select value={subjectSemesterFilter} onValueChange={setSubjectSemesterFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Todos os semestres" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os semestres</SelectItem>
+                        {Array.from(
+                          new Set([
+                            `${new Date().getFullYear()}.1`,
+                            `${new Date().getFullYear()}.2`,
+                            ...availableSubjectSemesters,
+                          ])
+                        )
+                          .sort()
+                          .map((sem) => (
+                            <SelectItem key={sem} value={sem}>
+                              {sem}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Barra de status de resultados */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                  <span>
+                    {filteredSubjects.length === subjects.length
+                      ? `Total: ${subjects.length} disciplinas`
+                      : `Exibindo ${filteredSubjects.length} de ${subjects.length} disciplinas`}
+                  </span>
+                  {(subjectGradeFilter !== 'all' ||
+                    subjectPeriodFilter !== 'all' ||
+                    subjectYearFilter !== 'all' ||
+                    subjectSemesterFilter !== 'all' ||
+                    subjectSearch.trim() !== '') && (
+                    <span className="text-primary font-medium">Filtros aplicados</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {loadingSubjects ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {subjects.map((subject) => (
+                {filteredSubjects.map((subject) => (
                   <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-<CardTitle className="text-lg">{subject.name}</CardTitle>
+                          <CardTitle className="text-lg">{subject.name}</CardTitle>
                           <CardDescription>Professor: {subject.teacher_name || 'Não atribuído'}</CardDescription>
                           {subject.schedule && (
                             <p className="text-sm text-muted-foreground mt-1">{subject.schedule}</p>
@@ -924,10 +1285,32 @@ export default function AdminDashboard() {
                         {subject.description && (
                           <p className="text-sm text-muted-foreground">{subject.description}</p>
                         )}
-                        <div className="flex justify-between items-center">
-                        <div className="text-sm text-muted-foreground">
-                          Série: {subject.grade || 'Não informado'}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {subject.grade && (
+                            <Badge variant="secondary" className="text-xs">
+                              {subject.grade}
+                            </Badge>
+                          )}
+                          {subject.period && (
+                            <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                              {subject.period}
+                            </Badge>
+                          )}
+                          {subject.year && (
+                            <Badge variant="outline" className="text-xs">
+                              Ano: {subject.year}
+                            </Badge>
+                          )}
+                          {subject.semester && (
+                            <Badge variant="outline" className="text-xs">
+                              Semestre: {subject.semester}
+                            </Badge>
+                          )}
                         </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <div className="text-xs text-muted-foreground">
+                            ID: #{subject.id}
+                          </div>
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -952,9 +1335,40 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
                 ))}
-                {subjects.length === 0 && (
-                  <div className="col-span-2 text-center py-8">
-                    <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
+                {filteredSubjects.length === 0 && (
+                  <div className="col-span-1 md:col-span-2 text-center py-12 border border-dashed rounded-lg bg-muted/20">
+                    <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+                    <p className="text-base font-medium text-foreground">Nenhuma disciplina encontrada</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {subjectGradeFilter !== 'all' ||
+                      subjectPeriodFilter !== 'all' ||
+                      subjectYearFilter !== 'all' ||
+                      subjectSemesterFilter !== 'all' ||
+                      subjectSearch
+                        ? 'Nenhuma disciplina corresponde aos filtros selecionados.'
+                        : 'Nenhuma disciplina cadastrada no sistema.'}
+                    </p>
+                    {(subjectGradeFilter !== 'all' ||
+                      subjectPeriodFilter !== 'all' ||
+                      subjectYearFilter !== 'all' ||
+                      subjectSemesterFilter !== 'all' ||
+                      subjectSearch) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => {
+                          setSubjectGradeFilter('all');
+                          setSubjectPeriodFilter('all');
+                          setSubjectYearFilter('all');
+                          setSubjectSemesterFilter('all');
+                          setSubjectSearch('');
+                        }}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                        Limpar filtros
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1053,17 +1467,33 @@ export default function AdminDashboard() {
       </main>
 
       {/* Modals */}
- <StudentModal
+      <StudentModal
         isOpen={showStudentModal}
         onClose={() => setShowStudentModal(false)}
-        onSuccess={fetchStudents}
+        onSuccess={() => {
+          fetchStudents();
+          fetchUsers();
+        }}
         student={editingStudent}
       />
       <TeacherModal
         isOpen={showTeacherModal}
         onClose={() => setShowTeacherModal(false)}
-        onSuccess={fetchTeachers}
+        onSuccess={() => {
+          fetchTeachers();
+          fetchUsers();
+        }}
         teacher={editingTeacher}
+      />
+      <UserEditModal
+        isOpen={showUserEditModal}
+        onClose={() => setShowUserEditModal(false)}
+        onSuccess={() => {
+          fetchUsers();
+          fetchStudents();
+          fetchTeachers();
+        }}
+        user={editingUser}
       />
     </div>
   );

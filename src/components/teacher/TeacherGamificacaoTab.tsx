@@ -65,17 +65,15 @@ export default function TeacherGamificacaoTab() {
       // backend returns { data: rows }
       if (res && Array.isArray((res as any).data)) {
         const rows = (res as any).data;
-        // console.log('TeacherGamificacaoTab - Raw report rows:', rows);
-        // console.log('TeacherGamificacaoTab - Looking for welline user in rows:', rows.find((r: any) => r.full_name && r.full_name.toLowerCase().includes('welline')));
         setReportRows(rows);
         const map: Record<string, number> = {};
         rows.forEach((r: any) => {
-          const key = String(r.user_id ?? r.id ?? '');
-          const points = Number(r.total_points || 0);
-          // console.log('Processing user:', r.full_name, 'user_id:', key, 'points:', points);
-          map[key] = points;
+          const key = String(r.userId ?? r.user_id ?? r.id ?? '');
+          const points = Number(r.totalPoints ?? r.total_points ?? 0);
+          if (key) {
+            map[key] = points;
+          }
         });
-        // console.log('TeacherGamificacaoTab - Scores map:', map);
         setScores(map);
         setUnauthorized(false);
       } else {
@@ -104,21 +102,16 @@ export default function TeacherGamificacaoTab() {
   const [showRaw, setShowRaw] = useState(false);
 
   const filtered = useMemo(() => {
-    // Quando reportRows está disponível, usamos os dados do relatório
-    // Caso contrário, usamos os dados dos estudantes com pontuações do mapa
-    if (reportRows && reportRows.length > 0) {
-      const studentsMap = Array.isArray(students)
-        ? Object.fromEntries(students.map(s => [String((s as any).id), s]))
-        : {};
-      
-      let list = reportRows.map((r: any) => {
-        const userId = String(r.user_id ?? r.id ?? '');
+    // Se temos a lista de estudantes do professor vinda do contexto
+    if (Array.isArray(students) && students.length > 0) {
+      let list = students.map((s: any) => {
+        const studentId = String(s.id);
         return {
-          id: userId,
-          full_name: r.full_name || (studentsMap[userId]?.full_name) || '—',
-          email: studentsMap[userId]?.email || '',
-          grade: studentsMap[userId]?.grade || '',
-          total_points: Number(r.total_points || 0)
+          id: studentId,
+          full_name: s.full_name || '—',
+          email: s.email || '',
+          grade: s.grade || '',
+          total_points: Number(scores[studentId] ?? 0)
         };
       });
 
@@ -126,19 +119,28 @@ export default function TeacherGamificacaoTab() {
         list = list.filter((s: any) => s.grade === selectedGrade);
       }
       return list;
-    } else {
-      // Fallback para quando não há dados do relatório
-      if (Array.isArray(students)) {
-        return students.map(s => ({
-          id: String((s as any).id),
-          full_name: s.full_name,
-          email: s.email,
-          grade: s.grade,
-          total_points: scores[String((s as any).id)] || 0
-        }));
-      }
-      return [];
     }
+
+    // Fallback: se students estiver vazio, usamos os dados do relatório de gamificação
+    if (reportRows && reportRows.length > 0) {
+      let list = reportRows.map((r: any) => {
+        const userId = String(r.userId ?? r.user_id ?? r.id ?? '');
+        return {
+          id: userId,
+          full_name: r.studentName || r.full_name || '—',
+          email: r.email || '',
+          grade: r.grade || '',
+          total_points: Number(r.totalPoints ?? r.total_points ?? scores[userId] ?? 0)
+        };
+      });
+
+      if (selectedGrade !== 'all') {
+        list = list.filter((s: any) => s.grade === selectedGrade);
+      }
+      return list;
+    }
+
+    return [];
   }, [reportRows, students, selectedGrade, scores]);
 
   const openAdjustFor = (id: string, name?: string) => {

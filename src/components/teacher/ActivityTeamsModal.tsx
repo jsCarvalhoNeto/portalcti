@@ -11,26 +11,29 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Crown, User, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import api from '@/services/api';
+import { getActivityTeams } from '@/services/activityService';
 
 interface TeamMember {
   enrollment_id: number;
   name: string;
-  actual_name: string;
+  actual_name?: string;
   email: string;
   is_leader: boolean;
   grade: number | null;
-  auto_applied: boolean;
+  auto_applied?: boolean;
   status: 'graded' | 'submitted' | 'pending';
-  graded_at: string | null;
+  graded_at?: string | null;
 }
 
 interface Team {
-  leader_enrollment_id: number;
+  leader_enrollment_id?: number;
+  team_id?: number;
+  team_name?: string;
   leader: TeamMember;
-  team_members: TeamMember[];
-  total_members: number;
-  graded_members: number;
+  team_members?: TeamMember[];
+  members?: TeamMember[];
+  total_members?: number;
+  graded_members?: number;
 }
 
 interface ActivityTeamsData {
@@ -68,43 +71,15 @@ export default function ActivityTeamsModal({
   const fetchTeamsData = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/activities/${activityId}/teams`, {
-        withCredentials: true
-      });
-      
-      setTeamsData(response.data);
-      console.log('📊 Dados das equipes:', response.data);
-      
+      const data = await getActivityTeams(activityId);
+      setTeamsData(data as any);
     } catch (error: any) {
       console.error('Erro ao buscar dados das equipes:', error);
-      
-      if (error.response?.status === 404) {
-        toast({
-          title: "Atividade não encontrada",
-          description: "Esta atividade não existe ou não pertence a você.",
-          variant: "destructive",
-        });
-      } else if (error.response?.data?.message?.includes('não é do tipo equipe')) {
-        toast({
-          title: "Atividade Individual",
-          description: "Esta atividade não é do tipo equipe.",
-          variant: "default",
-        });
-        setTeamsData({
-          activity_id: activityId,
-          activity_name: activityName,
-          activity_type: 'individual',
-          teams: [],
-          total_teams: 0,
-          total_students: 0
-        });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar as informações das equipes.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as informações das equipes.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

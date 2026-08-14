@@ -1,7 +1,7 @@
-import api from './api';
+import { supabase } from '../lib/supabaseClient';
 
 /**
- * Serviço para gerenciamento de usuários (usando API real)
+ * Serviço para gerenciamento de usuários (usando Supabase diretamente)
  */
 
 export interface User {
@@ -23,17 +23,57 @@ export interface UpdateRoleRequest {
 }
 
 /**
- * Busca todos os usuários do sistema (usando API real)
+ * Busca todos os usuários do sistema (usando Supabase)
  */
 export async function getAllUsers(): Promise<User[]> {
-  console.log("Buscando todos os usuários (API real)...");
-  
   try {
-    const response = await api.get('/users');
-    return response.data;
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        email,
+        student_registration,
+        grade,
+        created_at,
+        user_roles(role)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (profileError) throw profileError;
+
+    return (profiles || []).map((p: any) => ({
+      id: p.id,
+      email: p.email || '',
+      full_name: p.full_name || '',
+      student_registration: p.student_registration,
+      created_at: p.created_at || new Date().toISOString(),
+      roles: (p.user_roles || []).map((r: any) => ({ role: r.role })),
+      grade: p.grade || null,
+    }));
   } catch (error) {
-    console.error('Erro ao buscar usuários:', error);
+    console.error('Erro ao buscar usuários no Supabase:', error);
     throw error;
+  }
+}
+
+/**
+ * Atualiza o perfil básico de um usuário (Nome, Email)
+ */
+export async function updateUserProfile(userId: string, data: { full_name?: string; email?: string }): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: data.full_name,
+        email: data.email || null,
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Erro ao atualizar perfil do usuário no Supabase:', error);
+    throw new Error('Erro ao atualizar perfil do usuário');
   }
 }
 
@@ -42,9 +82,21 @@ export async function getAllUsers(): Promise<User[]> {
  */
 export async function updateUserRole(userId: string, role: string): Promise<void> {
   try {
-    await api.put(`/users/${userId}/role`, { role });
+    // Remover papéis anteriores para garantir role única
+    const { error: deleteError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) throw deleteError;
+
+    const { error: insertError } = await supabase
+      .from('user_roles')
+      .insert({ user_id: userId, role });
+
+    if (insertError) throw insertError;
   } catch (error) {
-    console.error('Erro ao atualizar papel do usuário:', error);
+    console.error('Erro ao atualizar papel do usuário no Supabase:', error);
     throw new Error('Erro ao atualizar papel do usuário');
   }
 }
@@ -54,9 +106,14 @@ export async function updateUserRole(userId: string, role: string): Promise<void
  */
 export async function updateUserGrade(userId: string, grade: '1º Ano' | '2º Ano' | '3º Ano' | null): Promise<void> {
   try {
-    await api.put(`/users/${userId}/grade`, { grade });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ grade })
+      .eq('id', userId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error('Erro ao atualizar série do usuário:', error);
+    console.error('Erro ao atualizar série do usuário no Supabase:', error);
     throw new Error('Erro ao atualizar série do usuário');
   }
 }

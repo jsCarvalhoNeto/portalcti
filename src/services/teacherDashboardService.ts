@@ -1,19 +1,24 @@
-import api from './api';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Serviços para o Painel do Professor
- * Integração com a API real
+ * Integração direta com o Supabase
  */
 
 export interface Subject {
   id: number;
   name: string;
   description?: string;
-  teacher_id: number;
+  teacher_id?: string | number | null;
   schedule?: string;
   max_students: number;
   current_students?: number;
+  grade?: string;
   color?: string; // Cor hexadecimal para o card da disciplina (ex: #3B82F6)
+  semester?: string;
+  period?: string;
+  periods?: string[];
+  year?: number;
 }
 
 export interface Student {
@@ -35,7 +40,7 @@ export interface Activity {
   type: 'individual' | 'team';
   teacher_id: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   description?: string;
   file_path?: string;
   file_name?: string;
@@ -50,7 +55,7 @@ export interface ActivityGrade {
   enrollment_id: number;
   grade: number;
   graded_at: string;
-  graded_by: string;
+  graded_by?: string;
   student_name: string;
   student_email: string;
 }
@@ -59,7 +64,7 @@ export interface CalendarEvent {
   id: string;
   title: string;
   date: string;
-  time: string;
+  time?: string;
   type: 'class' | 'exam' | 'deadline' | 'meeting';
   subject_id?: number;
   subject_name?: string;
@@ -80,20 +85,63 @@ export interface UserProfile {
  */
 export async function getTeacherSubjects(teacherId: string): Promise<Subject[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de disciplinas do professor');
-      return []; // Retornar array vazio em modo privado
+    if (!teacherId) return [];
+
+    // 1. Buscar IDs de teacher_subjects
+    const { data: assigned } = await supabase
+      .from('teacher_subjects')
+      .select('subject_id')
+      .eq('teacher_id', teacherId);
+
+    const assignedIds = (assigned || []).map((a: any) => Number(a.subject_id));
+
+    // 2. Buscar IDs de subjects onde teacher_id direto é o professor
+    const { data: directSubjects } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('teacher_id', teacherId);
+
+    const directIds = (directSubjects || []).map((s: any) => Number(s.id));
+
+    const allSubjectIds = Array.from(new Set([...assignedIds, ...directIds]));
+    if (allSubjectIds.length === 0) return [];
+
+    // 3. Buscar os dados completos das disciplinas
+    const { data: subjectsData, error: subjectsError } = await supabase
+      .from('subjects')
+      .select('*')
+      .in('id', allSubjectIds)
+      .order('name', { ascending: true });
+
+    if (subjectsError) {
+      console.error('Erro ao buscar disciplinas no Supabase:', subjectsError);
+      throw subjectsError;
     }
 
-    const response = await api.get(`/teachers/${teacherId}/subjects`);
-    return response.data;
+    if (!subjectsData || subjectsData.length === 0) return [];
+
+    // 4. Buscar contagem de alunos matriculados por disciplina
+    const { data: enrollmentsData } = await supabase
+      .from('enrollments')
+      .select('subject_id')
+      .in('subject_id', allSubjectIds);
+
+    const enrollmentCounts: Record<number, number> = {};
+    (enrollmentsData || []).forEach((item: any) => {
+      const sId = Number(item.subject_id);
+      enrollmentCounts[sId] = (enrollmentCounts[sId] || 0) + 1;
+    });
+
+    return subjectsData.map(s => ({
+      ...s,
+      id: Number(s.id),
+      max_students: s.max_students || 50,
+      current_students: enrollmentCounts[Number(s.id)] || 0,
+      color: s.color || '#4F46E5'
+    }));
   } catch (error) {
     console.error('Erro ao buscar disciplinas do professor:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -102,20 +150,41 @@ export async function getTeacherSubjects(teacherId: string): Promise<Subject[]> 
  */
 export async function getTeacherActivities(teacherId: string): Promise<Activity[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de atividades do professor');
-      return []; // Retornar array vazio em modo privado
+    const { data, error } = await supabase
+      .from('activities')
+      .select(`
+        id,
+        name,
+        subject_id,
+        grade,
+        type,
+        teacher_id,
+        created_at,
+        updated_at,
+        subjects(name)
+      `)
+      .eq('teacher_id', teacherId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar atividades no Supabase:', error);
+      throw error;
     }
 
-    const response = await api.get(`/activities/teacher/${teacherId}`);
-    return response.data;
+    return (data || []).map((activity: any) => ({
+      id: activity.id.toString(),
+      name: activity.name,
+      subject_id: Number(activity.subject_id),
+      subject_name: activity.subjects?.name || 'Disciplina',
+      grade: activity.grade || '',
+      type: activity.type || 'individual',
+      teacher_id: activity.teacher_id,
+      created_at: activity.created_at,
+      updated_at: activity.updated_at
+    }));
   } catch (error) {
     console.error('Erro ao buscar atividades do professor:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -124,11 +193,41 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
  */
 export async function getTeacherActivityGrades(teacherId: string): Promise<ActivityGrade[]> {
   try {
-    const response = await api.get(`/teachers/${teacherId}/activity-grades`);
-    return response.data;
+    const { data, error } = await supabase
+      .from('activity_grades')
+      .select(`
+        id,
+        activity_id,
+        enrollment_id,
+        grade,
+        submitted_at,
+        activities!inner(
+          teacher_id
+        ),
+        enrollments!inner(
+          student_id,
+          profiles!inner(
+            full_name,
+            email
+          )
+        )
+      `)
+      .eq('activities.teacher_id', teacherId);
+
+    if (error) throw error;
+
+    return (data || []).map((item: any) => ({
+      id: Number(item.id),
+      activity_id: Number(item.activity_id),
+      enrollment_id: Number(item.enrollment_id),
+      grade: Number(item.grade),
+      graded_at: item.submitted_at || '',
+      student_name: item.enrollments?.profiles?.full_name || '',
+      student_email: item.enrollments?.profiles?.email || ''
+    }));
   } catch (error) {
     console.error('Erro ao buscar notas de atividades do professor:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -137,37 +236,159 @@ export async function getTeacherActivityGrades(teacherId: string): Promise<Activ
  */
 export async function getStudentsBySubject(subjectId: number): Promise<any[]> {
   try {
-    const response = await api.get(`/subjects/${subjectId}/students`);
-    return response.data;
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select(`
+        id,
+        student_id,
+        profiles!inner(
+          id,
+          full_name,
+          email,
+          student_registration,
+          grade
+        )
+      `)
+      .eq('subject_id', subjectId);
+
+    if (error) throw error;
+
+    return (data || []).map((item: any) => ({
+      enrollment_id: Number(item.id),
+      id: item.profiles.id,
+      full_name: item.profiles.full_name,
+      email: item.profiles.email,
+      student_registration: item.profiles.student_registration,
+      grade: item.profiles.grade
+    }));
   } catch (error) {
     console.error('Erro ao buscar alunos por disciplina:', error);
-    throw error;
+    return [];
   }
 }
 
 /**
- * Busca todos os alunos de um professor (por disciplina)
+ * Busca todos os alunos matriculados em pelo menos uma disciplina do professor
  */
 export async function getTeacherStudents(teacherId: string): Promise<Student[]> {
   try {
-    const response = await api.get(`/teachers/${teacherId}/students`);
-    return response.data;
+    if (!teacherId) return [];
+
+    // 1. Buscar IDs das disciplinas do professor (de teacher_subjects e de subjects)
+    const { data: assigned } = await supabase
+      .from('teacher_subjects')
+      .select('subject_id')
+      .eq('teacher_id', teacherId);
+
+    const assignedIds = (assigned || []).map((a: any) => Number(a.subject_id));
+
+    const { data: directSubjects } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('teacher_id', teacherId);
+
+    const directIds = (directSubjects || []).map((s: any) => Number(s.id));
+
+    const subjectIds = Array.from(new Set([...assignedIds, ...directIds]));
+
+    // Se o professor não tem disciplinas vinculadas, ele não possui alunos
+    if (subjectIds.length === 0) return [];
+
+    // 2. Buscar matrículas em enrollments relacionadas a essas disciplinas
+    const { data: enrollments, error } = await supabase
+      .from('enrollments')
+      .select(`
+        subject_id,
+        student_id,
+        profiles!inner(
+          id,
+          full_name,
+          email,
+          student_registration,
+          grade
+        )
+      `)
+      .in('subject_id', subjectIds);
+
+    if (error) {
+      console.error('Erro ao buscar matrículas do professor:', error);
+      throw error;
+    }
+
+    if (!enrollments || enrollments.length === 0) return [];
+
+    const studentMap = new Map<string, Student>();
+    enrollments.forEach((e: any) => {
+      const profile = e.profiles;
+      if (!profile) return;
+      if (!studentMap.has(profile.id)) {
+        studentMap.set(profile.id, {
+          id: profile.id,
+          full_name: profile.full_name,
+          email: profile.email || '',
+          student_registration: profile.student_registration || '',
+          grade: profile.grade || '',
+          enrolled_subjects: 1
+        });
+      } else {
+        const existing = studentMap.get(profile.id)!;
+        existing.enrolled_subjects = (existing.enrolled_subjects || 1) + 1;
+      }
+    });
+
+    return Array.from(studentMap.values()).sort((a, b) =>
+      (a.full_name || '').localeCompare(b.full_name || '')
+    );
   } catch (error) {
-    console.error('Erro ao buscar alunos do professor:', error);
-    throw error;
+    console.error('Erro ao buscar alunos do professor no Supabase:', error);
+    return [];
   }
 }
 
 /**
- * Busca alunos por série
+ * Busca alunos por série ou todos (apenas com role student)
  */
-export async function getStudentsByGrade(grade: '1º Ano' | '2º Ano' | '3º Ano'): Promise<Student[]> {
+export async function getStudentsByGrade(grade?: '1º Ano' | '2º Ano' | '3º Ano' | 'all' | string): Promise<Student[]> {
   try {
-    const response = await api.get(`/students/grade/${grade}`);
-    return response.data;
+    // 1. Obter apenas IDs de estudantes
+    const { data: studentRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'student');
+
+    const studentIds = (studentRoles || []).map(r => r.user_id);
+    if (studentIds.length === 0) return [];
+
+    let query = supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        email,
+        student_registration,
+        grade
+      `)
+      .in('id', studentIds);
+
+    if (grade && grade !== 'all') {
+      query = query.eq('grade', grade);
+    }
+
+    const { data, error } = await query.order('full_name', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      full_name: p.full_name,
+      email: p.email || '',
+      student_registration: p.student_registration || '',
+      grade: p.grade || '',
+      enrolled_subjects: 0
+    }));
   } catch (error) {
-    console.error('Erro ao buscar alunos por série:', error);
-    throw error;
+    console.error('Erro ao buscar alunos por série no Supabase:', error);
+    return [];
   }
 }
 
@@ -176,11 +397,11 @@ export async function getStudentsByGrade(grade: '1º Ano' | '2º Ano' | '3º Ano
  */
 export async function getPendingActivities(teacherId: string): Promise<Activity[]> {
   try {
-    const response = await api.get(`/teachers/${teacherId}/activities/pending`);
-    return response.data;
+    const activities = await getTeacherActivities(teacherId);
+    return activities;
   } catch (error) {
     console.error('Erro ao buscar atividades pendentes:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -189,35 +410,39 @@ export async function getPendingActivities(teacherId: string): Promise<Activity[
  */
 export async function getTeacherCalendarEvents(teacherId: string): Promise<CalendarEvent[]> {
   try {
-    // Verificar se estamos em modo privado antes de fazer a requisição
-    const { default: PrivacyModeUtils } = await import('../utils/privacyMode');
-    const privacyCheck = await PrivacyModeUtils.handlePrivacyMode();
-    
-    if (privacyCheck.isPrivate || !privacyCheck.cookiesWork) {
-      console.log('🔒 Modo privado detectado - pulando requisição de eventos do calendário');
-      return []; // Retornar array vazio em modo privado
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select(`
+        id,
+        title,
+        date,
+        time,
+        type,
+        subject_id,
+        description,
+        created_by,
+        subjects(name)
+      `)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar eventos do calendário no Supabase:', error);
+      throw error;
     }
 
-    const response = await api.get(`/calendar-events/user/me`);
-    // Verificar se a resposta contém o formato esperado
-    if (response.data && response.data.data !== undefined) {
-      return response.data.data;
-    } else {
-      // Caso o backend retorne diretamente o array sem envelope
-      return response.data || [];
-    }
+    return (data || []).map((event: any) => ({
+      id: event.id.toString(),
+      title: event.title,
+      date: event.date,
+      time: event.time || '',
+      type: event.type || 'class',
+      subject_id: event.subject_id ? Number(event.subject_id) : undefined,
+      subject_name: event.subjects?.name || undefined,
+      description: event.description || ''
+    }));
   } catch (error) {
     console.error('Erro ao buscar eventos do calendário:', error);
-    // Verificar se o erro é relacionado a modo privado
-    if ((error as any)?.response?.status === 401) {
-      const { default: FallbackPrivacyModeUtils } = await import('../utils/privacyMode');
-      const fallbackPrivacyCheck = await FallbackPrivacyModeUtils.handlePrivacyMode();
-      if (fallbackPrivacyCheck.isPrivate || !fallbackPrivacyCheck.cookiesWork) {
-        console.warn('⚠️ Erro 401 relacionado a modo privado detectado');
-        return []; // Retornar array vazio em caso de erro de autenticação no modo privado
-      }
-    }
-    throw error;
+    return [];
   }
 }
 
@@ -226,11 +451,35 @@ export async function getTeacherCalendarEvents(teacherId: string): Promise<Calen
  */
 export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
   try {
-    const response = await api.get(`/calendar-events`);
-    return response.data.data;
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select(`
+        id,
+        title,
+        date,
+        time,
+        type,
+        subject_id,
+        description,
+        subjects(name)
+      `)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((event: any) => ({
+      id: event.id.toString(),
+      title: event.title,
+      date: event.date,
+      time: event.time || '',
+      type: event.type || 'class',
+      subject_id: event.subject_id ? Number(event.subject_id) : undefined,
+      subject_name: event.subjects?.name || undefined,
+      description: event.description || ''
+    }));
   } catch (error) {
     console.error('Erro ao buscar todos os eventos do calendário:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -239,13 +488,37 @@ export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
  */
 export async function getCalendarEventsByDateRange(startDate: string, endDate: string): Promise<CalendarEvent[]> {
   try {
-    const response = await api.get(`/calendar-events/date-range`, {
-      params: { startDate, endDate }
-    });
-    return response.data.data;
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select(`
+        id,
+        title,
+        date,
+        time,
+        type,
+        subject_id,
+        description,
+        subjects(name)
+      `)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((event: any) => ({
+      id: event.id.toString(),
+      title: event.title,
+      date: event.date,
+      time: event.time || '',
+      type: event.type || 'class',
+      subject_id: event.subject_id ? Number(event.subject_id) : undefined,
+      subject_name: event.subjects?.name || undefined,
+      description: event.description || ''
+    }));
   } catch (error) {
     console.error('Erro ao buscar eventos por data:', error);
-    throw error;
+    return [];
   }
 }
 
@@ -254,27 +527,37 @@ export async function getCalendarEventsByDateRange(startDate: string, endDate: s
  */
 export async function createCalendarEvent(eventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> {
   try {
-    const formData = new FormData();
-    Object.keys(eventData).forEach(key => {
-      const value = (eventData as any)[key];
-      if (value !== null && value !== undefined) {
-        if (key === 'image' && value instanceof File) {
-          formData.append('image', value);
-        } else if (key !== 'image') {
-          formData.append(key, value.toString());
-        }
-      }
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-    const response = await api.post(`/calendar-events`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      }
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('Erro ao criar evento de calendário:', error);
-    throw error;
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .insert({
+        title: eventData.title,
+        date: eventData.date,
+        time: eventData.time || null,
+        type: eventData.type || 'class',
+        subject_id: eventData.subject_id || null,
+        description: eventData.description || null,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      date: data.date,
+      time: data.time || '',
+      type: data.type || 'class',
+      subject_id: data.subject_id ? Number(data.subject_id) : undefined,
+      description: data.description || ''
+    };
+  } catch (error: any) {
+    console.error('Erro ao criar evento de calendário no Supabase:', error);
+    throw new Error(error.message || 'Erro ao criar evento de calendário');
   }
 }
 
@@ -283,27 +566,35 @@ export async function createCalendarEvent(eventData: Omit<CalendarEvent, 'id'>):
  */
 export async function updateCalendarEvent(eventId: string, eventData: Partial<CalendarEvent>): Promise<CalendarEvent> {
   try {
-    const formData = new FormData();
-    Object.keys(eventData).forEach(key => {
-      const value = (eventData as any)[key];
-      if (value !== null && value !== undefined) {
-        if (key === 'image' && value instanceof File) {
-          formData.append('image', value);
-        } else if (key !== 'image') {
-          formData.append(key, value.toString());
-        }
-      }
-    });
+    const updatePayload: Record<string, any> = {};
+    if (eventData.title !== undefined) updatePayload.title = eventData.title;
+    if (eventData.date !== undefined) updatePayload.date = eventData.date;
+    if (eventData.time !== undefined) updatePayload.time = eventData.time || null;
+    if (eventData.type !== undefined) updatePayload.type = eventData.type;
+    if (eventData.subject_id !== undefined) updatePayload.subject_id = eventData.subject_id || null;
+    if (eventData.description !== undefined) updatePayload.description = eventData.description || null;
 
-    const response = await api.put(`/calendar-events/${eventId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      }
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('Erro ao atualizar evento de calendário:', error);
-    throw error;
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .update(updatePayload)
+      .eq('id', Number(eventId))
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      date: data.date,
+      time: data.time || '',
+      type: data.type || 'class',
+      subject_id: data.subject_id ? Number(data.subject_id) : undefined,
+      description: data.description || ''
+    };
+  } catch (error: any) {
+    console.error('Erro ao atualizar evento de calendário no Supabase:', error);
+    throw new Error(error.message || 'Erro ao atualizar evento de calendário');
   }
 }
 
@@ -312,10 +603,15 @@ export async function updateCalendarEvent(eventId: string, eventData: Partial<Ca
  */
 export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
   try {
-    await api.delete(`/calendar-events/${eventId}`);
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', Number(eventId));
+
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Erro ao deletar evento de calendário:', error);
+    console.error('Erro ao deletar evento de calendário no Supabase:', error);
     throw error;
   }
 }
@@ -325,10 +621,19 @@ export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
  */
 export async function updateTeacherProfile(teacherId: string, data: Partial<UserProfile>): Promise<boolean> {
   try {
-    await api.put(`/teachers/${teacherId}`, data);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: data.full_name,
+        email: data.email,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', teacherId);
+
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Erro ao atualizar perfil do professor:', error);
+    console.error('Erro ao atualizar perfil do professor no Supabase:', error);
     throw error;
   }
 }
@@ -338,10 +643,14 @@ export async function updateTeacherProfile(teacherId: string, data: Partial<User
  */
 export async function changeTeacherPassword(teacherId: string, newPassword: string): Promise<boolean> {
   try {
-    await api.put(`/teachers/${teacherId}/password`, { newPassword });
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Erro ao alterar senha do professor:', error);
+    console.error('Erro ao alterar senha do professor no Supabase:', error);
     throw error;
   }
 }
@@ -351,10 +660,28 @@ export async function changeTeacherPassword(teacherId: string, newPassword: stri
  */
 export async function createSubject(teacherId: string, data: Partial<Subject>): Promise<Subject> {
   try {
-    const response = await api.post('/subjects', { ...data, teacher_id: teacherId });
-    return response.data;
+    const { data: result, error } = await supabase
+      .from('subjects')
+      .insert({
+        name: data.name,
+        description: data.description || null,
+        teacher_id: teacherId,
+        schedule: data.schedule || null,
+        max_students: data.max_students || 50,
+        grade: data.grade || null,
+        color: data.color || '#4F46E5',
+        semester: data.semester || null,
+        period: data.period || null,
+        periods: data.periods || [],
+        year: data.year || new Date().getFullYear()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return result as Subject;
   } catch (error) {
-    console.error('Erro ao criar disciplina:', error);
+    console.error('Erro ao criar disciplina no Supabase:', error);
     throw error;
   }
 }
@@ -364,10 +691,29 @@ export async function createSubject(teacherId: string, data: Partial<Subject>): 
  */
 export async function updateSubject(teacherId: string, subjectId: number, data: Partial<Subject>): Promise<Subject> {
   try {
-    const response = await api.put(`/subjects/${subjectId}`, data);
-    return response.data;
+    const updatePayload: Record<string, any> = {};
+    if (data.name !== undefined) updatePayload.name = data.name;
+    if (data.description !== undefined) updatePayload.description = data.description;
+    if (data.schedule !== undefined) updatePayload.schedule = data.schedule;
+    if (data.max_students !== undefined) updatePayload.max_students = data.max_students;
+    if (data.grade !== undefined) updatePayload.grade = data.grade;
+    if (data.color !== undefined) updatePayload.color = data.color;
+    if (data.semester !== undefined) updatePayload.semester = data.semester;
+    if (data.period !== undefined) updatePayload.period = data.period;
+    if (data.periods !== undefined) updatePayload.periods = data.periods;
+    if (data.year !== undefined) updatePayload.year = data.year;
+
+    const { data: result, error } = await supabase
+      .from('subjects')
+      .update(updatePayload)
+      .eq('id', subjectId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return result as Subject;
   } catch (error) {
-    console.error('Erro ao atualizar disciplina:', error);
+    console.error('Erro ao atualizar disciplina no Supabase:', error);
     throw error;
   }
 }
@@ -377,10 +723,15 @@ export async function updateSubject(teacherId: string, subjectId: number, data: 
  */
 export async function deleteSubject(teacherId: string, subjectId: number): Promise<boolean> {
   try {
-    await api.delete(`/subjects/${subjectId}`);
+    const { error } = await supabase
+      .from('subjects')
+      .delete()
+      .eq('id', subjectId);
+
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Erro ao remover disciplina:', error);
+    console.error('Erro ao remover disciplina no Supabase:', error);
     throw error;
   }
 }

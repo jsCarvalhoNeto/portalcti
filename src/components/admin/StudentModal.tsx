@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Edit, Plus } from 'lucide-react';
 import { StudentModalProps } from '@/types/student';
 import { useStudentCreation } from '@/hooks/useStudentCreation';
 import StudentForm from './StudentForm';
@@ -86,9 +86,11 @@ export default function StudentModal({ isOpen, onClose, onSuccess, student }: Ex
   if (showSubjectsManager && student) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <StudentSubjectsManager 
             studentId={student.id || student.user_id} 
+            studentName={student.full_name || student.name || formData.fullName}
+            studentGrade={student.grade || formData.grade}
             onClose={() => setShowSubjectsManager(false)} 
           />
         </DialogContent>
@@ -110,7 +112,11 @@ export default function StudentModal({ isOpen, onClose, onSuccess, student }: Ex
               <div className="flex items-center justify-between">
                 <DialogTitle className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <span className="text-primary font-semibold">{student ? 'Editar' : '+'}</span>
+                    {student ? (
+                      <Edit className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-primary" />
+                    )}
                   </div>
                   {student ? 'Editar Estudante' : 'Novo Estudante'}
                 </DialogTitle>

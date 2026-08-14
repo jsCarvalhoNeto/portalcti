@@ -174,55 +174,21 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
 
     setIsSubmitting(true);
     try {
-      if (file) {
-        // Se houver novo arquivo, usar FormData para upload
-        const formData = new FormData();
-        formData.append('name', activityName);
-        formData.append('subject_id', selectedSubject);
-        formData.append('grade', selectedGrade);
-        formData.append('type', activityType);
-        formData.append('description', description);
-        if (deadline) {
-          formData.append('deadline', convertToISO(deadline));
-        }
-        if (period) {
-          formData.append('period', period);
-        }
-        if (evaluationType) {
-          formData.append('evaluation_type', evaluationType);
-        }
-        formData.append('file', file);
-        formData.append('id', activity.id);
-        
-      const response = await fetch(`${API_URL}/activities/${activity.id}`, {
-          method: 'PUT',
-          credentials: 'include',
-          body: formData
-        });
+      const activityData: ActivityData = {
+        name: activityName,
+        subject_id: parseInt(selectedSubject, 10),
+        grade: selectedGrade,
+        type: activityType,
+        description: description || undefined,
+        deadline: deadline ? convertToISO(deadline) : undefined,
+        period: period || undefined,
+        evaluation_type: evaluationType || undefined,
+        file_path: activity.file_path || undefined,
+        file_name: activity.file_name || undefined,
+        rawFiles: file ? [file] : undefined
+      };
 
-        if (!response.ok) {
-          throw new Error('Erro ao atualizar atividade');
-        }
-
-        await response.json();
-      } else {
-        // Se não houver novo arquivo, usar a função existente com os dados atuais
-        const activityData: ActivityData = {
-          name: activityName,
-          subject_id: parseInt(selectedSubject, 10),
-          grade: selectedGrade,
-          type: activityType,
-          description: description || undefined,
-          deadline: deadline || undefined,
-          period: period || undefined,
-          evaluation_type: evaluationType || undefined,
-          // Manter os dados do arquivo existente se não houver novo upload
-          file_path: activity.file_path || undefined,
-          file_name: activity.file_name || undefined
-        };
-
-        await updateActivity(parseInt(activity.id), activityData);
-      }
+      await updateActivity(parseInt(activity.id), activityData);
 
       toast({
         title: "Sucesso!",

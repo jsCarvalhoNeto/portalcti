@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { login, logout, getCurrentUser, signUp as apiSignUp, type UserProfile as AuthUserProfile, type SignUpCredentials } from '@/services/authService';
 import { hasTemporaryPassword } from '@/services/studentService';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface UserProfile {
   id: string;
@@ -76,29 +77,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
     const checkSession = async () => {
       setLoading(true);
       try {
-        // Verificar primeiro se estamos em modo privado antes de tentar obter usuário
-        // Verificação de modo privado removida para evitar falsos positivos em produção
-        // O sistema tentará autenticar normalmente
-
-        // Tentar obter informações do usuário atual via API usando cookies
         const currentUser = await getCurrentUser();
-        if (currentUser) {
+        if (currentUser && active) {
           setUserData(currentUser);
         }
       } catch (error) {
         console.error("Erro ao verificar sessão:", error);
-        // Verificar se o erro é relacionado a modo privado
-        if ((error as any)?.isPrivacyModeIssue) {
-          console.log('🔒 Erro de sessão relacionado a modo privado - pulando verificação');
-        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
+
     checkSession();
+
+    // Escutar mudanças de estado de autenticação no Supabase de forma reativa
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 Supabase Auth - Evento:', event);
+      if (session?.user) {
+        const currentUser = await getCurrentUser();
+        if (currentUser && active) {
+          setUserData(currentUser);
+        }
+      } else {
+        if (active) {
+          setUserData(null);
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [setUserData]);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {

@@ -1,13 +1,14 @@
-import { API_URL } from '@/services/api';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { supabase, createEphemeralClient } from '@/lib/supabaseClient';
+import { subjectService } from '@/services/subjectService';
 
 interface Subject {
-  id: string;
+  id: string | number;
   name: string;
   description?: string;
 }
@@ -33,29 +34,46 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Carregar lista de disciplinas disponíveis
+  useEffect(() => {
+    if (teacher) {
+      setFullName(teacher.full_name || '');
+      setEmail(teacher.email || '');
+    } else {
+      setFullName('');
+      setEmail('');
+      setPassword('');
+      setSelectedSubjects([]);
+    }
+  }, [teacher]);
+
+  // Carregar lista de disciplinas disponíveis via Supabase
   useEffect(() => {
     const fetchSubjects = async () => {
       setSubjectsLoading(true);
       try {
-        const response = await fetch(`${API_URL}/subjects`);
-        if (!response.ok) {
-          throw new Error('Falha ao buscar disciplinas');
-        }
-        const subjectsData = await response.json();
+        const subjectsData = await subjectService.getAll();
         setSubjects(subjectsData);
         
         // Se estiver editando um professor, carregar as disciplinas já associadas
         if (teacher) {
-          const teacherSubjectsResponse = await fetch(`${API_URL}/teachers/${teacher.id}/subjects`);
-          if (teacherSubjectsResponse.ok) {
-            const teacherSubjects = await teacherSubjectsResponse.json();
-            const subjectIds = teacherSubjects.map((subject: { id: string }) => subject.id.toString());
-            setSelectedSubjects(subjectIds);
-          }
+          const { data: assigned } = await supabase
+            .from('teacher_subjects')
+            .select('subject_id')
+            .eq('teacher_id', teacher.id);
+
+          const { data: directSubjects } = await supabase
+            .from('subjects')
+            .select('id')
+            .eq('teacher_id', teacher.id);
+
+          const assignedIds = (assigned || []).map((s: any) => s.subject_id.toString());
+          const directIds = (directSubjects || []).map((s: any) => s.id.toString());
+          const combined = Array.from(new Set([...assignedIds, ...directIds]));
+
+          setSelectedSubjects(combined);
         }
       } catch (error) {
-        console.error('Erro ao buscar disciplinas:', error);
+        console.error('Erro ao buscar disciplinas no Supabase:', error);
         toast({
           title: "Erro",
           description: "Erro ao carregar lista de disciplinas",
@@ -67,7 +85,7 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
     };
 
     fetchSubjects();
-  }, [teacher]);
+  }, [teacher, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,27 +93,18 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
 
     try {
       if (teacher) {
-        // Atualização de professor existente
-        const API_URL_ENDPOINT = `${API_URL}/teachers/${teacher.id}`;
-        const response = await fetch(API_URL_ENDPOINT, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        // Atualização do perfil do professor no Supabase
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
             full_name: fullName,
-            email: email,
-            password: password || undefined // Envia senha apenas se foi fornecida
-          }),
-        });
+            email: email || null,
+          })
+          .eq('id', teacher.id);
 
-        const result = await response.json();
+        if (profileError) throw profileError;
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Falha ao atualizar professor');
-        }
-
-        // Atualizar associação com disciplinas
+        // Atualizar associações de disciplinas
         await updateTeacherSubjects(teacher.id, selectedSubjects);
 
         toast({
@@ -103,29 +112,24 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
           description: `O professor ${fullName} foi atualizado no sistema.`,
         });
       } else {
-        // Criação de novo professor
-        const API_URL_ENDPOINT = `${API_URL}/teachers`;
-        const response = await fetch(API_URL_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            full_name: fullName,
-            email: email,
-            password: password // Em produção, a senha deve ser criptografada antes de ser enviada!
-          }),
+        // Criação de novo professor: criar via Supabase usando cliente efêmero para não deslogar o admin
+        const authClient = createEphemeralClient();
+        const { data: authData, error: authError } = await authClient.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: {
+              full_name: fullName,
+              role: 'teacher'
+            }
+          }
         });
 
-        const result = await response.json();
+        if (authError) throw authError;
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Falha ao criar professor');
-        }
-
-        // Associar disciplinas ao novo professor
-        if (selectedSubjects.length > 0 && result.id) {
-          await updateTeacherSubjects(result.id, selectedSubjects);
+        const newTeacherId = authData.user?.id;
+        if (newTeacherId && selectedSubjects.length > 0) {
+          await updateTeacherSubjects(newTeacherId, selectedSubjects);
         }
 
         toast({
@@ -135,11 +139,11 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
       }
 
       onSuccess();
-    } catch (error) {
-      console.error('Error saving teacher:', error);
+    } catch (error: any) {
+      console.error('Erro ao salvar professor:', error);
       toast({
         title: "Erro",
-        description: (error as Error).message || "Erro ao salvar professor",
+        description: error.message || "Erro ao salvar professor",
         variant: "destructive",
       });
     } finally {
@@ -147,60 +151,46 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
     }
   };
 
-  // Função para obter as disciplinas atuais do professor
-  const getCurrentTeacherSubjects = async (teacherId: string): Promise<string[]> => {
-    const currentSubjectsResponse = await fetch(`${API_URL}/teachers/${teacherId}/subjects`);
-    if (currentSubjectsResponse.ok) {
-      const currentSubjects = await currentSubjectsResponse.json();
-      return currentSubjects.map((subject: { id: string }) => subject.id.toString());
-    }
-    return [];
-  };
-
-  // Função para associar disciplina ao professor
-  const associateSubjectToTeacher = async (subjectId: string, teacherId: string) => {
-    await fetch(`${API_URL}/subjects/${subjectId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        teacher_id: teacherId
-      })
-    });
-  };
-
-  // Função para remover associação de disciplina com professor
-  const removeSubjectAssociation = async (subjectId: string) => {
-    await fetch(`${API_URL}/subjects/${subjectId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        teacher_id: null
-      })
-    });
-  };
-
-  // Função para atualizar as disciplinas associadas ao professor
+  // Atualizar as disciplinas associadas ao professor no Supabase (em teacher_subjects e subjects)
   const updateTeacherSubjects = async (teacherId: string, subjectIds: string[]) => {
     try {
-      const currentSubjectIds = await getCurrentTeacherSubjects(teacherId);
-      
-      // Associar disciplinas selecionadas que não estão atualmente associadas
-      const subjectsToAssociate = subjectIds.filter(subjectId => !currentSubjectIds.includes(subjectId));
-      for (const subjectId of subjectsToAssociate) {
-        await associateSubjectToTeacher(subjectId, teacherId);
+      // 1. Limpar registros antigos em teacher_subjects
+      await supabase
+        .from('teacher_subjects')
+        .delete()
+        .eq('teacher_id', teacherId);
+
+      // 2. Inserir novos registros em teacher_subjects
+      if (subjectIds.length > 0) {
+        const assignments = subjectIds.map(sId => ({
+          subject_id: Number(sId),
+          teacher_id: teacherId,
+          assigned_at: new Date().toISOString()
+        }));
+
+        await supabase
+          .from('teacher_subjects')
+          .insert(assignments);
       }
 
-      // Remover associação das disciplinas que não estão mais selecionadas
-      const subjectsToRemove = currentSubjectIds.filter(subjectId => !subjectIds.includes(subjectId));
-      for (const subjectId of subjectsToRemove) {
-        await removeSubjectAssociation(subjectId);
+      // 3. Atualizar subjects.teacher_id para compatibilidade
+      const { error: unassignError } = await supabase
+        .from('subjects')
+        .update({ teacher_id: null })
+        .eq('teacher_id', teacherId);
+
+      if (unassignError) throw unassignError;
+
+      if (subjectIds.length > 0) {
+        for (const sid of subjectIds) {
+          await supabase
+            .from('subjects')
+            .update({ teacher_id: teacherId })
+            .eq('id', sid);
+        }
       }
     } catch (error) {
-      console.error('Erro ao atualizar disciplinas do professor:', error);
+      console.error('Erro ao atualizar disciplinas do professor no Supabase:', error);
       throw new Error('Falha ao atualizar associação de disciplinas');
     }
   };
@@ -262,9 +252,9 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
         </Label>
         <div className="col-span-3 space-y-2">
           {subjectsLoading ? (
-            <p>Carregando disciplinas...</p>
+            <p className="text-sm text-muted-foreground">Carregando disciplinas...</p>
           ) : subjects.length === 0 ? (
-            <p>Nenhuma disciplina disponível</p>
+            <p className="text-sm text-muted-foreground">Nenhuma disciplina disponível</p>
           ) : (
             <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
               {subjects.map((subject) => (
