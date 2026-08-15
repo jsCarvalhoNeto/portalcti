@@ -45,6 +45,7 @@ import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
 import { useUserColors } from '@/hooks/useUserColors';
 import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
+import { enrollmentService } from '@/services/enrollmentService';
 import { getStudentActivities } from '@/services/activityService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 import BadgeGrid from '@/components/badges/BadgeGrid';
@@ -311,23 +312,22 @@ export default function StudentDashboard() {
   };
 
   const fetchSubjects = async () => {
+    if (!user) return;
     setLoadingSubjects(true);
     try {
-      // Buscar todas as disciplinas cadastradas no sistema usando o service
-      const subjectsData = await subjectService.getAll();
-      setSubjects(subjectsData);
-      // Preencher mapa de nomes para lookup rápido (evita mostrar "Disciplina <id>")
+      // Buscar apenas as disciplinas em que o aluno está matriculado
+      const enrolledSubjects = await enrollmentService.getStudentEnrolledSubjects(user.id);
+      setSubjects(enrolledSubjects);
+      // Preencher mapa de nomes para lookup rápido
       try {
-        const map = Object.fromEntries((subjectsData || []).map((s: any) => [String(s.id), s.name || '']));
-        setSubjectNamesMap(map);
+        const map = Object.fromEntries((enrolledSubjects || []).map((s: any) => [String(s.id), s.name || '']));
+        setSubjectNamesMap(prev => ({ ...prev, ...map }));
       } catch (e) {
         console.warn('Erro ao popular subjectNamesMap', e);
       }
 
       // Buscar atividades para atualizar o contador de pendentes
-      if (user) {
-        await fetchPendingActivities();
-      }
+      await fetchPendingActivities();
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({

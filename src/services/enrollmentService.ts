@@ -52,22 +52,15 @@ export const enrollmentService = {
         const subject = subjectsMap.get(Number(enroll.subject_id));
         if (subject) {
           result.push({
+            ...subject,
             id: Number(subject.id),
             enrollment_id: Number(enroll.id),
-            name: subject.name,
-            description: subject.description,
-            teacher_id: subject.teacher_id || undefined,
-            teacher_name: subject.teacher_name,
-            grade: subject.grade,
-            semester: subject.semester,
-            period: subject.period,
-            color: subject.color,
             enrollment_date: enroll.enrollment_date,
           });
         }
       }
 
-      return result.sort((a, b) => a.name.localeCompare(b.name));
+      return result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     } catch (error: any) {
       console.error('Erro ao buscar disciplinas matriculadas do estudante:', error);
       throw new Error(error.message || 'Falha ao buscar disciplinas matriculadas');
