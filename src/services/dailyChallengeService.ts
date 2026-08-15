@@ -15,6 +15,10 @@ export interface DailyChallenge {
   updated_at?: string;
   subject_name?: string;
   is_active?: boolean; // Novo campo para status ativo/inativo
+  requires_validation?: boolean; // Se exige chave ou resposta
+  correct_answer?: string; // Chave secreta ou resposta correta esperada
+  is_completed?: boolean; // Se o aluno logado já completou
+  completed_at?: string; // Data da conclusão pelo aluno
   stats?: {
     total_attempts: number;
     completed: number;
@@ -28,6 +32,9 @@ export interface DailyChallengeStats {
   completed: number;
   points_distributed: number;
 }
+
+export type CreateChallengeData = Omit<DailyChallenge, 'id' | 'created_at' | 'updated_at'>;
+export type UpdateChallengeData = Partial<DailyChallenge>;
 
 class DailyChallengeService {
   private tableName = 'daily_challenges';
@@ -56,7 +63,7 @@ class DailyChallengeService {
     return data;
   }
 
-  async createChallenge(challenge: Omit<DailyChallenge, 'id' | 'created_at' | 'updated_at'>): Promise<DailyChallenge> {
+  async createChallenge(challenge: CreateChallengeData): Promise<DailyChallenge> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Não autenticado');
 
@@ -75,7 +82,7 @@ class DailyChallengeService {
     return data;
   }
 
-  async updateChallenge(id: number, challenge: Partial<DailyChallenge>): Promise<DailyChallenge> {
+  async updateChallenge(id: number, challenge: UpdateChallengeData): Promise<DailyChallenge> {
     const backendData = this.mapToBackendFormat(challenge);
     const { data, error } = await supabase
       .from(this.tableName)
@@ -98,6 +105,11 @@ class DailyChallengeService {
     if (frontendData.subject_id !== undefined) backendData.subject_id = frontendData.subject_id;
     if (frontendData.content !== undefined) backendData.html_content = frontendData.content;
     if (frontendData.html_content !== undefined) backendData.html_content = frontendData.html_content;
+    if (frontendData.type !== undefined) backendData.type = frontendData.type;
+    if (frontendData.difficulty !== undefined) backendData.difficulty = frontendData.difficulty;
+    if (frontendData.is_active !== undefined) backendData.is_active = frontendData.is_active;
+    if (frontendData.requires_validation !== undefined) backendData.requires_validation = frontendData.requires_validation;
+    if (frontendData.correct_answer !== undefined) backendData.correct_answer = frontendData.correct_answer;
     
     if (frontendData.active_date !== undefined) {
       const activeDate = frontendData.active_date;
@@ -225,7 +237,7 @@ class DailyChallengeService {
   async getStudentChallenges(): Promise<DailyChallenge[]> {
     try {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const { data: challenges, error } = await supabase
         .from(this.tableName)
         .select('*')
         .eq('is_active', true)
@@ -234,7 +246,32 @@ class DailyChallengeService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      if (!challenges || challenges.length === 0) return [];
+
+      // Verificar submissões do usuário logado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return challenges;
+
+      const challengeIds = challenges.map(c => c.id);
+      const { data: submissions } = await supabase
+        .from('daily_challenge_submissions')
+        .select('challenge_id, created_at, submitted_at')
+        .eq('student_id', user.id)
+        .in('challenge_id', challengeIds);
+
+      const completedMap = new Map<number, any>();
+      (submissions || []).forEach(s => {
+        completedMap.set(s.challenge_id, s);
+      });
+
+      return challenges.map(c => {
+        const sub = completedMap.get(c.id);
+        return {
+          ...c,
+          is_completed: Boolean(sub),
+          completed_at: sub?.submitted_at || sub?.created_at
+        };
+      });
     } catch (error) {
       console.error('Erro ao buscar desafios do estudante no Supabase:', error);
       throw error;
@@ -251,12 +288,41 @@ class DailyChallengeService {
     }
   }
 
-  async completeChallenge(challengeId: number): Promise<{ success: boolean; points: number }> {
+  async completeChallenge(challengeId: number, answer?: string): Promise<{ success: boolean; points: number }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
 
+      // 0. Verificar se o aluno já concluiu este desafio anteriormente
+      const { data: existingSubmission } = await supabase
+        .from('daily_challenge_submissions')
+        .select('id')
+        .eq('challenge_id', challengeId)
+        .eq('student_id', user.id)
+        .maybeSingle();
+
+      if (existingSubmission) {
+        throw new Error('Você já concluiu este desafio e garantiu seus pontos!');
+      }
+
       const challenge = await this.getChallengeById(challengeId);
+
+      // Validação de chave secreta ou resposta, caso o desafio exija
+      const expectedAnswer = challenge.correct_answer?.trim();
+      const requiresValidation = challenge.requires_validation || (expectedAnswer && expectedAnswer.length > 0);
+
+      if (requiresValidation) {
+        const studentAnswer = (answer || '').trim();
+        if (!studentAnswer) {
+          throw new Error('Por favor, digite a resposta ou a palavra-chave para validar sua pontuação.');
+        }
+
+        // Comparação insensível a maiúsculas/minúsculas e espaços extras
+        const isMatch = studentAnswer.toLowerCase() === (expectedAnswer || '').toLowerCase();
+        if (!isMatch) {
+          throw new Error('A resposta ou palavra-chave informada não confere com o resultado esperado. Revise a atividade e tente novamente!');
+        }
+      }
 
       // 1. Inserir a submissão
       const { error: subError } = await supabase
@@ -265,10 +331,16 @@ class DailyChallengeService {
           challenge_id: challengeId,
           student_id: user.id,
           points_awarded: challenge.points,
-          is_within_deadline: true
+          is_within_deadline: true,
+          student_answer: answer || null
         });
 
-      if (subError) throw subError;
+      if (subError) {
+        if (subError.code === '23505' || subError.message?.includes('unique_student_challenge')) {
+          throw new Error('Você já concluiu este desafio e garantiu seus pontos!');
+        }
+        throw subError;
+      }
 
       // 2. Inserir pontos em gamification_points para alimentar a trigger de totalizadores
       const { error: pointsError } = await supabase
@@ -288,6 +360,9 @@ class DailyChallengeService {
       };
     } catch (error: any) {
       console.error('Erro ao completar desafio no Supabase:', error);
+      if (error.message?.includes('unique_student_challenge') || error.code === '23505') {
+        throw new Error('Você já concluiu este desafio e garantiu seus pontos!');
+      }
       throw new Error(error.message || 'Erro ao enviar o desafio.');
     }
   }

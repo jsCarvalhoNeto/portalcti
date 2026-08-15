@@ -91,6 +91,23 @@ export async function awardSubmission(userId: string, activityId: string, subjec
 }
 
 /**
+ * Helper para resolver URL de imagem/ícone da medalha
+ */
+export function getBadgeIconUrl(icon?: string | null, icon_url?: string | null): string {
+  const url = icon_url || icon;
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  const apiUrl = (import.meta as any).env?.VITE_API_URL;
+  if (apiUrl) {
+    return `${apiUrl.replace('/api', '')}/uploads/${trimmed}`;
+  }
+  return trimmed;
+}
+
+/**
  * Obtém informações consolidadas de gamificação de um estudante (pontos, histórico e badges)
  */
 export async function getStudentGamification(userId: string, params?: { subject?: string; grade?: string }) {
@@ -100,7 +117,7 @@ export async function getStudentGamification(userId: string, params?: { subject?
       .from('gamification_totals')
       .select('total_points')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // 2. Obter histórico de pontuação
     const { data: history } = await supabase
@@ -109,43 +126,88 @@ export async function getStudentGamification(userId: string, params?: { subject?
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    // 3. Obter medalhas do estudante
-    const { data: badges } = await supabase
+    // 3. Obter todas as insígnias/conquistas cadastradas
+    const { data: allBadgesData } = await supabase
+      .from('gamification_badges')
+      .select('*')
+      .order('threshold_points', { ascending: true });
+
+    // 4. Obter medalhas atribuídas diretamente ao estudante
+    const { data: userBadges } = await supabase
       .from('gamification_user_badges')
       .select(`
+        badge_id,
         awarded_at,
         gamification_badges (
+          id,
           key,
           name,
           description,
-          icon
+          icon,
+          icon_url,
+          threshold_points
         )
       `)
       .eq('user_id', userId);
 
     const totalPts = Number(totalData?.total_points || 0);
 
+    const allBadges = (allBadgesData || []).map((b: any) => {
+      const threshold = Number(b.threshold_points || 0);
+      const isDirectlyAwarded = (userBadges || []).some((ub: any) => ub.badge_id === b.id);
+      const isUnlocked = totalPts >= threshold || isDirectlyAwarded;
+      const resolvedIcon = getBadgeIconUrl(b.icon, b.icon_url);
+
+      return {
+        id: b.id,
+        key: b.key,
+        name: b.name,
+        title: b.name,
+        description: b.description || '',
+        threshold_points: threshold,
+        points: threshold,
+        min_points: b.min_points ?? 0,
+        max_points: b.max_points ?? 0,
+        icon: resolvedIcon,
+        icon_url: resolvedIcon,
+        unlocked: isUnlocked,
+        progress: Math.min(totalPts, threshold)
+      };
+    });
+
+    // Insígnias desbloqueadas pelo aluno
+    const unlockedBadges = allBadges.filter(b => b.unlocked);
+
+    // Insígnia atual (a de maior pontuação necessária que o aluno atingiu)
+    const currentBadge = unlockedBadges.length > 0
+      ? unlockedBadges[unlockedBadges.length - 1]
+      : (allBadges.length > 0 && allBadges[0].threshold_points <= 0 ? allBadges[0] : null);
+
+    // Próxima insígnia a desbloquear
+    const nextBadge = allBadges.find(b => !b.unlocked && b.threshold_points > totalPts) || null;
+
     return {
       userId,
       total: { total_points: totalPts },
       totalPoints: totalPts,
       total_points: totalPts,
+      currentBadge,
+      current_badge: currentBadge,
+      nextBadge,
+      next_badge: nextBadge,
       history: (history || []).map((h: any) => ({
         id: h.id,
         source: h.source,
         source_id: h.source_id,
+        reason: h.source === 'adjustment' ? h.source_id : (h.reason || ''),
         points: Number(h.points),
         created_at: h.created_at,
         subject_name: h.subject_name
       })),
-      badges: (badges || []).map((b: any) => ({
-        awarded_at: b.awarded_at,
-        ...b.gamification_badges
-      })),
-      unlocked_badges: (badges || []).map((b: any) => ({
-        awarded_at: b.awarded_at,
-        ...b.gamification_badges
-      }))
+      badges: unlockedBadges,
+      unlocked_badges: unlockedBadges,
+      all_badges: allBadges,
+      unlocked_by_subject: []
     };
   } catch (err) {
     console.error('Erro ao buscar dados de gamificação no Supabase:', err);
@@ -158,7 +220,6 @@ export async function getStudentGamification(userId: string, params?: { subject?
  */
 export async function teacherReport(params?: { grade?: string }) {
   try {
-    // 1. Tentar buscar com join em profiles
     let query = supabase
       .from('gamification_totals')
       .select(`
@@ -197,7 +258,6 @@ export async function teacherReport(params?: { grade?: string }) {
       return { data: adaptedData };
     }
 
-    // 2. Fallback caso o join falhe: buscar gamification_totals diretamente
     const { data: rawTotals, error: totalsError } = await supabase
       .from('gamification_totals')
       .select('user_id, total_points, last_updated')
@@ -239,7 +299,7 @@ export async function teacherAdjust(payload: { user_id?: string; userId?: string
       .insert({
         user_id: targetUserId,
         source: 'adjustment',
-        source_id: payload.reason, // Guarda a justificativa
+        source_id: payload.reason,
         subject_id: payload.subject_id ? Number(payload.subject_id) : null,
         points: payload.points
       })
@@ -247,6 +307,7 @@ export async function teacherAdjust(payload: { user_id?: string; userId?: string
       .single();
 
     if (error) throw error;
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: data })); } catch (e) { /* noop */ }
     return { success: true, data };
   } catch (err) {
     console.error('Erro ao realizar ajuste manual no Supabase:', err);
@@ -255,11 +316,11 @@ export async function teacherAdjust(payload: { user_id?: string; userId?: string
 }
 
 /**
- * Obtém o ranking (leaderboard) dos estudantes com maiores pontuações
+ * Obtém o ranking (leaderboard) dos estudantes com maiores pontuações e suas insígnias atuais
  */
 export async function getTopStudents(limit = 10) {
   try {
-    const { data, error } = await supabase
+    const { data: totalsData, error: totalsError } = await supabase
       .from('gamification_totals')
       .select(`
         user_id,
@@ -272,17 +333,48 @@ export async function getTopStudents(limit = 10) {
       .order('total_points', { ascending: false })
       .limit(limit);
 
-    if (error) throw error;
+    if (totalsError) throw totalsError;
 
-    return (data || []).map((item: any) => ({
-      userId: item.user_id,
-      fullName: item.profiles?.full_name || 'Aluno',
-      grade: item.profiles?.grade || '',
-      totalPoints: Number(item.total_points || 0)
+    // Buscar todas as conquistas/insígnias para mapear a insígnia de cada aluno
+    const { data: badgesData } = await supabase
+      .from('gamification_badges')
+      .select('*')
+      .order('threshold_points', { ascending: true });
+
+    const allBadges = (badgesData || []).map((b: any) => ({
+      id: b.id,
+      name: b.name,
+      description: b.description,
+      threshold_points: Number(b.threshold_points || 0),
+      icon: getBadgeIconUrl(b.icon, b.icon_url),
+      icon_url: getBadgeIconUrl(b.icon, b.icon_url)
     }));
+
+    return (totalsData || []).map((item: any) => {
+      const points = Number(item.total_points || 0);
+      const unlocked = allBadges.filter(b => points >= b.threshold_points);
+      const currentBadge = unlocked.length > 0 ? unlocked[unlocked.length - 1] : (allBadges.length > 0 && allBadges[0].threshold_points <= 0 ? allBadges[0] : null);
+
+      return {
+        id: item.user_id,
+        userId: item.user_id,
+        user_id: item.user_id,
+        fullName: item.profiles?.full_name || 'Aluno',
+        full_name: item.profiles?.full_name || 'Aluno',
+        name: item.profiles?.full_name || 'Aluno',
+        grade: item.profiles?.grade || '',
+        totalPoints: points,
+        total_points: points,
+        points: points,
+        current_badge: currentBadge,
+        currentBadge: currentBadge,
+        current_achievement: currentBadge?.name || ''
+      };
+    });
   } catch (err) {
     console.error('Erro ao obter ranking no Supabase:', err);
     return null;
   }
 }
+
 

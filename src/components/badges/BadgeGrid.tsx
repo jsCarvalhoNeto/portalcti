@@ -11,16 +11,17 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Share2 } from 'lucide-react';
+import { getBadgeIconUrl } from '@/services/gamificationService';
 
 interface Badge {
-  id?: number;
+  id?: number | string;
   key?: string;
   name?: string;
   description?: string;
   icon?: string;
   icon_url?: string;
   threshold_points?: number;
-  awarded_id?: number;
+  awarded_id?: number | string;
 }
 
 interface Props {
@@ -84,33 +85,35 @@ export default function BadgeGrid({ badges = [], cols = 3, compact = false, subj
   return (
     <div>
       <div className={`grid ${gridColsClass} gap-3`}> 
-        {badges.map((b) => (
-          <div key={b.awarded_id || b.id || b.key} className="flex items-center justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => handleOpen(b)}
-                  className={`w-full h-full p-2 rounded-lg border hover:shadow-md transition-transform transform hover:-translate-y-1 flex items-center justify-center bg-card`}
-                  aria-label={b.name}
-                >
-                  {b.icon_url || b.icon ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={b.icon_url ? b.icon_url : `${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className={compact ? 'w-8 h-8 object-contain' : 'w-12 h-12 object-contain'} />
-                  ) : (
-                    <span className={compact ? 'text-lg' : 'text-2xl'}>🏅</span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="max-w-xs">
-                  <div className="font-medium">{b.name}</div>
-                  {b.description && <div className="text-xs text-muted-foreground">{b.description}</div>}
-                  {b.threshold_points != null && <div className="text-xs mt-1">{b.threshold_points} pts</div>}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        ))}
+        {badges.map((b) => {
+          const iconUrl = getBadgeIconUrl(b.icon, b.icon_url);
+          return (
+            <div key={b.awarded_id || b.id || b.key} className="flex items-center justify-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleOpen(b)}
+                    className={`w-full h-full p-2 rounded-lg border hover:shadow-md transition-transform transform hover:-translate-y-1 flex items-center justify-center bg-card`}
+                    aria-label={b.name}
+                  >
+                    {iconUrl ? (
+                      <img src={iconUrl} alt={b.name} className={compact ? 'w-8 h-8 object-contain' : 'w-12 h-12 object-contain'} />
+                    ) : (
+                      <span className={compact ? 'text-lg' : 'text-2xl'}>🏅</span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="max-w-xs">
+                    <div className="font-medium">{b.name}</div>
+                    {b.description && <div className="text-xs text-muted-foreground">{b.description}</div>}
+                    {b.threshold_points != null && <div className="text-xs mt-1">{b.threshold_points} pts</div>}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        })}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -123,9 +126,8 @@ export default function BadgeGrid({ badges = [], cols = 3, compact = false, subj
 
           <div className="flex items-center gap-4 mt-4">
             <div className="w-24 h-24 flex items-center justify-center rounded-md bg-muted/50 transition-transform duration-300">
-              {selected?.icon_url || selected?.icon ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={selected?.icon_url ? selected?.icon_url : `${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${selected?.icon}`} alt={selected?.name} className="w-16 h-16 object-contain transition-transform duration-300 hover:scale-110" />
+              {getBadgeIconUrl(selected?.icon, selected?.icon_url) ? (
+                <img src={getBadgeIconUrl(selected?.icon, selected?.icon_url)} alt={selected?.name} className="w-16 h-16 object-contain transition-transform duration-300 hover:scale-110" />
               ) : (
                 <span className="text-4xl">🏅</span>
               )}
@@ -135,6 +137,7 @@ export default function BadgeGrid({ badges = [], cols = 3, compact = false, subj
               <div className="text-sm text-muted-foreground mt-1">{selected?.description}</div>
             </div>
           </div>
+
 
           <DialogFooter className="mt-6 flex items-center justify-between">
             <div>

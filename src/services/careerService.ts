@@ -1,4 +1,4 @@
-import api from './api';
+import { supabase } from '../lib/supabaseClient';
 
 export interface Education {
     institution: string;
@@ -35,7 +35,7 @@ export interface Experience {
 }
 
 export interface CareerProfile {
-    id?: number;
+    id?: string | number;
     student_id: string;
     full_name: string | null;
     birth_date: string | null;
@@ -60,16 +60,80 @@ export interface CareerProfile {
     experiences?: Experience[];
 }
 
+const getDefaultProfile = (studentId: string): CareerProfile => ({
+    student_id: studentId,
+    full_name: '',
+    birth_date: '',
+    bio: '',
+    title: '',
+    skills: [],
+    linkedin_url: '',
+    github_url: '',
+    portfolio_url: '',
+    resume_url: null,
+    photo_url: null,
+    is_available: false,
+    is_public: false,
+    is_employed: false,
+    views: 0,
+    education: [],
+    projects: [],
+    languages: [],
+    certifications: [],
+    experiences: [],
+    contact_email: '',
+    contact_phone: ''
+});
+
+const formatProfileData = (data: any, studentId: string): CareerProfile => {
+    return {
+        id: data.id,
+        student_id: data.student_id || studentId,
+        full_name: data.full_name || '',
+        birth_date: data.birth_date ? String(data.birth_date).split('T')[0] : '',
+        bio: data.bio || '',
+        title: data.title || '',
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        linkedin_url: data.linkedin_url || '',
+        github_url: data.github_url || '',
+        portfolio_url: data.portfolio_url || '',
+        resume_url: data.resume_url || null,
+        photo_url: data.photo_url || null,
+        is_available: Boolean(data.is_available),
+        is_public: Boolean(data.is_public),
+        is_employed: Boolean(data.is_employed),
+        views: Number(data.views) || 0,
+        education: Array.isArray(data.education) ? data.education : [],
+        projects: Array.isArray(data.projects) ? data.projects : [],
+        languages: Array.isArray(data.languages) ? data.languages : [],
+        certifications: Array.isArray(data.certifications) ? data.certifications : [],
+        experiences: Array.isArray(data.experiences) ? data.experiences : [],
+        contact_email: data.contact_email || '',
+        contact_phone: data.contact_phone || ''
+    };
+};
+
 export const careerService = {
     /**
-     * Obtém o perfil de carreira de um estudante
-     */
-    /**
-     * Lista todos os perfis de carreira (Para professores)
+     * Lista todos os perfis de carreira públicos (Para professores / gestores)
      */
     listProfiles: async (): Promise<CareerProfile[]> => {
-        const response = await api.get('/career/list');
-        return response.data;
+        try {
+            const { data, error } = await supabase
+                .from('career_profiles')
+                .select('*')
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                console.error('Erro ao listar perfis no Supabase:', error);
+                return [];
+            }
+
+            return (data || []).map(item => formatProfileData(item, item.student_id));
+        } catch (error) {
+            console.error('Erro ao listar perfis de carreira:', error);
+            return [];
+        }
     },
 
     /**
@@ -77,37 +141,39 @@ export const careerService = {
      */
     getProfile: async (studentId: string): Promise<CareerProfile> => {
         try {
-            const response = await api.get(`/career/${studentId}`);
-            return response.data;
-        } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                // Retornar perfil vazio se não existir ainda
-                return {
-                    student_id: studentId,
-                    full_name: '',
-                    birth_date: '',
-                    bio: '',
-                    title: '',
-                    skills: [],
-                    linkedin_url: '',
-                    github_url: '',
-                    portfolio_url: '',
-                    resume_url: null,
-                    photo_url: null,
-                    is_available: false,
-                    is_public: false,
-                    is_employed: false,
-                    views: 0,
-                    education: [],
-                    projects: [],
-                    languages: [],
-                    certifications: [],
-                    experiences: [],
-                    contact_email: '',
-                    contact_phone: ''
-                };
+            const { data, error } = await supabase
+                .from('career_profiles')
+                .select('*')
+                .eq('student_id', studentId)
+                .maybeSingle();
+
+            if (error) {
+                console.warn('Aviso ao buscar perfil de carreira no Supabase:', error.message);
+                return getDefaultProfile(studentId);
             }
-            throw error;
+
+            if (!data) {
+                // Tenta puxar nome do profile básico se existir
+                try {
+                    const { data: userProfile } = await supabase
+                        .from('profiles')
+                        .select('full_name, email')
+                        .eq('id', studentId)
+                        .maybeSingle();
+
+                    const defaultProf = getDefaultProfile(studentId);
+                    if (userProfile?.full_name) defaultProf.full_name = userProfile.full_name;
+                    if (userProfile?.email) defaultProf.contact_email = userProfile.email;
+                    return defaultProf;
+                } catch {
+                    return getDefaultProfile(studentId);
+                }
+            }
+
+            return formatProfileData(data, studentId);
+        } catch (error) {
+            console.error('Erro ao buscar perfil de carreira:', error);
+            return getDefaultProfile(studentId);
         }
     },
 
@@ -115,46 +181,157 @@ export const careerService = {
      * Cria ou atualiza o perfil de carreira
      */
     updateProfile: async (studentId: string, data: Partial<CareerProfile>): Promise<CareerProfile> => {
-        const response = await api.put(`/career/${studentId}`, data);
-        return response.data;
+        try {
+            const payload = {
+                student_id: studentId,
+                full_name: data.full_name || null,
+                birth_date: data.birth_date ? data.birth_date : null,
+                bio: data.bio || '',
+                title: data.title || '',
+                linkedin_url: data.linkedin_url || '',
+                github_url: data.github_url || '',
+                portfolio_url: data.portfolio_url || '',
+                contact_email: data.contact_email || '',
+                contact_phone: data.contact_phone || '',
+                is_public: Boolean(data.is_public),
+                is_available: Boolean(data.is_available),
+                is_employed: Boolean(data.is_employed),
+                skills: Array.isArray(data.skills) ? data.skills : [],
+                education: Array.isArray(data.education) ? data.education : [],
+                projects: Array.isArray(data.projects) ? data.projects : [],
+                languages: Array.isArray(data.languages) ? data.languages : [],
+                certifications: Array.isArray(data.certifications) ? data.certifications : [],
+                experiences: Array.isArray(data.experiences) ? data.experiences : [],
+                updated_at: new Date().toISOString()
+            };
+
+            const { data: updated, error } = await supabase
+                .from('career_profiles')
+                .upsert(payload, { onConflict: 'student_id' })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Erro ao atualizar perfil no Supabase:', error);
+                throw error;
+            }
+
+            return formatProfileData(updated, studentId);
+        } catch (error) {
+            console.error('Falha ao atualizar perfil de carreira:', error);
+            throw error;
+        }
     },
 
     /**
      * Faz upload do currículo (PDF)
      */
     uploadResume: async (studentId: string, file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append('resume', file);
+        try {
+            const fileExt = file.name.split('.').pop() || 'pdf';
+            const fileName = `${studentId}/resume_${Date.now()}.${fileExt}`;
 
-        const response = await api.post(`/career/${studentId}/resume`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+            const { error: uploadError } = await supabase.storage
+                .from('career')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
 
-        return response.data.url;
+            if (uploadError) {
+                console.error('Erro no upload de currículo para o Supabase Storage:', uploadError);
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('career')
+                .getPublicUrl(fileName);
+
+            // Atualiza imediatamente a URL do currículo no banco
+            await supabase
+                .from('career_profiles')
+                .upsert({
+                    student_id: studentId,
+                    resume_url: publicUrl,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'student_id' });
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Erro ao enviar currículo:', error);
+            throw error;
+        }
     },
 
     /**
      * Faz upload da foto (Imagem)
      */
     uploadPhoto: async (studentId: string, file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append('photo', file);
+        try {
+            const fileExt = file.name.split('.').pop() || 'png';
+            const fileName = `${studentId}/photo_${Date.now()}.${fileExt}`;
 
-        const response = await api.post(`/career/${studentId}/photo`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+            const { error: uploadError } = await supabase.storage
+                .from('career')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
 
-        return response.data.url;
+            if (uploadError) {
+                console.error('Erro no upload da foto para o Supabase Storage:', uploadError);
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('career')
+                .getPublicUrl(fileName);
+
+            // Atualiza imediatamente a foto no banco
+            await supabase
+                .from('career_profiles')
+                .upsert({
+                    student_id: studentId,
+                    photo_url: publicUrl,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'student_id' });
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Erro ao enviar foto de perfil:', error);
+            throw error;
+        }
     },
 
     /**
      * Incrementa o contador de visualizações
      */
     incrementViews: async (studentId: string): Promise<void> => {
-        await api.post(`/career/${studentId}/view`);
+        try {
+            const { error } = await supabase.rpc('increment_career_views', {
+                target_student_id: studentId
+            });
+
+            if (error) {
+                // Fallback: se a RPC falhar, tenta update direto
+                const { data: prof } = await supabase
+                    .from('career_profiles')
+                    .select('views')
+                    .eq('student_id', studentId)
+                    .maybeSingle();
+
+                if (prof) {
+                    await supabase
+                        .from('career_profiles')
+                        .update({
+                            views: (prof.views || 0) + 1,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('student_id', studentId);
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao incrementar visualizações:', error);
+        }
     }
 };

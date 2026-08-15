@@ -14,11 +14,11 @@ export async function getAchievements(): Promise<Achievement[] | { error: true; 
       id: item.id,
       key: item.key,
       title: item.name,
-      description: item.description,
-      points: item.threshold_points,
-      minPoints: item.minPoints || 0,
-      maxPoints: item.maxPoints || 0,
-      imageUrl: item.icon,
+      description: item.description || '',
+      points: Number(item.threshold_points || 0),
+      minPoints: item.min_points ?? item.minPoints ?? 0,
+      maxPoints: item.max_points ?? item.maxPoints ?? 0,
+      imageUrl: item.icon_url || item.icon || '',
       created_at: item.created_at,
       updated_at: item.updated_at
     }));
@@ -30,14 +30,20 @@ export async function getAchievements(): Promise<Achievement[] | { error: true; 
 
 export async function createAchievement(payload: AchievementCreatePayload): Promise<Achievement | { error: true; status?: number } | null> {
   try {
+    const generatedKey = payload.key?.trim() || `badge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const imageUrl = payload.imageUrl?.trim() || '';
+
     const { data, error } = await supabase
       .from('gamification_badges')
       .insert({
-        key: payload.key,
+        key: generatedKey,
         name: payload.title,
-        description: payload.description,
-        threshold_points: payload.points,
-        icon: payload.imageUrl
+        description: payload.description || '',
+        threshold_points: payload.points ?? 0,
+        min_points: payload.minPoints ?? 0,
+        max_points: payload.maxPoints ?? 0,
+        icon: imageUrl,
+        icon_url: imageUrl
       })
       .select()
       .single();
@@ -50,11 +56,11 @@ export async function createAchievement(payload: AchievementCreatePayload): Prom
       id: data.id,
       key: data.key,
       title: data.name,
-      description: data.description,
-      points: data.threshold_points,
-      minPoints: data.minPoints || 0,
-      maxPoints: data.maxPoints || 0,
-      imageUrl: data.icon,
+      description: data.description || '',
+      points: Number(data.threshold_points || 0),
+      minPoints: data.min_points ?? data.minPoints ?? 0,
+      maxPoints: data.max_points ?? data.maxPoints ?? 0,
+      imageUrl: data.icon_url || data.icon || '',
       created_at: data.created_at,
       updated_at: data.updated_at
     };
@@ -66,15 +72,21 @@ export async function createAchievement(payload: AchievementCreatePayload): Prom
 
 export async function updateAchievement(id: string | number, payload: Partial<AchievementCreatePayload>): Promise<Achievement | { error: true; status?: number } | null> {
   try {
+    const updateObj: any = {};
+    if (payload.key !== undefined) updateObj.key = payload.key;
+    if (payload.title !== undefined) updateObj.name = payload.title;
+    if (payload.description !== undefined) updateObj.description = payload.description;
+    if (payload.points !== undefined) updateObj.threshold_points = payload.points;
+    if (payload.minPoints !== undefined) updateObj.min_points = payload.minPoints;
+    if (payload.maxPoints !== undefined) updateObj.max_points = payload.maxPoints;
+    if (payload.imageUrl !== undefined) {
+      updateObj.icon = payload.imageUrl?.trim() || '';
+      updateObj.icon_url = payload.imageUrl?.trim() || '';
+    }
+
     const { data, error } = await supabase
       .from('gamification_badges')
-      .update({
-        key: payload.key,
-        name: payload.title,
-        description: payload.description,
-        threshold_points: payload.points,
-        icon: payload.imageUrl
-      })
+      .update(updateObj)
       .eq('id', id)
       .select()
       .single();
@@ -87,11 +99,11 @@ export async function updateAchievement(id: string | number, payload: Partial<Ac
       id: data.id,
       key: data.key,
       title: data.name,
-      description: data.description,
-      points: data.threshold_points,
-      minPoints: data.minPoints || 0,
-      maxPoints: data.maxPoints || 0,
-      imageUrl: data.icon,
+      description: data.description || '',
+      points: Number(data.threshold_points || 0),
+      minPoints: data.min_points ?? data.minPoints ?? 0,
+      maxPoints: data.max_points ?? data.maxPoints ?? 0,
+      imageUrl: data.icon_url || data.icon || '',
       created_at: data.created_at,
       updated_at: data.updated_at
     };
@@ -117,4 +129,3 @@ export async function deleteAchievement(id: string | number): Promise<{ ok?: boo
     return { error: true, status: 500 };
   }
 }
-

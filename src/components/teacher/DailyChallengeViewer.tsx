@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Trophy, BookOpen, Target } from 'lucide-react';
+import { Calendar, Trophy, BookOpen, Target, KeyRound } from 'lucide-react';
 
 interface DailyChallengeViewerProps {
   isOpen: boolean;
@@ -104,6 +104,13 @@ const DailyChallengeViewer: React.FC<DailyChallengeViewerProps> = ({
                 <Calendar className="h-3 w-3" />
                 {formatDate(challenge.active_date)}
               </Badge>
+
+              {challenge.correct_answer && (
+                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 flex items-center gap-1">
+                  <KeyRound className="h-3 w-3 text-indigo-600" />
+                  Chave: {challenge.correct_answer}
+                </Badge>
+              )}
             </div>
           </div>
 

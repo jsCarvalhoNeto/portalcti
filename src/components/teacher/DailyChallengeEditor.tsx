@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
-import { Eye } from 'lucide-react';
+import { Eye, KeyRound, Sparkles, HelpCircle } from 'lucide-react';
 
 interface DailyChallengeEditorProps {
   isOpen: boolean;
@@ -31,7 +31,9 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
     points: 10,
     subject_id: '0',
     active_date: new Date().toISOString().split('T')[0],
-    type: 'question'
+    type: 'question',
+    requires_validation: false,
+    correct_answer: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -42,12 +44,14 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
       setFormData({
         title: challenge.title || '',
         description: challenge.description || '',
-        content: challenge.content || '',
+        content: challenge.content || challenge.html_content || '',
         difficulty: challenge.difficulty || 'medium',
         points: challenge.points || 10,
         subject_id: challenge.subject_id?.toString() || '0',
         active_date: challenge.active_date?.split('T')[0] || new Date().toISOString().split('T')[0],
-        type: challenge.type || 'question'
+        type: challenge.type || 'question',
+        requires_validation: Boolean(challenge.requires_validation || challenge.correct_answer),
+        correct_answer: challenge.correct_answer || ''
       });
     } else {
       setFormData({
@@ -58,7 +62,9 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
         points: 10,
         subject_id: '0',
         active_date: new Date().toISOString().split('T')[0],
-        type: 'question'
+        type: 'question',
+        requires_validation: false,
+        correct_answer: ''
       });
     }
   }, [challenge, isOpen]);
@@ -71,12 +77,19 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
       return;
     }
 
+    if (formData.requires_validation && !formData.correct_answer.trim()) {
+      alert('Você ativou a exigência de chave/resposta, por favor informe o valor esperado.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const challengeData = {
         ...formData,
         subject_id: formData.subject_id !== '0' ? parseInt(formData.subject_id) : null,
-        points: parseInt(formData.points.toString())
+        points: parseInt(formData.points.toString()),
+        requires_validation: formData.requires_validation,
+        correct_answer: formData.requires_validation ? formData.correct_answer.trim() : null
       };
       
       await onSave(challengeData);
@@ -98,7 +111,7 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {challenge ? 'Editar Desafio Diário' : 'Novo Desafio Diário'}
@@ -116,7 +129,7 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
               id="title"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="Ex: Resolva este problema matemático"
+              placeholder="Ex: Resolva este problema matemático ou vença o jogo"
               required
             />
           </div>
@@ -128,15 +141,57 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Descrição breve do desafio (opcional)"
+              placeholder="Descrição breve ou instruções do desafio para o aluno"
               rows={2}
             />
+          </div>
+
+          {/* Seção de Validação e Chave Secreta */}
+          <div className="border border-indigo-100 bg-indigo-50/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-indigo-600" />
+                <Label htmlFor="requires_validation" className="font-semibold text-indigo-900 cursor-pointer">
+                  Exigir Palavra-Chave ou Resposta Correta para Conclusão
+                </Label>
+              </div>
+              <input
+                type="checkbox"
+                id="requires_validation"
+                checked={formData.requires_validation}
+                onChange={(e) => handleInputChange('requires_validation', e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+              />
+            </div>
+
+            {formData.requires_validation && (
+              <div className="pt-2 space-y-2">
+                <Label htmlFor="correct_answer" className="text-sm font-medium text-gray-700">
+                  Chave Secreta ou Resposta Esperada *
+                </Label>
+                <Input
+                  id="correct_answer"
+                  value={formData.correct_answer}
+                  onChange={(e) => handleInputChange('correct_answer', e.target.value)}
+                  placeholder="Ex: H2O, 42, VITORIA2026, PARABENS"
+                  required={formData.requires_validation}
+                  className="bg-white border-indigo-200 focus:border-indigo-500"
+                />
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>
+                    O aluno só ganha os pontos se digitar exatamente esse valor (a validação não diferencia maiúsculas de minúsculas).
+                    Em jogos HTML, você também pode disparar <code>window.parent.postMessage({'{'} type: 'CHALLENGE_SOLVED', key: '{formData.correct_answer || 'SUA_CHAVE'}' {'}'}, '*')</code> ao finalizar.
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Conteúdo */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="content">Conteúdo do Desafio *</Label>
+              <Label htmlFor="content">Conteúdo Interativo do Desafio (HTML / CSS / JS) *</Label>
               <Button 
                 type="button" 
                 variant="outline" 
@@ -149,29 +204,30 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
               </Button>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                Você pode escrever HTML, CSS e JavaScript. O código será renderizado como uma página web interativa.
+              <p className="text-xs text-muted-foreground">
+                Escreva o código HTML da atividade, quiz ou jogo. O aluno visualizará esse código dentro do portal.
               </p>
               <Textarea
                 id="content"
                 value={formData.content}
                 onChange={(e) => handleInputChange('content', e.target.value)}
-                placeholder={`Exemplo:
+                placeholder={`Exemplo de jogo ou pergunta:
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-    </style>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    .btn { background: #4f46e5; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+    .secret { font-weight: bold; color: #16a34a; font-size: 1.2rem; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Meu Desafio Interativo</h1>
-        <p>Clique no botão abaixo!</p>
-        <button onclick="alert('Parabéns!')">Clique aqui</button>
-    </div>
+  <h3>Resolva a charada:</h3>
+  <p>Qual é o elemento mais abundante no universo?</p>
+  <button class="btn" onclick="document.getElementById('resp').style.display='block'">Mostrar Dica</button>
+  <div id="resp" style="display:none; margin-top:15px;">
+    Chave do Desafio: <span class="secret">HIDROGENIO</span>
+  </div>
 </body>
 </html>`}
                 rows={showPreview ? 8 : 12}
@@ -266,7 +322,7 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
                 min="1"
                 max="100"
                 value={formData.points}
-                onChange={(e) => handleInputChange('points', parseInt(e.target.value))}
+                onChange={(e) => handleInputChange('points', parseInt(e.target.value) || 0)}
               />
             </div>
 
@@ -286,7 +342,7 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
               {isLoading ? 'Salvando...' : (challenge ? 'Atualizar' : 'Criar Desafio')}
             </Button>
           </DialogFooter>

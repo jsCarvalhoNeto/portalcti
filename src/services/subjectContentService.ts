@@ -58,6 +58,8 @@ export const subjectContentService = {
   getAllBySubject: async (subjectId: number | string): Promise<SubjectContent[]> => {
     try {
       const numSubjectId = Number(subjectId);
+      if (isNaN(numSubjectId)) return [];
+
       const { data, error } = await supabase
         .from('subject_content')
         .select('*')
@@ -82,13 +84,15 @@ export const subjectContentService = {
   getBySection: async (subjectId: number | string, sectionType: string): Promise<SubjectContent[]> => {
     try {
       const numSubjectId = Number(subjectId);
+      if (isNaN(numSubjectId)) return [];
       const backendSection = normalizeSectionType(sectionType);
+      const sectionTypes = Array.from(new Set([backendSection, sectionType]));
 
       const { data, error } = await supabase
         .from('subject_content')
         .select('*')
         .eq('subject_id', numSubjectId)
-        .or(`section_type.eq.${backendSection},section_type.eq.${sectionType}`)
+        .in('section_type', sectionTypes)
         .order('order_index', { ascending: true })
         .order('created_at', { ascending: true });
 
@@ -115,14 +119,16 @@ export const subjectContentService = {
   ): Promise<SubjectContent> => {
     try {
       const numSubjectId = Number(subjectId);
+      if (isNaN(numSubjectId)) throw new Error('ID de disciplina inválido');
       const backendSection = normalizeSectionType(sectionType);
+      const sectionTypes = Array.from(new Set([backendSection, sectionType]));
 
-      // Verificar se já existe um registro para esta disciplina e seção
+      // Verificar se já existe um registro para esta disciplina e seção específica
       const { data: existing, error: findError } = await supabase
         .from('subject_content')
         .select('id')
         .eq('subject_id', numSubjectId)
-        .or(`section_type.eq.${backendSection},section_type.eq.${sectionType}`)
+        .in('section_type', sectionTypes)
         .limit(1);
 
       if (findError) throw findError;
@@ -130,7 +136,7 @@ export const subjectContentService = {
       const now = new Date().toISOString();
 
       if (existing && existing.length > 0) {
-        // Atualizar registro existente
+        // Atualizar registro existente da disciplina
         const targetId = existing[0].id;
         const { data, error } = await supabase
           .from('subject_content')
@@ -143,6 +149,7 @@ export const subjectContentService = {
             updated_at: now
           })
           .eq('id', targetId)
+          .eq('subject_id', numSubjectId)
           .select()
           .single();
 
@@ -152,7 +159,7 @@ export const subjectContentService = {
           id: String(data.id)
         };
       } else {
-        // Inserir novo registro
+        // Inserir novo registro exclusivo para a disciplina
         const { data, error } = await supabase
           .from('subject_content')
           .insert({
@@ -186,13 +193,15 @@ export const subjectContentService = {
   clearSectionContent: async (subjectId: number | string, sectionType: string): Promise<void> => {
     try {
       const numSubjectId = Number(subjectId);
+      if (isNaN(numSubjectId)) return;
       const backendSection = normalizeSectionType(sectionType);
+      const sectionTypes = Array.from(new Set([backendSection, sectionType]));
 
       const { error } = await supabase
         .from('subject_content')
         .delete()
         .eq('subject_id', numSubjectId)
-        .or(`section_type.eq.${backendSection},section_type.eq.${sectionType}`);
+        .in('section_type', sectionTypes);
 
       if (error) throw error;
     } catch (error: any) {

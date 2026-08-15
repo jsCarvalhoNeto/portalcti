@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
+  Home,
   FileText, 
   BookOpen, 
   Activity, 
@@ -16,7 +17,10 @@ import {
   Settings, 
   ArrowLeft, 
   Save, 
-  Edit3 
+  Edit3,
+  Gamepad2,
+  Wrench,
+  Megaphone
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService, Subject } from '@/services/subjectService';
@@ -28,6 +32,15 @@ import {
 } from '@/services/subjectContentService';
 import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 
+interface QuickAccessItem {
+  icon: any;
+  title: string;
+  description: string;
+  color: string;
+  bgColor: string;
+  onClick?: () => void;
+}
+
 export default function TeacherSubjectEditor() {
   const { id } = useParams<{ id: string }>();
   const { user, isTeacher, loading: authLoading } = useAuth();
@@ -36,7 +49,7 @@ export default function TeacherSubjectEditor() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('conteudo');
+  const [activeTab, setActiveTab] = useState('inicio');
   const [contentData, setContentData] = useState<Record<string, SubjectContent[]>>({
     conteudo: [],
     material: [],
@@ -55,6 +68,41 @@ export default function TeacherSubjectEditor() {
     avaliacoes: [],
     recursos: []
   });
+
+  const quickAccessItems: QuickAccessItem[] = [
+    {
+      icon: Gamepad2,
+      title: 'Atividades Interativas',
+      description: 'Jogos e simuladores educativos',
+      color: 'text-purple-400',
+      bgColor: 'bg-gray-800',
+      onClick: () => navigate(`/disciplinas/${id}/interactive-activities`)
+    },
+    {
+      icon: BookOpen,
+      title: 'Cronograma e Material',
+      description: 'Cronograma de aulas e material didático',
+      color: 'text-blue-400',
+      bgColor: 'bg-gray-800',
+      onClick: () => setActiveTab('material')
+    },
+    {
+      icon: PenTool,
+      title: 'Exercícios',
+      description: 'Listas de exercícios práticos',
+      color: 'text-orange-400',
+      bgColor: 'bg-gray-800',
+      onClick: () => setActiveTab('exercicios')
+    },
+    {
+      icon: Wrench,
+      title: 'Projetos',
+      description: 'Projetos práticos para desenvolver',
+      color: 'text-emerald-400',
+      bgColor: 'bg-gray-800',
+      onClick: () => setActiveTab('projetos')
+    }
+  ];
 
   const fetchSubjectData = useCallback(async () => {
     if (!id) return;
@@ -270,6 +318,7 @@ export default function TeacherSubjectEditor() {
   }
 
   const navItems = [
+    { value: 'inicio', label: 'Início', icon: Home },
     { value: 'conteudo', label: 'Ementa', icon: FileText },
     { value: 'material', label: 'Cronograma', icon: BookOpen },
     { value: 'atividades', label: 'Escopo', icon: Activity },
@@ -279,9 +328,11 @@ export default function TeacherSubjectEditor() {
     { value: 'recursos', label: 'Recursos', icon: Settings },
   ];
 
+  const editorTabs = navItems.filter(item => item.value !== 'inicio');
+
   return (
     <MainLayout>
-      <div className="min-h-screen pb-12">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-screen pb-12">
         {/* Header */}
         <header className="bg-card border-b">
           <div className="container mx-auto px-4 py-4">
@@ -326,117 +377,190 @@ export default function TeacherSubjectEditor() {
         {/* Navigation Tabs */}
         <div className="bg-primary/95 shadow-sm">
           <div className="container mx-auto px-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="border-b-0">
-              <TabsList className="w-full justify-start h-auto p-0 bg-transparent flex-wrap">
-                {navItems.map(item => (
-                  <TabsTrigger 
-                    key={item.value}
-                    value={item.value} 
-                    className="text-primary-foreground/80 hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-primary-foreground flex items-center gap-2 px-4 py-3 rounded-none text-sm font-medium transition-colors"
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <TabsList className="w-full justify-start h-auto p-0 bg-transparent flex-wrap">
+              {navItems.map(item => (
+                <TabsTrigger 
+                  key={item.value}
+                  value={item.value} 
+                  className="text-primary-foreground/80 hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-primary-foreground flex items-center gap-2 px-4 py-3 rounded-none text-sm font-medium transition-colors"
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
         </div>
         
         <main className="container mx-auto px-4 py-8">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {navItems.map(item => (
-              <TabsContent key={item.value} value={item.value} className="space-y-6">
-                <Card className="bg-card border shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <item.icon className="w-5 h-5 text-primary" />
-                      {item.label}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <MarkdownRichTextEditor
-                        content={contentData[item.value] 
-                          ? contentData[item.value].map(content => content.content).join('\n\n') 
-                          : ''
-                        }
-                        className="min-h-[250px] max-h-[60vh] overflow-y-auto"
-                        onChange={(newContent: string) => {
-                          setContentData(prev => ({
-                            ...prev,
-                            [item.value]: [{
-                              id: prev[item.value]?.[0]?.id || 'new',
-                              subject_id: Number(id),
-                              section_type: item.value,
-                              title: item.label,
-                              content: newContent,
-                              order_index: 0,
-                              is_active: true
-                            }]
-                          }));
-                        }}
-                        placeholder={`Digite o conteúdo de ${item.label}...`}
-                      />
-                      
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleClearContent(item.value)}
-                        >
-                          Limpar {item.label}
-                        </Button>
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          onClick={() => {
-                            const content = contentData[item.value]?.[0]?.content || '';
-                            handleSaveContent(item.value, content);
-                          }}
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          Salvar {item.label}
-                        </Button>
-                      </div>
+          {/* Início tab */}
+          <TabsContent value="inicio" className="space-y-10 mt-0">
+            {/* Welcome Section */}
+            <Card className="bg-card border">
+              <CardContent className="p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-bold mb-2 text-foreground">
+                      Bem-vindos à {subject.name}! 🚀
+                    </h2>
+                    <p className="text-lg text-muted-foreground">
+                      {subject.description || 'Bem-vindo ao ambiente de aprendizado desta disciplina.'}
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="text-center bg-background rounded-lg p-4 w-28 border">
+                      <p className="font-bold text-xl text-foreground">100h</p>
+                      <p className="text-sm text-muted-foreground">Carga Horária</p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="text-center bg-background rounded-lg p-4 w-28 border">
+                      <p className="font-bold text-xl text-foreground">{subject.grade || '1º Ano'}</p>
+                      <p className="text-sm text-muted-foreground">Série</p>
+                    </div>
+                    <div className="text-center bg-background rounded-lg p-4 w-28 border">
+                      <p className="font-bold text-xl text-foreground">Técnico</p>
+                      <p className="text-sm text-muted-foreground">Nível</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* Resources Section */}
-                <Card className="bg-card border shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">Recursos de {item.label}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {resourcesData[item.value]?.length > 0 ? (
-                        resourcesData[item.value].map((resource, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <BookOpen className="w-4 h-4 text-primary" />
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-sm">{resource.title}</h4>
-                                {resource.description && (
-                                  <p className="text-xs text-muted-foreground">{resource.description}</p>
-                                )}
-                              </div>
+            {/* Quick Access */}
+            <div>
+              <h3 className="text-2xl font-semibold mb-6 text-foreground">Acesso Rápido</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {quickAccessItems.map((item: QuickAccessItem, index: number) => (
+                  <Card 
+                    key={index} 
+                    className="bg-card border hover:bg-accent transition-all duration-300 cursor-pointer"
+                    onClick={item.onClick}
+                  >
+                    <CardContent className="p-6">
+                      <item.icon className={`w-7 h-7 mb-4 ${item.color}`} />
+                      <h4 className="font-semibold text-lg mb-1 text-card-foreground">{item.title}</h4>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Important Announcements */}
+            <div>
+              <h3 className="text-2xl font-semibold mb-6 text-foreground">Anúncios Importantes</h3>
+              <Card className="bg-card border">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                      <Megaphone className="w-4 h-4 text-destructive" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-card-foreground mb-1">Início das Aulas</h4>
+                      <p className="text-muted-foreground mb-3">
+                        As aulas de {subject.name} começam na próxima semana. Preparem-se!
+                      </p>
+                      <Badge variant="destructive">Semestre 2026.2</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Editores de Conteúdo */}
+          {editorTabs.map(item => (
+            <TabsContent key={item.value} value={item.value} className="space-y-6 mt-0">
+              <Card className="bg-card border shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <item.icon className="w-5 h-5 text-primary" />
+                    {item.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <MarkdownRichTextEditor
+                      key={`${id}-${item.value}`}
+                      content={contentData[item.value] 
+                        ? contentData[item.value].map(content => content.content).join('\n\n') 
+                        : ''
+                      }
+                      className="min-h-[250px] max-h-[60vh] overflow-y-auto"
+                      onChange={(newContent: string) => {
+                        setContentData(prev => ({
+                          ...prev,
+                          [item.value]: [{
+                            id: prev[item.value]?.[0]?.id || 'new',
+                            subject_id: Number(id),
+                            section_type: item.value,
+                            title: item.label,
+                            content: newContent,
+                            order_index: 0,
+                            is_active: true
+                          }]
+                        }));
+                      }}
+                      placeholder={`Digite o conteúdo de ${item.label}...`}
+                    />
+                    
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleClearContent(item.value)}
+                      >
+                        Limpar {item.label}
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => {
+                          const content = contentData[item.value]?.[0]?.content || '';
+                          handleSaveContent(item.value, content);
+                        }}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Salvar {item.label}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Resources Section */}
+              <Card className="bg-card border shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base">Recursos de {item.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {resourcesData[item.value]?.length > 0 ? (
+                      resourcesData[item.value].map((resource, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <BookOpen className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-sm">{resource.title}</h4>
+                              {resource.description && (
+                                <p className="text-xs text-muted-foreground">{resource.description}</p>
+                              )}
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground/60 italic">Nenhum recurso anexado ainda...</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
-          </Tabs>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground/60 italic">Nenhum recurso anexado ainda...</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
         </main>
-      </div>
+      </Tabs>
     </MainLayout>
   );
 }
+

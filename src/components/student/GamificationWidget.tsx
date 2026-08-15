@@ -147,9 +147,14 @@ export default function GamificationWidget() {
             <div className="mt-3">
               <div className="text-xs font-medium mb-2">Medalhas</div>
               <div className="flex gap-2 flex-wrap">
-                {badges && badges.length > 0 ? badges.slice(0,3).map(b => (
-                  <div key={b.id || b.key} className="w-9 h-9 rounded-md bg-yellow-50 flex items-center justify-center text-lg">{b.icon_url || b.icon ? <img src={b.icon_url ? b.icon_url : `${import.meta.env.VITE_API_URL.replace('/api','')}/uploads/${b.icon}`} alt={b.name} className="w-6 h-6" /> : '🏅'}</div>
-                )) : (
+                {badges && badges.length > 0 ? badges.slice(0,3).map(b => {
+                  const iconUrl = gamificationService.getBadgeIconUrl(b.icon, b.icon_url);
+                  return (
+                    <div key={b.id || b.key} className="w-9 h-9 rounded-md bg-yellow-50 flex items-center justify-center text-lg overflow-hidden">
+                      {iconUrl ? <img src={iconUrl} alt={b.name} className="w-7 h-7 object-contain" /> : '🏅'}
+                    </div>
+                  );
+                }) : (
                   <div className="text-xs text-muted-foreground">—</div>
                 )}
               </div>

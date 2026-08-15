@@ -55,10 +55,10 @@ export default function TopStudentsCard({ limit = 10 }: { limit?: number }) {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-medium">{idx+1}</div>
                   <div className="flex items-center gap-3">
-                    {r.current_badge && r.current_badge.icon_url ? (
-                      <img src={r.current_badge.icon_url} alt={r.current_badge.name || 'badge'} className="w-8 h-8 rounded-sm object-cover" />
+                    {r.current_badge && (r.current_badge.icon_url || r.current_badge.icon) ? (
+                      <img src={r.current_badge.icon_url || r.current_badge.icon} alt={r.current_badge.name || 'insignia'} className="w-8 h-8 rounded-sm object-contain" />
                     ) : (
-                      <div className="w-8 h-8 bg-muted rounded-sm" />
+                      <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center text-sm">🏅</div>
                     )}
                     <div>
                       <div className="font-medium">{r.full_name || r.name || r.display_name || r.email || `Aluno ${r.user_id || r.id || idx+1}`}</div>

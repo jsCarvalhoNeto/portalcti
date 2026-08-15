@@ -5,6 +5,7 @@ import AchievementItem from './AchievementItem';
 import AchievementForm from './AchievementForm';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 
 type Props = {
   /** When false, hide add/edit/delete actions and render list read-only */
@@ -21,12 +22,13 @@ export default function AchievementList({ showActions = true }: Props) {
     setLoading(true);
     try {
       const res = await service.getAchievements();
-      if (!Array.isArray(res)) return; // handle error case silently
+      if (!Array.isArray(res)) return;
       setItems(res);
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { load();
+  useEffect(() => { 
+    load();
     const h = () => load();
     try { (window as any).addEventListener('gamification:update', h); } catch (e) {}
     return () => { try { (window as any).removeEventListener('gamification:update', h); } catch (e) {} };
@@ -35,20 +37,48 @@ export default function AchievementList({ showActions = true }: Props) {
   async function handleCreate(payload: any) {
     setSaving(true);
     try {
-      await service.createAchievement(payload);
-      await load();
-      setCreating(false);
+      const res = await service.createAchievement(payload);
+      if (res && !(res as any).error) {
+        toast({ title: 'Sucesso', description: 'Conquista criada com sucesso!' });
+        await load();
+        setCreating(false);
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível salvar a conquista.', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message || 'Erro ao criar conquista', variant: 'destructive' });
     } finally { setSaving(false); }
   }
 
   async function handleUpdate(id: string | number, payload: any) {
     setSaving(true);
-    try { await service.updateAchievement(id, payload); await load(); } finally { setSaving(false); }
+    try { 
+      const res = await service.updateAchievement(id, payload);
+      if (res && !(res as any).error) {
+        toast({ title: 'Sucesso', description: 'Conquista atualizada com sucesso!' });
+        await load();
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível atualizar a conquista.', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message || 'Erro ao atualizar conquista', variant: 'destructive' });
+    } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string | number) {
-    try { await service.deleteAchievement(id); await load(); } catch (e) { /* noop */ }
+    try { 
+      const res = await service.deleteAchievement(id);
+      if (res && !(res as any).error) {
+        toast({ title: 'Sucesso', description: 'Conquista removida.' });
+        await load();
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível excluir a conquista.', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message || 'Erro ao deletar conquista', variant: 'destructive' });
+    }
   }
+
 
   return (
     <div className="space-y-4">
