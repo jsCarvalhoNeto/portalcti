@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
@@ -16,7 +16,7 @@ import StudentModal from '@/components/admin/StudentModal';
 import TeacherModal from '@/components/admin/TeacherModal';
 import UserEditModal from '@/components/admin/UserEditModal';
 import { getAllStudents, deleteStudent } from '@/services/studentService';
-import { getAllUsers, updateUserRole } from '@/services/userService';
+import { getAllUsers, updateUserRole, resetUserPassword } from '@/services/userService';
 import { getAllTeachers, deleteTeacher as deleteTeacherService } from '@/services/teacherService';
 import { subjectService } from '@/services/subjectService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
@@ -86,6 +86,8 @@ export default function AdminDashboard() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<AdminSubject | null>(null);
+  const [userToResetPassword, setUserToResetPassword] = useState<{ id: string; name: string; email?: string; role?: string } | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const { toast } = useToast();
 
   // Filtros para Estudantes
@@ -395,6 +397,27 @@ export default function AdminDashboard() {
         description: "Falha ao promover usuário a administrador.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleConfirmResetPassword = async (targetUser: { id: string; name: string; email?: string; role?: string }) => {
+    setIsResettingPassword(true);
+    try {
+      await resetUserPassword(targetUser.id, 'balbina123');
+      toast({
+        title: "Senha resetada com sucesso!",
+        description: `A senha de ${targetUser.name} foi redefinida para "balbina123".`,
+      });
+      setUserToResetPassword(null);
+    } catch (error: any) {
+      console.error('Erro ao resetar senha do usuário:', error);
+      toast({
+        title: "Erro ao resetar senha",
+        description: error.message || "Não foi possível resetar a senha do usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -761,8 +784,22 @@ export default function AdminDashboard() {
                               <Button size="sm" variant="ghost">
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => openUserModal(user)}>
+                              <Button size="sm" variant="ghost" onClick={() => openUserModal(user)} title="Editar usuário">
                                 <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setUserToResetPassword({
+                                  id: user.id,
+                                  name: user.full_name || user.email,
+                                  email: user.email,
+                                  role: status
+                                })}
+                                title="Resetar senha para balbina123"
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                              >
+                                <KeyRound className="w-4 h-4" />
                               </Button>
                               {status !== 'Admin' && (
                                 <Button
@@ -847,8 +884,22 @@ export default function AdminDashboard() {
                             <Button size="sm" variant="ghost">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => openTeacherModal(teacher)}>
+                            <Button size="sm" variant="ghost" onClick={() => openTeacherModal(teacher)} title="Editar professor">
                               <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setUserToResetPassword({
+                                id: teacher.id,
+                                name: teacher.full_name || 'Professor',
+                                email: teacher.email,
+                                role: 'Professor'
+                              })}
+                              title="Resetar senha para balbina123"
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            >
+                              <KeyRound className="w-4 h-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -1053,8 +1104,22 @@ export default function AdminDashboard() {
                               <Button size="sm" variant="ghost">
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => openStudentModal(student)}>
+                              <Button size="sm" variant="ghost" onClick={() => openStudentModal(student)} title="Editar estudante">
                                 <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setUserToResetPassword({
+                                  id: student.id,
+                                  name: student.full_name || 'Estudante',
+                                  email: student.email,
+                                  role: 'Estudante'
+                                })}
+                                title="Resetar senha para balbina123"
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                              >
+                                <KeyRound className="w-4 h-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -1500,6 +1565,59 @@ export default function AdminDashboard() {
         }}
         user={editingUser}
       />
+
+      {/* Modal de Confirmação de Reset de Senha */}
+      <AlertDialog open={!!userToResetPassword} onOpenChange={(open) => !open && setUserToResetPassword(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-amber-600" />
+              Resetar Senha do {userToResetPassword?.role || 'Usuário'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2 text-left">
+              <p>
+                Tem certeza que deseja resetar a senha de <strong>{userToResetPassword?.name}</strong>{userToResetPassword?.email ? ` (${userToResetPassword.email})` : ''}?
+              </p>
+              <div className="p-3 bg-muted/70 rounded-md border text-sm space-y-1.5">
+                <p className="font-semibold text-foreground text-xs">Nova senha padrão que será configurada:</p>
+                <div className="flex items-center justify-between font-mono bg-background px-3 py-1.5 rounded border">
+                  <span className="font-bold text-amber-600 dark:text-amber-400">balbina123</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText('balbina123');
+                      toast({ title: "Copiado!", description: "Senha 'balbina123' copiada para a área de transferência." });
+                    }}
+                  >
+                    Copiar
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Após a confirmação, o usuário poderá entrar no portal imediatamente utilizando a senha <strong>balbina123</strong>.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResettingPassword}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isResettingPassword}
+              onClick={(e) => {
+                e.preventDefault();
+                if (userToResetPassword) {
+                  handleConfirmResetPassword(userToResetPassword);
+                }
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {isResettingPassword ? 'Resetando...' : 'Confirmar Reset'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

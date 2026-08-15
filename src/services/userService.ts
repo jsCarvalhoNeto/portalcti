@@ -117,3 +117,21 @@ export async function updateUserGrade(userId: string, grade: '1º Ano' | '2º An
     throw new Error('Erro ao atualizar série do usuário');
   }
 }
+
+/**
+ * Reseta a senha de um usuário (professor, estudante ou usuário) para a senha padrão (balbina123)
+ */
+export async function resetUserPassword(userId: string, newPassword: string = 'balbina123'): Promise<void> {
+  try {
+    const { data, error } = await supabase.rpc('admin_reset_user_password', {
+      target_user_id: userId,
+      new_password: newPassword,
+    });
+
+    if (error) throw error;
+  } catch (error: any) {
+    console.error('Erro ao resetar senha do usuário no Supabase:', error);
+    throw new Error(error.message || 'Erro ao resetar senha do usuário.');
+  }
+}
+

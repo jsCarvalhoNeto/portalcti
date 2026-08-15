@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, createEphemeralClient } from '@/lib/supabaseClient';
 import { subjectService } from '@/services/subjectService';
+import { resetUserPassword } from '@/services/userService';
+import { KeyRound } from 'lucide-react';
 
 interface Subject {
   id: string | number;
@@ -38,6 +40,7 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
     if (teacher) {
       setFullName(teacher.full_name || '');
       setEmail(teacher.email || '');
+      setPassword('');
     } else {
       setFullName('');
       setEmail('');
@@ -107,16 +110,22 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
         // Atualizar associações de disciplinas
         await updateTeacherSubjects(teacher.id, selectedSubjects);
 
+        // Se uma nova senha foi preenchida na edição, atualizar
+        if (password.trim()) {
+          await resetUserPassword(teacher.id, password.trim());
+        }
+
         toast({
           title: "Professor atualizado com sucesso!",
-          description: `O professor ${fullName} foi atualizado no sistema.`,
+          description: `O professor ${fullName} foi atualizado no sistema.${password.trim() ? ` A senha foi definida para "${password.trim()}".` : ''}`,
         });
       } else {
         // Criação de novo professor: criar via Supabase usando cliente efêmero para não deslogar o admin
+        const initialPassword = password.trim() || 'balbina123';
         const authClient = createEphemeralClient();
         const { data: authData, error: authError } = await authClient.auth.signUp({
           email: email,
-          password: password,
+          password: initialPassword,
           options: {
             data: {
               full_name: fullName,
@@ -134,7 +143,7 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
 
         toast({
           title: "Professor criado com sucesso!",
-          description: `O professor ${fullName} foi adicionado ao sistema.`,
+          description: `O professor ${fullName} foi adicionado com a senha inicial "${initialPassword}".`,
         });
       }
 
@@ -230,19 +239,33 @@ export default function TeacherFormWithSubjects({ onSuccess, teacher }: TeacherF
           required
         />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="password" className="text-right">
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor="password" className="text-right pt-2">
           Senha
         </Label>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="col-span-3"
-          placeholder={teacher ? 'Deixe em branco para não alterar' : ''}
-          required={!teacher}
-        />
+        <div className="col-span-3 space-y-1">
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={teacher ? 'Deixe em branco para não alterar' : 'Digite uma senha ou use o padrão'}
+            required={!teacher && !password}
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">
+              {teacher ? 'Preencha apenas se quiser redefinir a senha' : 'Senha inicial padrão: balbina123'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPassword('balbina123')}
+              className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1"
+            >
+              <KeyRound className="w-3 h-3" />
+              Preencher balbina123
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Seção de seleção de disciplinas */}

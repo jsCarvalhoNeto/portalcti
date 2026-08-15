@@ -123,6 +123,7 @@ export const getAllTeachers = async () => {
       .select(`
         id,
         full_name,
+        email,
         user_roles!inner(role)
       `)
       .eq('user_roles.role', 'teacher')
@@ -132,7 +133,7 @@ export const getAllTeachers = async () => {
     return (data || []).map((t: any) => ({
       id: t.id,
       full_name: t.full_name || 'Professor',
-      email: '',
+      email: t.email || '',
     }));
   } catch (error) {
     console.error('Erro ao buscar professores no Supabase:', error);
