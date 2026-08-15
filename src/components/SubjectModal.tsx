@@ -36,6 +36,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
     semester: '',
     schedule: '',
     grade: '',
+    workload_hours: 100,
     year: new Date().getFullYear()
   });
 
@@ -87,6 +88,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           semester: subject.semester || '',
           schedule: subject.schedule || '',
           grade: subject.grade || '',
+          workload_hours: subject.workload_hours ?? 100,
           year: subject.year || new Date().getFullYear()
         });
         setSelectedPeriods(parsePeriods(subject));
@@ -99,6 +101,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           semester: '',
           schedule: '',
           grade: '',
+          workload_hours: 100,
           year: new Date().getFullYear()
         });
         setSelectedPeriods([]);
@@ -166,6 +169,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           schedule: formData.schedule || undefined,
           max_students: formData.max_students,
           grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
+          workload_hours: Number(formData.workload_hours) || 100,
           semester: formData.semester || undefined,
           period: periodString,
           periods: selectedPeriods,
@@ -185,6 +189,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
           schedule: formData.schedule || undefined,
           max_students: formData.max_students,
           grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
+          workload_hours: Number(formData.workload_hours) || 100,
           semester: formData.semester || undefined,
           period: periodString,
           periods: selectedPeriods,
@@ -354,12 +359,14 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="schedule">Horário</Label>
+              <Label htmlFor="workload_hours">Carga Horária (horas)</Label>
               <Input
-                id="schedule"
-                value={formData.schedule}
-                onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
-                placeholder="Ex: Segunda e Quarta 14:00-16:00"
+                id="workload_hours"
+                type="number"
+                value={formData.workload_hours}
+                onChange={(e) => setFormData({ ...formData, workload_hours: parseInt(e.target.value) || 0 })}
+                placeholder="Ex: 80, 100, 120"
+                min="1"
               />
             </div>
             <div className="space-y-2">
@@ -378,6 +385,16 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="schedule">Horário</Label>
+            <Input
+              id="schedule"
+              value={formData.schedule}
+              onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+              placeholder="Ex: Segunda e Quarta 14:00-16:00"
+            />
           </div>
 
           {/* Seleção Múltipla de Períodos */}

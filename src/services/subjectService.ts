@@ -9,6 +9,7 @@ export interface CreateSubjectData {
   schedule?: string;
   max_students?: number;
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
+  workload_hours?: number;
   semester?: string;
   period?: string;
   periods?: string[];
@@ -24,6 +25,7 @@ export interface UpdateSubjectData {
   schedule?: string;
   max_students?: number;
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
+  workload_hours?: number;
   semester?: string;
   period?: string;
   periods?: string[];
@@ -100,6 +102,7 @@ export const subjectService = {
           schedule: subjectData.schedule || null,
           max_students: subjectData.max_students || 50,
           grade: subjectData.grade || null,
+          workload_hours: subjectData.workload_hours !== undefined ? subjectData.workload_hours : 100,
           semester: subjectData.semester || null,
           period: periodString,
           periods: periodsArray,
@@ -229,6 +232,7 @@ export const subjectService = {
       if (subjectData.schedule !== undefined) updatePayload.schedule = subjectData.schedule;
       if (subjectData.max_students !== undefined) updatePayload.max_students = subjectData.max_students;
       if (subjectData.grade !== undefined) updatePayload.grade = subjectData.grade;
+      if (subjectData.workload_hours !== undefined) updatePayload.workload_hours = subjectData.workload_hours;
       if (subjectData.semester !== undefined) updatePayload.semester = subjectData.semester;
       if (subjectData.year !== undefined) updatePayload.year = subjectData.year;
       if (subjectData.color !== undefined) updatePayload.color = subjectData.color;

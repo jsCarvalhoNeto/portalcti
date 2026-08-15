@@ -366,11 +366,15 @@ export default function SubjectDetail() {
                   </div>
                   <div className="flex gap-4">
                     <div className="text-center bg-background rounded-lg p-4 w-28 border">
-                      <p className="font-bold text-xl text-foreground">100h</p>
+                      <p className="font-bold text-xl text-foreground">
+                        {subject.workload_hours ? `${subject.workload_hours}h` : '100h'}
+                      </p>
                       <p className="text-sm text-muted-foreground">Carga Horária</p>
                     </div>
                     <div className="text-center bg-background rounded-lg p-4 w-28 border">
-                      <p className="font-bold text-xl text-foreground">1º Ano</p>
+                      <p className="font-bold text-xl text-foreground">
+                        {subject.grade || '1º Ano'}
+                      </p>
                       <p className="text-sm text-muted-foreground">Série</p>
                     </div>
                     <div className="text-center bg-background rounded-lg p-4 w-28 border">

@@ -16,6 +16,7 @@ export interface Subject {
   max_students?: number;
   current_students?: number;
   grade?: '1º Ano' | '2º Ano' | '3º Ano';
+  workload_hours?: number;
   semester?: string;
   period?: string;
   periods?: string[];

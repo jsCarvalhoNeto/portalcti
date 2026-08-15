@@ -1291,6 +1291,11 @@ export default function AdminDashboard() {
                               {subject.grade}
                             </Badge>
                           )}
+                          {subject.workload_hours && (
+                            <Badge variant="outline" className="text-xs">
+                              {subject.workload_hours}h
+                            </Badge>
+                          )}
                           {subject.period && (
                             <Badge variant="outline" className="text-xs border-primary/30 text-primary">
                               {subject.period}
