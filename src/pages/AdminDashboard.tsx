@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -88,6 +89,9 @@ export default function AdminDashboard() {
   const [subjectToDelete, setSubjectToDelete] = useState<AdminSubject | null>(null);
   const [userToResetPassword, setUserToResetPassword] = useState<{ id: string; name: string; email?: string; role?: string } | null>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [userToDemote, setUserToDemote] = useState<{ id: string; name: string; email?: string } | null>(null);
+  const [demoteRole, setDemoteRole] = useState<'teacher' | 'student'>('teacher');
+  const [isDemoting, setIsDemoting] = useState(false);
   const { toast } = useToast();
 
   // Filtros para Estudantes
@@ -278,6 +282,19 @@ export default function AdminDashboard() {
 
   const deleteUser = async (userId: string) => {
     try {
+      const targetUser = users.find(u => u.id === userId);
+      const isTargetAdmin = targetUser?.roles.some((r: any) => r.role === 'admin');
+      const totalAdmins = users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length;
+
+      if (isTargetAdmin && totalAdmins <= 1) {
+        toast({
+          title: "Operação não permitida",
+          description: "Não é possível remover o único administrador. O sistema precisa obrigatoriamente de pelo menos um administrador ativo.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await deleteStudent(userId);
       toast({
         title: "Sucesso",
@@ -390,6 +407,7 @@ export default function AdminDashboard() {
       
       fetchUsers();
       fetchStudents();
+      fetchTeachers();
     } catch (error) {
       console.error('Erro ao promover usuário:', error);
       toast({
@@ -397,6 +415,42 @@ export default function AdminDashboard() {
         description: "Falha ao promover usuário a administrador.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleConfirmDemote = async () => {
+    if (!userToDemote) return;
+    const totalAdmins = users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length;
+    if (totalAdmins <= 1) {
+      toast({
+        title: "Operação não permitida",
+        description: "Não é possível reverter. O sistema obrigatoriamente precisa ter pelo menos um administrador ativo.",
+        variant: "destructive",
+      });
+      setUserToDemote(null);
+      return;
+    }
+
+    setIsDemoting(true);
+    try {
+      await updateUserRole(userToDemote.id, demoteRole);
+      toast({
+        title: "Papel atualizado!",
+        description: `${userToDemote.name} agora possui o papel de ${demoteRole === 'teacher' ? 'Professor' : 'Estudante'}.`,
+      });
+      setUserToDemote(null);
+      fetchUsers();
+      fetchStudents();
+      fetchTeachers();
+    } catch (error: any) {
+      console.error('Erro ao alterar papel de administrador:', error);
+      toast({
+        title: "Erro ao alterar papel",
+        description: error.message || "Não foi possível reverter o usuário de administrador.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDemoting(false);
     }
   };
 
@@ -801,7 +855,7 @@ export default function AdminDashboard() {
                               >
                                 <KeyRound className="w-4 h-4" />
                               </Button>
-                              {status !== 'Admin' && (
+                              {status !== 'Admin' ? (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -809,6 +863,45 @@ export default function AdminDashboard() {
                                   title="Promover a Admin"
                                 >
                                   <Shield className="w-4 h-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const currentLoggedInId = user?.id || profile?.id;
+                                    const isSelf = currentLoggedInId && user.id === currentLoggedInId;
+                                    const totalAdmins = users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length;
+
+                                    if (totalAdmins <= 1) {
+                                      toast({
+                                        title: "Operação não permitida",
+                                        description: "Não é possível reverter. O sistema obrigatoriamente precisa ter pelo menos um administrador ativo.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+
+                                    if (isSelf) {
+                                      toast({
+                                        title: "Operação não permitida",
+                                        description: "Você não pode remover seus próprios privilégios de administrador. Outro administrador deve realizar esta ação.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+
+                                    setUserToDemote({
+                                      id: user.id,
+                                      name: user.full_name || user.email,
+                                      email: user.email,
+                                    });
+                                    setDemoteRole('teacher');
+                                  }}
+                                  title="Reverter papel de Admin"
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                                >
+                                  <ShieldAlert className="w-4 h-4" />
                                 </Button>
                               )}
                               <Button
@@ -1563,8 +1656,72 @@ export default function AdminDashboard() {
           fetchStudents();
           fetchTeachers();
         }}
+        currentUserId={user?.id || profile?.id}
+        totalAdmins={users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length}
         user={editingUser}
       />
+
+      {/* Modal de Reverter Papel de Administrador */}
+      <AlertDialog open={!!userToDemote} onOpenChange={(open) => !open && setUserToDemote(null)}>
+        <AlertDialogContent className="sm:max-w-[460px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="w-5 h-5 text-destructive" />
+              Reverter Papel de Administrador
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2 text-left">
+              <p>
+                Deseja remover as permissões de administrador de <strong>{userToDemote?.name}</strong>{userToDemote?.email ? ` (${userToDemote.email})` : ''}?
+              </p>
+              
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="demoteRoleSelect" className="text-foreground font-semibold text-xs">
+                  Novo papel do usuário:
+                </Label>
+                <Select
+                  value={demoteRole}
+                  onValueChange={(val: 'teacher' | 'student') => setDemoteRole(val)}
+                >
+                  <SelectTrigger id="demoteRoleSelect" className="w-full">
+                    <SelectValue placeholder="Selecione o novo papel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="teacher">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-purple-600" />
+                        <span>Professor</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="student">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4 text-blue-600" />
+                        <span>Estudante</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <p className="text-xs text-muted-foreground pt-1">
+                O usuário perderá o acesso ao Painel Administrativo imediatamente e receberá as permissões do novo papel selecionado.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDemoting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDemoting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDemote();
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {isDemoting ? 'Alterando...' : 'Confirmar Reversão'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Modal de Confirmação de Reset de Senha */}
       <AlertDialog open={!!userToResetPassword} onOpenChange={(open) => !open && setUserToResetPassword(null)}>
