@@ -22,7 +22,8 @@ import {
   Braces,
   Zap,
   Cloud,
-  Smile
+  Smile,
+  PenTool
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -36,6 +37,8 @@ import QuickVoteUtility from '@/components/teacher/QuickVoteUtility';
 import ClassTimerUtility from '@/components/teacher/utilities/ClassTimerUtility';
 import HelpQueueUtility from '@/components/teacher/utilities/HelpQueueUtility';
 import ClassTimelineUtility from '@/components/teacher/utilities/ClassTimelineUtility';
+import WhiteboardUtility from '@/components/teacher/utilities/WhiteboardUtility';
+import TeamLiveRegistrationUtility from '@/components/teacher/utilities/TeamLiveRegistrationUtility';
 
 // Utilitários de Prática Técnica & Programação
 import ClassCodeBoardUtility from '@/components/teacher/utilities/ClassCodeBoardUtility';
@@ -51,6 +54,7 @@ import WordCloudBrainstormUtility from '@/components/teacher/utilities/WordCloud
 import GradeCalculatorUtility from '@/components/teacher/utilities/GradeCalculatorUtility';
 import GradeConverterUtility from '@/components/teacher/utilities/GradeConverterUtility';
 import SingleStudentPickerUtility from '@/components/teacher/utilities/SingleStudentPickerUtility';
+import LiveStudentPickerUtility from '@/components/teacher/utilities/LiveStudentPickerUtility';
 
 type CategoryType = 'all' | 'code' | 'dynamics' | 'gamification' | 'feedback' | 'grades';
 
@@ -74,6 +78,18 @@ interface UtilityItem {
 
 const UTILITIES: UtilityItem[] = [
   // Categoria: Prática Técnica & Programação
+  {
+    id: 'quadro-branco',
+    name: 'Quadro Branco (Estilo Excalidraw)',
+    description: 'Lousa minimalista para diagramas, fluxogramas de lógica, anotações de aula, post-its e desenhos ao vivo para Datashow.',
+    category: 'code',
+    icon: PenTool,
+    colorClass: 'text-violet-600 dark:text-violet-400',
+    borderClass: 'hover:border-violet-500/50',
+    bgLightClass: 'bg-violet-50 dark:bg-violet-950/30',
+    badge: { label: 'Lousa & Diagramas', icon: Tv, className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+    highlight: true
+  },
   {
     id: 'quadro-codigo',
     name: 'Quadro de Códigos & Comandos',
@@ -202,6 +218,30 @@ const UTILITIES: UtilityItem[] = [
     badge: { label: 'Em Grupo', className: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' }
   },
   {
+    id: 'equipes-tempo-real',
+    name: 'Cadastro de Equipes (Tempo Real)',
+    description: 'Os alunos entram pelo celular via QR Code, escolhem a série (1º, 2º ou 3º Ano), definem o time, líder e membros ao vivo.',
+    category: 'dynamics',
+    icon: Users,
+    colorClass: 'text-pink-600 dark:text-pink-400',
+    borderClass: 'hover:border-pink-500/50',
+    bgLightClass: 'bg-pink-50 dark:bg-pink-950/30',
+    badge: { label: 'Tempo Real & QR', icon: Radio, className: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' },
+    highlight: true
+  },
+  {
+    id: 'sorteador-aluno-ao-vivo',
+    name: 'Sorteador de Alunos (Tempo Real & Séries)',
+    description: 'Sorteie alunos importando direto do banco por série (1º, 2º ou 3º Ano), adicionando nomes ou com entrada dos alunos via QR Code.',
+    category: 'dynamics',
+    icon: UserCheck,
+    colorClass: 'text-amber-600 dark:text-amber-400',
+    borderClass: 'hover:border-amber-500/50',
+    bgLightClass: 'bg-amber-50 dark:bg-amber-950/30',
+    badge: { label: 'Tempo Real & QR', icon: Radio, className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+    highlight: true
+  },
+  {
     id: 'sorteador-aluno',
     name: 'Sorteador de Aluno',
     description: 'Escolha aleatoriamente um aluno para responder perguntas ou apresentar sem repetição.',
@@ -315,6 +355,7 @@ export default function TeacherUtilities() {
           {/* Componente Específico Renderizado */}
           <div className="pt-2">
             {/* Prática Técnica & Programação */}
+            {activeUtilityId === 'quadro-branco' && <WhiteboardUtility />}
             {activeUtilityId === 'quadro-codigo' && <ClassCodeBoardUtility />}
             {activeUtilityId === 'gerador-dados' && <MockDataGeneratorUtility />}
             {activeUtilityId === 'formatador-codigo' && <CodeFormatterValidatorUtility />}
@@ -330,6 +371,8 @@ export default function TeacherUtilities() {
             {activeUtilityId === 'roteiro-aula' && <ClassTimelineUtility />}
             {activeUtilityId === 'roleta' && <SpinWheel />}
             {activeUtilityId === 'sorteador-equipes' && <SorteadorEquipes />}
+            {activeUtilityId === 'equipes-tempo-real' && <TeamLiveRegistrationUtility />}
+            {activeUtilityId === 'sorteador-aluno-ao-vivo' && <LiveStudentPickerUtility />}
             {activeUtilityId === 'sorteador-aluno' && <SingleStudentPickerUtility />}
 
             {/* Votação & Pesquisa */}

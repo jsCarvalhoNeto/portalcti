@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +82,9 @@ export default function FlashChallengeUtility() {
   const [isRevealed, setIsRevealed] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [teamScore, setTeamScore] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const currentQ = questions[currentIdx] || questions[0];
 
   useEffect(() => {
@@ -103,6 +105,21 @@ export default function FlashChallengeUtility() {
       if (interval) clearInterval(interval);
     };
   }, [isTimerRunning, timerSeconds]);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(console.error);
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   const startTimer = (seconds: number = 30) => {
     setTimerSeconds(seconds);
@@ -137,16 +154,16 @@ export default function FlashChallengeUtility() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isFullscreen ? 'p-8 bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between' : ''}`} ref={containerRef}>
       {/* Topo do Quiz */}
       <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge className="bg-white/20 text-white border-white/30 gap-1">
+            <Badge className="bg-white/20 text-white border-white/30 gap-1 font-bold">
               <Zap className="w-3.5 h-3.5 fill-current" />
               Desafio Relâmpago / Quiz
             </Badge>
-            <span className="text-xs text-white/80">Questão {currentIdx + 1} de {questions.length}</span>
+            <span className="text-xs text-white/80 font-medium">Questão {currentIdx + 1} de {questions.length}</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">Desafio Rápido da Turma</h2>
           <p className="text-xs text-white/80">
@@ -156,17 +173,29 @@ export default function FlashChallengeUtility() {
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <span className="text-xs text-white/70 block">Pontuação Acumulada</span>
-            <span className="text-2xl font-black font-mono flex items-center justify-end gap-1.5">
+            <span className="text-xs text-white/70 block font-medium">Pontuação Acumulada</span>
+            <span className="text-2xl font-black font-mono flex items-center justify-end gap-1.5 text-amber-300">
               <Trophy className="w-5 h-5 text-amber-300 fill-amber-300" />
               {teamScore} pts
             </span>
           </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/30 bg-white/10 text-white hover:bg-white/20 text-xs font-semibold gap-1.5"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? 'Sair Tela Cheia' : 'Projetar em Tela Cheia'}
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
             className="border-white/30 bg-white/10 text-white hover:bg-white/20 text-xs"
             onClick={handleResetGame}
+            title="Reiniciar Pontuação"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </Button>
@@ -174,10 +203,10 @@ export default function FlashChallengeUtility() {
       </div>
 
       {/* Painel Central da Questão */}
-      <Card className="border-2 border-border/80 shadow-md">
+      <Card className="border-2 border-border/80 shadow-md flex-1 flex flex-col justify-between">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <Badge variant="outline" className="bg-muted text-xs">
+            <Badge variant="outline" className="bg-muted text-xs font-semibold">
               {currentQ.category}
             </Badge>
 
@@ -196,20 +225,20 @@ export default function FlashChallengeUtility() {
 
               {!isTimerRunning && !isRevealed && (
                 <div className="flex gap-1">
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => startTimer(15)}>15s</Button>
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => startTimer(30)}>30s</Button>
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => startTimer(60)}>60s</Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs font-semibold" onClick={() => startTimer(15)}>15s</Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs font-semibold" onClick={() => startTimer(30)}>30s</Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs font-semibold" onClick={() => startTimer(60)}>60s</Button>
                 </div>
               )}
             </div>
           </div>
 
-          <CardTitle className="text-xl sm:text-2xl font-bold leading-snug">
+          <CardTitle className={`${isFullscreen ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl'} font-bold leading-snug`}>
             {currentQ.question}
           </CardTitle>
 
           {currentQ.codeSnippet && (
-            <div className="mt-3 p-3.5 rounded-xl bg-slate-950 text-slate-100 font-mono text-xs overflow-x-auto border border-slate-800">
+            <div className="mt-3 p-4 rounded-xl bg-slate-950 text-slate-100 font-mono text-sm sm:text-base overflow-x-auto border border-slate-800 shadow-inner">
               <pre>{currentQ.codeSnippet}</pre>
             </div>
           )}
@@ -217,7 +246,7 @@ export default function FlashChallengeUtility() {
 
         <CardContent className="space-y-4">
           {/* Alternativas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className={`grid grid-cols-1 ${isFullscreen ? 'sm:grid-cols-2 gap-4' : 'sm:grid-cols-2 gap-3'}`}>
             {currentQ.options.map((opt) => {
               const isCorrect = opt.key === currentQ.correctAnswer;
               const isChosen = selectedOption === opt.key;
@@ -239,10 +268,10 @@ export default function FlashChallengeUtility() {
                 <div
                   key={opt.key}
                   onClick={() => !isRevealed && setSelectedOption(opt.key)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between select-none ${style}`}
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between select-none ${style}`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold font-mono text-sm shrink-0 ${
                       isRevealed && isCorrect 
                         ? 'bg-emerald-500 text-white' 
                         : isChosen 
@@ -251,11 +280,13 @@ export default function FlashChallengeUtility() {
                     }`}>
                       {opt.key}
                     </span>
-                    <span className="text-sm font-medium">{opt.text}</span>
+                    <span className={`${isFullscreen ? 'text-base sm:text-lg font-semibold' : 'text-sm font-medium'}`}>
+                      {opt.text}
+                    </span>
                   </div>
 
-                  {isRevealed && isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />}
-                  {isRevealed && isChosen && !isCorrect && <XCircle className="w-5 h-5 text-rose-500 shrink-0" />}
+                  {isRevealed && isCorrect && <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />}
+                  {isRevealed && isChosen && !isCorrect && <XCircle className="w-6 h-6 text-rose-500 shrink-0" />}
                 </div>
               );
             })}
@@ -264,11 +295,11 @@ export default function FlashChallengeUtility() {
           {/* Explicação Pedagógica (Após Revelação) */}
           {isRevealed && (
             <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/30 animate-in fade-in space-y-1">
-              <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <h4 className="text-sm font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 Resposta Correta: Letra {currentQ.correctAnswer} (+{currentQ.points} pts)
               </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {currentQ.explanation}
               </p>
             </div>
@@ -278,7 +309,7 @@ export default function FlashChallengeUtility() {
           <div className="flex items-center justify-between pt-3 border-t">
             {!isRevealed ? (
               <Button
-                className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 font-semibold"
                 onClick={handleReveal}
               >
                 <Sparkles className="w-4 h-4" />
@@ -286,7 +317,7 @@ export default function FlashChallengeUtility() {
               </Button>
             ) : (
               <Button
-                className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 font-semibold"
                 onClick={handleNextQuestion}
               >
                 Próxima Questão
@@ -297,7 +328,7 @@ export default function FlashChallengeUtility() {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs font-medium"
               onClick={handleNextQuestion}
             >
               Pular Pergunta

@@ -32,6 +32,11 @@ import EventTeamForm from './pages/EventTeamForm';
 import EventConfirmation from './pages/EventConfirmation';
 import StudentCareer from './pages/StudentCareer';
 import PublicCareerProfile from './pages/PublicCareerProfile';
+import ThermometerVotePage from './pages/ThermometerVotePage';
+import WordCloudVotePage from './pages/WordCloudVotePage';
+import HelpQueueStudentPage from './pages/HelpQueueStudentPage';
+import TeamRegistrationPage from './pages/TeamRegistrationPage';
+import StudentPickerJoinPage from './pages/StudentPickerJoinPage';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -87,7 +92,22 @@ const App = () => (
               <Route path="/teacher/subjects/:id/edit" element={<TeacherSubjectEditor />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/poll/:pollId" element={<PollVotingPage />} />
+              <Route path="/enquete" element={<PollVotingPage />} />
+              <Route path="/enquete/:code" element={<PollVotingPage />} />
+              <Route path="/votar" element={<QuickVotePublicPage />} />
               <Route path="/votar/:hash" element={<QuickVotePublicPage />} />
+              <Route path="/votacao" element={<QuickVotePublicPage />} />
+              <Route path="/votacao/:hash" element={<QuickVotePublicPage />} />
+              <Route path="/termometro" element={<ThermometerVotePage />} />
+              <Route path="/termometro/:code" element={<ThermometerVotePage />} />
+              <Route path="/nuvem" element={<WordCloudVotePage />} />
+              <Route path="/nuvem/:code" element={<WordCloudVotePage />} />
+              <Route path="/fila" element={<HelpQueueStudentPage />} />
+              <Route path="/fila/:code" element={<HelpQueueStudentPage />} />
+              <Route path="/equipes" element={<TeamRegistrationPage />} />
+              <Route path="/equipes/:code" element={<TeamRegistrationPage />} />
+              <Route path="/sorteio" element={<StudentPickerJoinPage />} />
+              <Route path="/sorteio/:code" element={<StudentPickerJoinPage />} />
 
               {/* Rota pública para perfil de carreira */}
               <Route path="/talento/:studentId" element={<PublicCareerProfile />} />

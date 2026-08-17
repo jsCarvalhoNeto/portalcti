@@ -1,376 +1,668 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
-import {
-  createQuickVote,
-  getQuickVoteLivePanel,
-  getTeacherQuickVotes,
-  updateQuickVoteStatus,
-  type QuickVoteDistributionItem,
-  type QuickVoteLivePanel,
-  type QuickVoteSession
-} from '@/services/quickVoteService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { 
+  Star, 
+  Plus, 
+  RotateCcw, 
+  Sparkles, 
+  Copy, 
+  Check, 
+  QrCode, 
+  ExternalLink, 
+  RefreshCw, 
+  Tv, 
+  Radio, 
+  Maximize2, 
+  Minimize2, 
+  Trash2, 
+  Lock, 
+  Unlock, 
+  Users, 
+  Award,
+  TrendingUp,
+  BarChart2
+} from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
-const POLLING_INTERVAL_MS = 2000;
-
-function DistributionChart({
-  distribution,
-  totalVotes
-}: {
-  distribution: QuickVoteDistributionItem[];
-  totalVotes: number;
-}) {
-  return (
-    <div className="space-y-2">
-      {distribution.map((item) => {
-        const percentage = totalVotes > 0 ? (item.votes / totalVotes) * 100 : 0;
-        return (
-          <div key={item.score} className="grid grid-cols-[48px_1fr_60px] items-center gap-2">
-            <span className="text-sm font-medium">Nota {item.score}</span>
-            <div className="h-2 rounded bg-slate-200 overflow-hidden">
-              <div
-                className="h-full bg-blue-600 transition-all duration-300"
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            <span className="text-xs text-slate-600 text-right">{item.votes} voto(s)</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+interface VoteRecord {
+  voterId: string;
+  voterName: string;
+  score: number;
+  timestamp: number;
 }
 
+const SCORES = Array.from({ length: 11 }, (_, i) => i); // 0 a 10
+
+const getScoreBarColor = (score: number) => {
+  if (score <= 3) return 'from-rose-600 to-red-500';
+  if (score <= 6) return 'from-amber-600 to-orange-500';
+  return 'from-emerald-600 to-teal-500';
+};
+
+const getScoreTextColor = (score: number) => {
+  if (score <= 3) return 'text-rose-600 dark:text-rose-400';
+  if (score <= 6) return 'text-amber-600 dark:text-amber-400';
+  return 'text-emerald-600 dark:text-emerald-400';
+};
+
 export default function QuickVoteUtility() {
-  const { subjects } = useTeacherDashboard();
-  const { toast } = useToast();
+  const [title, setTitle] = useState('Avaliação do Nível de Aprendizado na Aula Prática de Hoje');
+  const [subjectName, setSubjectName] = useState('Informática - 2º Ano');
+  const [distribution, setDistribution] = useState<number[]>([0, 0, 0, 0, 1, 2, 4, 8, 12, 10, 6]); // Scores 0..10
+  const [isVoteActive, setIsVoteActive] = useState(true);
+  const [voterHistory, setVoterHistory] = useState<VoteRecord[]>([]);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newTitleInput, setNewTitleInput] = useState('');
+  const [newSubjectInput, setNewSubjectInput] = useState('');
 
-  const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [quickVotes, setQuickVotes] = useState<QuickVoteSession[]>([]);
-  const [activeQuickVote, setActiveQuickVote] = useState<QuickVoteSession | null>(null);
-  const [livePanel, setLivePanel] = useState<QuickVoteLivePanel | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
-  const hasSubjects = subjects.length > 0;
+  // PIN da Sessão (6 dígitos)
+  const [sessionPin, setSessionPin] = useState(() => {
+    const saved = sessionStorage.getItem('quickvote_session_pin');
+    if (saved) return saved;
+    const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+    sessionStorage.setItem('quickvote_session_pin', newPin);
+    return newPin;
+  });
 
-  const activeStatusLabel = useMemo(() => {
-    if (!activeQuickVote) {
-      return '';
-    }
-    return activeQuickVote.status === 'active' ? 'Ativa' : 'Encerrada';
-  }, [activeQuickVote]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
 
-  const loadQuickVotes = async () => {
+  const totalVotes = useMemo(() => distribution.reduce((acc, curr) => acc + curr, 0), [distribution]);
+
+  const averageScore = useMemo(() => {
+    if (totalVotes === 0) return 0;
+    const weightedSum = distribution.reduce((acc, count, score) => acc + score * count, 0);
+    return Number((weightedSum / totalVotes).toFixed(1));
+  }, [distribution, totalVotes]);
+
+  const voteUrl = `${window.location.origin}/votar/${sessionPin}`;
+
+  const playChime = () => {
     try {
-      const data = await getTeacherQuickVotes();
-      setQuickVotes(data);
-    } catch (error) {
-      console.error('Erro ao listar votacoes rapidas:', error);
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(783.99, audioCtx.currentTime); // G5
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {
+      console.warn(e);
     }
   };
 
-  const loadLivePanel = async (quickVoteId: number, silent = false) => {
-    try {
-      if (!silent) {
-        setIsRefreshing(true);
-      }
-      const panel = await getQuickVoteLivePanel(quickVoteId);
-      setLivePanel(panel);
-      setActiveQuickVote(panel.quickVote);
-    } catch (error: any) {
-      if (!silent) {
-        toast({
-          title: 'Falha ao atualizar painel',
-          description: error?.message || 'Nao foi possivel carregar os dados em tempo real.',
-          variant: 'destructive'
-        });
-      }
-    } finally {
-      if (!silent) {
-        setIsRefreshing(false);
-      }
+  const broadcastVoteState = (state: { title: string; subjectName: string; isActive: boolean; average: number; totalVotes: number }) => {
+    if (channelRef.current && isConnected) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'vote_state',
+        payload: state
+      }).catch(() => {});
     }
   };
 
+  // Inscrição Realtime no canal da Votação
   useEffect(() => {
-    loadQuickVotes();
-  }, []);
+    if (!sessionPin) return;
 
-  useEffect(() => {
-    if (!activeQuickVote || activeQuickVote.status !== 'active') {
-      return;
-    }
+    const channelName = `quickvote_${sessionPin}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { ack: true }
+      }
+    });
 
-    const intervalId = window.setInterval(() => {
-      loadLivePanel(activeQuickVote.id, true);
-    }, POLLING_INTERVAL_MS);
+    channel
+      .on('broadcast', { event: 'submit_vote' }, (event) => {
+        const payload = event?.payload;
+        if (payload && typeof payload.score === 'number') {
+          const score = payload.score;
+          if (score < 0 || score > 10) return;
+
+          setDistribution(prev => {
+            const next = [...prev];
+            // Se já tinha votado antes, subtrai a nota antiga
+            if (typeof payload.previousScore === 'number' && payload.previousScore >= 0 && payload.previousScore <= 10) {
+              next[payload.previousScore] = Math.max(0, next[payload.previousScore] - 1);
+            }
+            next[score] = (next[score] || 0) + 1;
+
+            const nextTotal = next.reduce((a, b) => a + b, 0);
+            const nextAvg = nextTotal > 0 ? Number((next.reduce((a, b, idx) => a + b * idx, 0) / nextTotal).toFixed(1)) : 0;
+
+            setTimeout(() => {
+              broadcastVoteState({
+                title,
+                subjectName,
+                isActive: isVoteActive,
+                average: nextAvg,
+                totalVotes: nextTotal
+              });
+            }, 50);
+
+            return next;
+          });
+
+          if (payload.voterName) {
+            setVoterHistory(prev => [
+              {
+                voterId: payload.voterId || '',
+                voterName: payload.voterName,
+                score,
+                timestamp: Date.now()
+              },
+              ...prev.filter(v => v.voterId !== payload.voterId)
+            ]);
+          }
+
+          playChime();
+          toast.info(`⭐ Nota ${score} recebida ao vivo! (${payload.voterName || 'Aluno'})`, {
+            duration: 2500
+          });
+        }
+      })
+      .on('broadcast', { event: 'request_state' }, () => {
+        channel.send({
+          type: 'broadcast',
+          event: 'vote_state',
+          payload: {
+            title,
+            subjectName,
+            isActive: isVoteActive,
+            average: averageScore,
+            totalVotes
+          }
+        }).catch(() => {});
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsConnected(true);
+        } else {
+          setIsConnected(false);
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
-      window.clearInterval(intervalId);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [activeQuickVote?.id, activeQuickVote?.status]);
+  }, [sessionPin, title, subjectName, isVoteActive, averageScore, totalVotes]);
 
-  const handleCreateQuickVote = async () => {
-    if (!title.trim()) {
-      toast({
-        title: 'Titulo obrigatorio',
-        description: 'Informe o titulo/tema antes de gerar a votacao.',
-        variant: 'destructive'
-      });
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(console.error);
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const handleToggleActive = () => {
+    const nextActive = !isVoteActive;
+    setIsVoteActive(nextActive);
+    broadcastVoteState({
+      title,
+      subjectName,
+      isActive: nextActive,
+      average: averageScore,
+      totalVotes
+    });
+    toast.success(nextActive ? 'Votação reaberta para os alunos!' : 'Votação encerrada/bloqueada!');
+  };
+
+  const handleResetVotes = () => {
+    if (confirm('Deseja zerar todas as notas desta votação?')) {
+      const resetDist = Array(11).fill(0);
+      setDistribution(resetDist);
+      setVoterHistory([]);
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'vote_reset',
+          payload: {
+            title,
+            subjectName,
+            isActive: isVoteActive,
+            average: 0,
+            totalVotes: 0
+          }
+        }).catch(() => {});
+      }
+      toast.success('Votos zerados para uma nova rodada!');
+    }
+  };
+
+  const handleCreateNew = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitleInput.trim()) {
+      toast.error('Informe o título da avaliação!');
       return;
     }
 
-    if (!subjectId) {
-      toast({
-        title: 'Turma obrigatoria',
-        description: 'Selecione a turma para gerar a votacao.',
-        variant: 'destructive'
-      });
-      return;
-    }
+    setTitle(newTitleInput.trim());
+    setSubjectName(newSubjectInput.trim() || 'Turma');
+    setDistribution(Array(11).fill(0));
+    setIsVoteActive(true);
+    setVoterHistory([]);
+    setIsCreatingNew(false);
+    setNewTitleInput('');
+    setNewSubjectInput('');
 
-    try {
-      setIsCreating(true);
-      const created = await createQuickVote({
-        title: title.trim(),
-        subjectId: Number(subjectId),
-        validationMode: 'public_name'
-      });
+    broadcastVoteState({
+      title: newTitleInput.trim(),
+      subjectName: newSubjectInput.trim() || 'Turma',
+      isActive: true,
+      average: 0,
+      totalVotes: 0
+    });
+    toast.success('Nova votação rápida criada e aberta ao vivo!');
+  };
 
-      setTitle('');
-      setSubjectId('');
-      setActiveQuickVote(created);
-
-      await loadQuickVotes();
-      await loadLivePanel(created.id);
-
-      toast({
-        title: 'Votacao criada',
-        description: 'Link gerado com sucesso e painel em tempo real iniciado.'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Erro ao criar votacao',
-        description: error?.message || 'Nao foi possivel criar a votacao agora.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsCreating(false);
-    }
+  const handleGenerateNewPin = () => {
+    const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+    sessionStorage.setItem('quickvote_session_pin', newPin);
+    setSessionPin(newPin);
+    setDistribution(Array(11).fill(0));
+    setVoterHistory([]);
+    toast.success(`Nova sala criada: PIN ${newPin}`);
   };
 
   const handleCopyLink = async () => {
-    if (!activeQuickVote?.shareUrl) {
-      return;
-    }
-
     try {
-      await navigator.clipboard.writeText(activeQuickVote.shareUrl);
-      toast({
-        title: 'Link copiado',
-        description: 'O link da votacao foi copiado para a area de transferencia.'
-      });
-    } catch (error) {
-      toast({
-        title: 'Falha ao copiar link',
-        description: 'Copie manualmente o link exibido no painel.',
-        variant: 'destructive'
-      });
+      await navigator.clipboard.writeText(voteUrl);
+      setCopied(true);
+      toast.success('Link de votação copiado!');
+      setTimeout(() => setCopied(false), 3000);
+    } catch (e) {
+      toast.error('Não foi possível copiar o link.');
     }
   };
 
-  const handleUpdateStatus = async (nextStatus: 'active' | 'closed') => {
-    if (!activeQuickVote) {
-      return;
-    }
-
-    try {
-      await updateQuickVoteStatus(activeQuickVote.id, nextStatus);
-      await loadQuickVotes();
-      await loadLivePanel(activeQuickVote.id);
-
-      toast({
-        title: nextStatus === 'closed' ? 'Votacao encerrada' : 'Votacao reaberta',
-        description: 'Status atualizado com sucesso.'
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Falha ao atualizar status',
-        description: error?.message || 'Tente novamente em instantes.',
-        variant: 'destructive'
-      });
-    }
-  };
+  const maxVotesInSingleScore = Math.max(...distribution, 1);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova Votacao Rapida</CardTitle>
-          <CardDescription>
-            Defina o tema, selecione a turma e gere um link publico para os alunos votarem de 0 a 10.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="quick-vote-title">Titulo/Tema</Label>
-            <Input
-              id="quick-vote-title"
-              placeholder="Ex: Nivel de dificuldade da aula de hoje"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
+    <div className={`space-y-6 ${isFullscreen ? 'p-8 bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between' : ''}`} ref={containerRef}>
+      {/* Top Banner Controls */}
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-700 via-orange-900 to-slate-900 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-amber-500 text-slate-950 gap-1 font-bold">
+              <Star className="w-3.5 h-3.5 fill-current" />
+              Votação Rápida (Notas de 0 a 10)
+            </Badge>
+
+            {isConnected ? (
+              <Badge variant="outline" className="border-emerald-400/40 bg-emerald-500/20 text-emerald-300 text-xs gap-1.5 py-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Sala Online (PIN: {sessionPin})
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="border-amber-400/40 bg-amber-500/20 text-amber-300 text-xs gap-1.5 py-0.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                Conectando Supabase...
+              </Badge>
+            )}
+
+            <Badge variant="outline" className="border-white/20 text-amber-200 bg-white/5 text-xs gap-1">
+              <Users className="w-3 h-3 text-amber-300" />
+              {totalVotes} avaliações
+            </Badge>
+
+            {isVoteActive ? (
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs">
+                Aberta
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="text-xs">
+                Encerrada
+              </Badge>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Turma</Label>
-            <Select value={subjectId} onValueChange={setSubjectId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a turma" />
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map((subject) => (
-                  <SelectItem key={subject.id} value={String(subject.id)}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              {title}
+            </h2>
+            <p className="text-xs text-amber-200">
+              {subjectName} • Os alunos escolhem uma nota de 0 a 10 pelo celular via QR Code.
+            </p>
           </div>
+        </div>
 
-          <Button onClick={handleCreateQuickVote} disabled={isCreating || !hasSubjects} className="w-full">
-            {isCreating ? 'Gerando votacao...' : 'Gerar Votacao'}
+        {/* Botões de Ação do Topo */}
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
+          <Button
+            size="sm"
+            onClick={() => setIsQrModalOpen(true)}
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 text-xs gap-1.5 font-bold"
+          >
+            <QrCode className="w-4 h-4" />
+            Projetar QR Code
           </Button>
 
-          {!hasSubjects && (
-            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              Nenhuma turma encontrada para este professor. Associe uma disciplina antes de criar votacoes.
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs gap-1.5 font-medium"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? 'Sair Tela Cheia' : 'Projetar em Tela Cheia'}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs gap-1.5"
+            onClick={() => setIsCreatingNew(true)}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nova Votação
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs gap-1.5"
+            onClick={handleToggleActive}
+          >
+            {isVoteActive ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            {isVoteActive ? 'Encerrar' : 'Reabrir'}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs gap-1.5"
+            onClick={handleResetVotes}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Zerar Votos
+          </Button>
+        </div>
+      </div>
+
+      {/* Banner de Acesso Rápido para Sala de Aula */}
+      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-amber-500/15 text-amber-400">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-300 font-medium">
+              Os alunos votam acessando o link ou digitando o PIN:
             </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Votacoes Criadas</CardTitle>
-          <CardDescription>Selecione uma votacao para acompanhar em tempo real.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {quickVotes.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma votacao rapida criada ate o momento.</p>
-          )}
-
-          {quickVotes.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`w-full border rounded-md p-3 text-left transition-colors ${
-                activeQuickVote?.id === item.id ? 'border-blue-500 bg-blue-50' : 'hover:border-slate-400'
-              }`}
-              onClick={() => loadLivePanel(item.id)}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.subjectName}</p>
-                </div>
-                <div className="text-right">
-                  <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
-                    {item.status === 'active' ? 'Ativa' : 'Encerrada'}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">{item.totalVotes || 0} voto(s)</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </CardContent>
-      </Card>
-
-      {activeQuickVote && livePanel && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle>{activeQuickVote.title}</CardTitle>
-                <CardDescription>{livePanel.quickVote.subjectName}</CardDescription>
-              </div>
-              <Badge variant={activeQuickVote.status === 'active' ? 'default' : 'secondary'}>{activeStatusLabel}</Badge>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="font-mono text-sm font-bold text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded border border-amber-500/30">
+                PIN: {sessionPin}
+              </span>
+              <span className="text-xs text-slate-300 truncate max-w-xs sm:max-w-md font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                {voteUrl}
+              </span>
             </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs gap-1 text-slate-200 hover:text-white hover:bg-slate-800"
+            onClick={() => window.open(voteUrl, '_blank')}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Testar Votação
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs gap-1 text-slate-300 hover:text-white hover:bg-slate-800"
+            onClick={handleGenerateNewPin}
+            title="Trocar código PIN da sala"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Novo PIN
+          </Button>
+        </div>
+      </div>
+
+      {/* Grid Principal: Média Geral + Gráfico de Barras de 0 a 10 */}
+      <div className={`grid gap-6 ${isFullscreen ? 'grid-cols-1 lg:grid-cols-3 flex-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
+        {/* Card Destaque: Média Geral da Turma */}
+        <Card className="border-2 border-amber-500/30 bg-gradient-to-b from-card via-card to-amber-500/5 shadow-md flex flex-col justify-between">
+          <CardHeader className="pb-2 text-center">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1.5">
+              <Award className="w-4 h-4 text-amber-500" />
+              Média Geral da Turma
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="border rounded-md p-3">
-                <p className="text-xs text-muted-foreground">Total de votos</p>
-                <p className="text-2xl font-bold">{livePanel.totalVotes}</p>
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="space-y-1">
+              <div className={`font-black font-mono tracking-tight leading-none ${
+                isFullscreen ? 'text-7xl sm:text-8xl' : 'text-6xl sm:text-7xl'
+              } ${
+                averageScore >= 7 ? 'text-emerald-500' : averageScore >= 5 ? 'text-amber-500' : 'text-rose-500'
+              }`}>
+                {averageScore}
               </div>
-              <div className="border rounded-md p-3">
-                <p className="text-xs text-muted-foreground">Media aritmetica</p>
-                <p className="text-2xl font-bold">{livePanel.averageScore.toFixed(2)}</p>
-              </div>
-              <div className="border rounded-md p-3">
-                <p className="text-xs text-muted-foreground">Atualizacao</p>
-                <p className="text-sm font-medium">{isRefreshing ? 'Sincronizando...' : 'A cada 2 segundos'}</p>
-              </div>
+              <span className="text-xs font-semibold text-muted-foreground">escala de 0.0 a 10.0</span>
             </div>
 
-            <div className="space-y-2">
-              <Label>Link compartilhavel</Label>
-              <div className="flex flex-col gap-2 md:flex-row">
-                <Input value={activeQuickVote.shareUrl} readOnly />
-                <Button onClick={handleCopyLink} variant="outline">Copiar Link</Button>
-                {activeQuickVote.status === 'active' ? (
-                  <Button onClick={() => handleUpdateStatus('closed')} variant="destructive">Encerrar Votacao</Button>
-                ) : (
-                  <Button onClick={() => handleUpdateStatus('active')} variant="outline">Reabrir Votacao</Button>
-                )}
+            {/* Estrelas */}
+            <div className="flex items-center justify-center gap-1 text-amber-400">
+              {[...Array(5)].map((_, i) => {
+                const filled = averageScore >= (i + 1) * 2;
+                return (
+                  <Star 
+                    key={i} 
+                    className={`w-6 h-6 ${filled ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`} 
+                  />
+                );
+              })}
+            </div>
+
+            <div className="p-3 rounded-xl bg-muted/60 border text-xs space-y-1">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Total de Votos:</span>
+                <strong className="text-foreground">{totalVotes}</strong>
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Distribuicao das notas (0 a 10)</h3>
-              <DistributionChart distribution={livePanel.distribution} totalVotes={livePanel.totalVotes} />
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Alunos que ja votaram</h3>
-              {livePanel.votes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Ainda nao ha votos registrados nesta votacao.</p>
-              ) : (
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="text-left px-3 py-2">Nome</th>
-                        <th className="text-left px-3 py-2">Nota</th>
-                        <th className="text-left px-3 py-2">Horario</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {livePanel.votes.map((vote) => (
-                        <tr key={vote.id} className="border-t">
-                          <td className="px-3 py-2">{vote.studentName}</td>
-                          <td className="px-3 py-2 font-medium">{vote.score}</td>
-                          <td className="px-3 py-2 text-muted-foreground">
-                            {new Date(vote.votedAt).toLocaleTimeString('pt-BR')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Avaliação Geral:</span>
+                <strong className={averageScore >= 7 ? 'text-emerald-600 dark:text-emerald-400' : averageScore >= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}>
+                  {averageScore >= 8 ? 'Excelente (≥ 8.0)' : averageScore >= 6 ? 'Bom (6.0 a 7.9)' : 'Precisa de Reforço (< 6.0)'}
+                </strong>
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Gráfico de Distribuição de Notas de 0 a 10 */}
+        <Card className="lg:col-span-2 border-2 border-border/80 shadow-md">
+          <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-amber-500" />
+                Distribuição das Notas (0 a 10)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Contagem proporcional em tempo real a cada voto recebido
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-2">
+            {SCORES.map((score) => {
+              const votesCount = distribution[score] || 0;
+              const percent = totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0;
+              const barColor = getScoreBarColor(score);
+              const textColor = getScoreTextColor(score);
+
+              return (
+                <div key={score} className="grid grid-cols-[55px_1fr_65px] items-center gap-2.5 text-xs">
+                  <span className={`font-mono font-bold text-right ${textColor}`}>
+                    Nota {score}
+                  </span>
+
+                  <div className="h-5 rounded-lg bg-muted/60 border p-0.5 overflow-hidden flex">
+                    <div
+                      className={`h-full rounded-md bg-gradient-to-r ${barColor} transition-all duration-500 flex items-center justify-end px-1.5 text-[10px] text-white font-bold shadow-sm`}
+                      style={{ width: `${Math.max(percent, percent > 0 ? 8 : 0)}%` }}
+                    >
+                      {percent > 12 && `${percent}%`}
+                    </div>
+                  </div>
+
+                  <span className="font-mono text-muted-foreground text-right text-[11px]">
+                    <strong className="text-foreground">{votesCount}</strong> ({percent}%)
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Modal de Projeção / QR Code para Data-Show */}
+      <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+        <DialogContent className="max-w-xl p-6 sm:p-8 bg-slate-950 text-slate-100 border-slate-800 shadow-2xl">
+          <DialogHeader className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto border border-amber-500/30">
+              <Tv className="w-7 h-7" />
+            </div>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Votação Rápida (0 a 10)
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm">
+              Aponte a câmera do seu celular para o QR Code abaixo para votar na sua nota de 0 a 10.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center space-y-5 my-2">
+            {/* Tópico atual em destaque */}
+            <div className="w-full text-center p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-[11px] uppercase tracking-wider text-amber-400 font-semibold block mb-0.5">
+                Tema em Avaliação:
+              </span>
+              <p className="text-base font-bold text-white">
+                {title}
+              </p>
+            </div>
+
+            {/* QR Code com borda e fundo branco */}
+            <div className="p-4 bg-white rounded-2xl shadow-2xl border-4 border-amber-500/30 animate-in zoom-in-90">
+              <QRCodeSVG 
+                value={voteUrl}
+                size={220}
+                level="H"
+                includeMargin={false}
+              />
+            </div>
+
+            {/* PIN e Link */}
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xs text-slate-400 uppercase tracking-wider">Código PIN:</span>
+                <span className="font-mono text-2xl font-extrabold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
+                  {sessionPin}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono select-all">
+                {voteUrl}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+            <Button
+              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 gap-1.5 font-bold"
+              onClick={handleCopyLink}
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Link Copiado!' : 'Copiar Link da Votação'}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800"
+              onClick={() => setIsQrModalOpen(false)}
+            >
+              Fechar Projeção
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para Criar Nova Votação Rápida */}
+      <Dialog open={isCreatingNew} onOpenChange={setIsCreatingNew}>
+        <DialogContent className="max-w-md p-6 bg-card border-border shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-amber-500" />
+              Criar Nova Votação Rápida
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Defina o tema para os alunos avaliarem de 0 a 10
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateNew} className="space-y-4 pt-2">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                Tema / Pergunta da Avaliação:
+              </label>
+              <Input
+                value={newTitleInput}
+                onChange={(e) => setNewTitleInput(e.target.value)}
+                placeholder="Ex: Como você avalia seu domínio em Estrutura de Repetição?"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                Turma / Disciplina:
+              </label>
+              <Input
+                value={newSubjectInput}
+                onChange={(e) => setNewSubjectInput(e.target.value)}
+                placeholder="Ex: Algoritmos - 1º Ano"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setIsCreatingNew(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">
+                Lançar Votação
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

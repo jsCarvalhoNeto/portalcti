@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   Hand, 
   CheckCircle2, 
@@ -17,10 +18,18 @@ import {
   RotateCcw,
   Maximize2,
   Minimize2,
-  AlertCircle,
-  HelpCircle,
-  Sparkles
+  QrCode,
+  Copy,
+  Check,
+  ExternalLink,
+  RefreshCw,
+  Tv,
+  Radio,
+  Users
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 interface HelpRequest {
   id: string;
@@ -29,6 +38,7 @@ interface HelpRequest {
   topic: string;
   createdAt: number;
   status: 'waiting' | 'in_progress' | 'resolved';
+  voterId?: string;
 }
 
 export default function HelpQueueUtility() {
@@ -38,7 +48,7 @@ export default function HelpQueueUtility() {
       studentName: 'Lucas Ferreira',
       machineNumber: 'PC-04',
       topic: 'Erro de sintaxe no React Router',
-      createdAt: Date.now() - 1000 * 60 * 4, // 4 min atrás
+      createdAt: Date.now() - 1000 * 60 * 4,
       status: 'waiting'
     },
     {
@@ -46,26 +56,36 @@ export default function HelpQueueUtility() {
       studentName: 'Mariana Costa',
       machineNumber: 'PC-12',
       topic: 'Dúvida na conexão com o Banco de Dados',
-      createdAt: Date.now() - 1000 * 60 * 2, // 2 min atrás
-      status: 'waiting'
-    },
-    {
-      id: '3',
-      studentName: 'Gabriel Santos',
-      machineNumber: 'PC-07',
-      topic: 'Não está instalando dependência npm',
-      createdAt: Date.now() - 1000 * 60 * 1, // 1 min atrás
+      createdAt: Date.now() - 1000 * 60 * 2,
       status: 'waiting'
     }
   ]);
 
-  // Form para nova dúvida
+  // Form para nova dúvida manual
   const [newStudent, setNewStudent] = useState('');
   const [newMachine, setNewMachine] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // PIN da Sessão do Lab (6 dígitos)
+  const [sessionPin, setSessionPin] = useState(() => {
+    const saved = sessionStorage.getItem('helpqueue_session_pin');
+    if (saved) return saved;
+    const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+    sessionStorage.setItem('helpqueue_session_pin', newPin);
+    return newPin;
+  });
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
+  const requestsRef = useRef(requests);
+  requestsRef.current = requests;
+
+  const queueUrl = `${window.location.origin}/fila/${sessionPin}`;
 
   // Atualizador do tempo decorrido a cada 10 segundos
   const [, setTick] = useState(0);
@@ -81,17 +101,101 @@ export default function HelpQueueUtility() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.3);
+      osc.stop(audioCtx.currentTime + 0.35);
     } catch (e) {
       console.warn(e);
     }
   };
+
+  // Broadcast do estado atual da fila para todos os alunos
+  const broadcastQueueState = (currentList: HelpRequest[]) => {
+    if (channelRef.current && isConnected) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'queue_updated',
+        payload: { requests: currentList }
+      }).catch(() => {});
+    }
+  };
+
+  // Inscrição no canal Realtime do Supabase
+  useEffect(() => {
+    if (!sessionPin) return;
+
+    const channelName = `helpqueue_${sessionPin}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { ack: true }
+      }
+    });
+
+    channel
+      .on('broadcast', { event: 'new_request' }, (event) => {
+        const payload = event?.payload;
+        if (payload && payload.id && payload.studentName) {
+          const newReq: HelpRequest = {
+            id: payload.id,
+            studentName: payload.studentName,
+            machineNumber: payload.machineNumber || 'PC-01',
+            topic: payload.topic || 'Dúvida na atividade',
+            createdAt: payload.createdAt || Date.now(),
+            status: 'waiting',
+            voterId: payload.voterId
+          };
+
+          setRequests(prev => {
+            const nextList = [...prev, newReq];
+            // Transmite a fila atualizada de volta
+            setTimeout(() => broadcastQueueState(nextList), 100);
+            return nextList;
+          });
+
+          playBeep();
+          toast.info(`✋ Chamado de ${newReq.studentName} na máquina ${newReq.machineNumber}!`, {
+            duration: 4000
+          });
+        }
+      })
+      .on('broadcast', { event: 'cancel_request' }, (event) => {
+        const payload = event?.payload;
+        if (payload && payload.id) {
+          setRequests(prev => {
+            const nextList = prev.filter(r => r.id !== payload.id);
+            setTimeout(() => broadcastQueueState(nextList), 100);
+            return nextList;
+          });
+          toast.info('Um aluno cancelou sua solicitação de ajuda.');
+        }
+      })
+      .on('broadcast', { event: 'request_state' }, () => {
+        channel.send({
+          type: 'broadcast',
+          event: 'state_sync',
+          payload: { requests: requestsRef.current }
+        }).catch(() => {});
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsConnected(true);
+        } else {
+          setIsConnected(false);
+        }
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [sessionPin, isConnected]);
 
   const handleAddRequest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,28 +210,68 @@ export default function HelpQueueUtility() {
       status: 'waiting'
     };
 
-    setRequests(prev => [...prev, newReq]);
+    const nextList = [...requests, newReq];
+    setRequests(nextList);
+    broadcastQueueState(nextList);
     setNewStudent('');
     setNewMachine('');
     setNewTopic('');
     playBeep();
+    toast.success(`Chamado de ${newReq.studentName} inserido manualmente!`);
   };
 
   const updateStatus = (id: string, newStatus: 'waiting' | 'in_progress' | 'resolved') => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    const nextList = requests.map(r => r.id === id ? { ...r, status: newStatus } : r);
+    setRequests(nextList);
+    broadcastQueueState(nextList);
+    if (newStatus === 'in_progress') {
+      const student = requests.find(r => r.id === id);
+      toast.info(`Atendendo ${student?.studentName} (${student?.machineNumber})`);
+    }
   };
 
   const removeRequest = (id: string) => {
-    setRequests(prev => prev.filter(r => r.id !== id));
+    const nextList = requests.filter(r => r.id !== id);
+    setRequests(nextList);
+    broadcastQueueState(nextList);
   };
 
   const clearResolved = () => {
-    setRequests(prev => prev.filter(r => r.status !== 'resolved'));
+    const nextList = requests.filter(r => r.status !== 'resolved');
+    setRequests(nextList);
+    broadcastQueueState(nextList);
   };
 
   const resetAll = () => {
     if (confirm('Deseja limpar toda a fila de atendimento?')) {
       setRequests([]);
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'session_reset',
+          payload: {}
+        }).catch(() => {});
+      }
+      toast.success('Fila de atendimento zerada!');
+    }
+  };
+
+  const handleGenerateNewPin = () => {
+    const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+    sessionStorage.setItem('helpqueue_session_pin', newPin);
+    setSessionPin(newPin);
+    setRequests([]);
+    toast.success(`Novo código PIN do Lab gerado: ${newPin}`);
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(queueUrl);
+      setCopied(true);
+      toast.success('Link da fila copiado para a área de transferência!');
+      setTimeout(() => setCopied(false), 3000);
+    } catch (e) {
+      toast.error('Não foi possível copiar o link.');
     }
   };
 
@@ -158,21 +302,32 @@ export default function HelpQueueUtility() {
   const resolvedList = requests.filter(r => r.status === 'resolved');
 
   return (
-    <div className="space-y-6" ref={containerRef}>
+    <div className={`space-y-6 ${isFullscreen ? 'p-8 bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between' : ''}`} ref={containerRef}>
       {/* Top Banner Controls */}
       <div className={`flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl ${
-        isFullscreen ? 'bg-slate-950 text-white border-b border-slate-800' : 'bg-card border border-border/80'
+        isFullscreen ? 'bg-slate-900 text-white border border-slate-800 shadow-xl' : 'bg-card border border-border/80'
       }`}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
             <Hand className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-base flex items-center gap-2">
+            <h3 className="font-bold text-base flex flex-wrap items-center gap-2">
               Fila de Atendimento do Laboratório
               {waitingList.length > 0 && (
                 <Badge variant="destructive" className="animate-pulse">
                   {waitingList.length} aguardando
+                </Badge>
+              )}
+              {isConnected ? (
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-xs gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Ao Vivo
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-amber-500/40 text-amber-400 bg-amber-500/10 text-xs gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  Conectando...
                 </Badge>
               )}
             </h3>
@@ -182,7 +337,17 @@ export default function HelpQueueUtility() {
           </div>
         </div>
 
+        {/* Botões de Ação do Topo */}
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setIsQrModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 text-xs gap-1.5 font-semibold"
+          >
+            <QrCode className="w-4 h-4" />
+            Projetar QR Code
+          </Button>
+
           <Button
             size="sm"
             variant="ghost"
@@ -196,11 +361,56 @@ export default function HelpQueueUtility() {
           <Button
             size="sm"
             variant="outline"
-            className="text-xs gap-1.5"
+            className="text-xs gap-1.5 font-medium"
             onClick={toggleFullscreen}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            {isFullscreen ? 'Sair Tela Cheia' : 'Projetar Fila no Telão'}
+            {isFullscreen ? 'Sair Tela Cheia' : 'Projetar em Tela Cheia'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Banner de Acesso Rápido para os Alunos no Lab */}
+      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-indigo-500/15 text-indigo-400">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-300 font-medium">
+              Os alunos podem pedir ajuda pelo celular informando a máquina (PC-01 a PC-20):
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="font-mono text-sm font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded border border-indigo-500/30">
+                PIN: {sessionPin}
+              </span>
+              <span className="text-xs text-slate-300 truncate max-w-xs sm:max-w-md font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                {queueUrl}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs gap-1 text-slate-200 hover:text-white hover:bg-slate-800"
+            onClick={() => window.open(queueUrl, '_blank')}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Testar Chamado
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs gap-1 text-slate-300 hover:text-white hover:bg-slate-800"
+            onClick={handleGenerateNewPin}
+            title="Trocar código PIN da sala"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Novo PIN
           </Button>
         </div>
       </div>
@@ -226,7 +436,7 @@ export default function HelpQueueUtility() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-base">{req.studentName}</span>
-                        <Badge variant="outline" className="font-mono bg-muted/60 text-xs">
+                        <Badge variant="outline" className="font-mono bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-xs">
                           <Monitor className="w-3 h-3 mr-1" />
                           {req.machineNumber}
                         </Badge>
@@ -276,7 +486,7 @@ export default function HelpQueueUtility() {
                   onClick={() => updateStatus(waitingList[0].id, 'in_progress')}
                 >
                   <Play className="w-3.5 h-3.5" />
-                  Chamar Próximo ({waitingList[0].studentName})
+                  Chamar Próximo ({waitingList[0].studentName} - {waitingList[0].machineNumber})
                 </Button>
               )}
             </CardHeader>
@@ -305,7 +515,7 @@ export default function HelpQueueUtility() {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-sm">{req.studentName}</span>
-                            <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
+                            <Badge variant="outline" className="text-[11px] font-mono py-0 h-5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20">
                               <Monitor className="w-2.5 h-2.5 mr-1" />
                               {req.machineNumber}
                             </Badge>
@@ -371,15 +581,15 @@ export default function HelpQueueUtility() {
           )}
         </div>
 
-        {/* Coluna 3: Formulário de Adicionar Chamado */}
+        {/* Coluna 3: Formulário Manual de Chamado */}
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Plus className="w-4 h-4 text-indigo-500" />
-                Novo Chamado de Dúvida
+                Novo Chamado Manual
               </CardTitle>
-              <CardDescription>Adicione o aluno ou máquina na fila</CardDescription>
+              <CardDescription>Adicionar direto pelo painel do professor</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddRequest} className="space-y-3">
@@ -431,6 +641,65 @@ export default function HelpQueueUtility() {
           </Card>
         </div>
       </div>
+
+      {/* Modal de Projeção / QR Code para Data-Show */}
+      <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+        <DialogContent className="max-w-xl p-6 sm:p-8 bg-slate-950 text-slate-100 border-slate-800 shadow-2xl">
+          <DialogHeader className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto border border-amber-500/30">
+              <Tv className="w-7 h-7" />
+            </div>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Fila de Dúvidas do Laboratório
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm">
+              Escaneie o QR Code com a câmera do celular e selecione o seu computador (PC-01 a PC-20) para pedir ajuda.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center space-y-5 my-2">
+            {/* QR Code com borda e fundo branco */}
+            <div className="p-4 bg-white rounded-2xl shadow-2xl border-4 border-amber-500/30 animate-in zoom-in-90">
+              <QRCodeSVG 
+                value={queueUrl}
+                size={220}
+                level="H"
+                includeMargin={false}
+              />
+            </div>
+
+            {/* PIN e Link */}
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xs text-slate-400 uppercase tracking-wider">Código PIN do Lab:</span>
+                <span className="font-mono text-2xl font-extrabold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
+                  {sessionPin}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono select-all">
+                {queueUrl}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+            <Button
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5"
+              onClick={handleCopyLink}
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Link Copiado!' : 'Copiar Link do Lab'}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800"
+              onClick={() => setIsQrModalOpen(false)}
+            >
+              Fechar Projeção
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
