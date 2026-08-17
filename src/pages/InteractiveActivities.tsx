@@ -61,8 +61,20 @@ export default function InteractiveActivities() {
       setLoading(true);
       
       // Buscar dados da disciplina
-      const subjectData = await subjectService.getById(id);
-      setSubject(subjectData);
+      try {
+        const subjectData = await subjectService.getById(id);
+        setSubject(subjectData);
+      } catch (subErr) {
+        console.warn('Erro ao carregar disciplina com relacionamentos, buscando registro básico:', subErr);
+        const { data: basicSub } = await supabase
+          .from('subjects')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (basicSub) {
+          setSubject(basicSub as Subject);
+        }
+      }
 
       // Buscar atividades interativas
       const activitiesData = await interactiveActivityService.getBySubject(id);
@@ -250,7 +262,15 @@ export default function InteractiveActivities() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => navigate(`/disciplinas/${id}`)}
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      navigate(-1);
+                    } else if (isTeacher || isAdmin) {
+                      navigate(`/teacher/subjects/${id}/edit`);
+                    } else {
+                      navigate(`/disciplinas/${id}`);
+                    }
+                  }}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
