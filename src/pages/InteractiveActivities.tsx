@@ -10,21 +10,26 @@ import {
   Play, 
   Clock, 
   Users, 
-  Trophy,
-  ArrowLeft,
-  Activity,
-  PenTool,
-  Plus,
-  Edit,
-  Trash2,
-  RefreshCw,
-  Sparkles,
-  Layers,
-  CheckCircle2,
-  Code
+  Trophy, 
+  ArrowLeft, 
+  Activity, 
+  PenTool, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  RefreshCw, 
+  Sparkles, 
+  Layers, 
+  CheckCircle2, 
+  Code,
+  Lock,
+  ShieldAlert,
+  GraduationCap
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
+import { enrollmentService } from '@/services/enrollmentService';
+import { supabase } from '@/lib/supabaseClient';
 import { Subject } from '@/types/subject';
 import interactiveActivityService, { InteractiveActivity } from '@/services/interactiveActivityService';
 import InteractiveActivityEditor from '@/components/subject/InteractiveActivityEditor';
@@ -32,12 +37,13 @@ import InteractiveActivityPlayer from '@/components/subject/InteractiveActivityP
 
 export default function InteractiveActivities() {
   const { id } = useParams<{ id: string }>();
-  const { user, isTeacher, isAdmin, loading: authLoading } = useAuth();
+  const { user, isTeacher, isAdmin, isStudent, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [activities, setActivities] = useState<InteractiveActivity[]>([]);
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('all');
 
@@ -53,7 +59,7 @@ export default function InteractiveActivities() {
     if (id) {
       loadSubjectAndActivities();
     }
-  }, [id]);
+  }, [id, user]);
 
   const loadSubjectAndActivities = async () => {
     if (!id) return;
@@ -73,6 +79,17 @@ export default function InteractiveActivities() {
           .single();
         if (basicSub) {
           setSubject(basicSub as Subject);
+        }
+      }
+
+      // Se for aluno autenticado, verificar se está matriculado nesta disciplina
+      if (user && !canManage) {
+        try {
+          const enrolledSubjects = await enrollmentService.getStudentEnrolledSubjects(user.id);
+          const enrolled = enrolledSubjects.some(s => String(s.id) === String(id));
+          setIsEnrolled(enrolled);
+        } catch (enrollErr) {
+          console.warn('Erro ao validar matrícula do aluno:', enrollErr);
         }
       }
 
@@ -240,6 +257,65 @@ export default function InteractiveActivities() {
           <Button onClick={() => navigate('/disciplinas')}>
             Voltar para Disciplinas
           </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Bloqueio de acesso para alunos não matriculados na matéria
+  if (!canManage && !isEnrolled) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-16">
+          <Card className="max-w-2xl mx-auto border-amber-500/30 bg-card shadow-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 sm:p-8 border-b border-border/50 text-center">
+              <div className="w-16 h-16 bg-amber-500/15 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <Badge variant="outline" className="mb-2 border-amber-500/40 text-amber-700 dark:text-amber-300">
+                Acesso Restrito
+              </Badge>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+                Atividades Exclusivas da Turma
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
+                Você não está matriculado na disciplina <strong>{subject.name}</strong> ({subject.grade || 'outra série'}).
+              </p>
+            </div>
+            
+            <CardContent className="p-6 sm:p-8 space-y-6">
+              <div className="bg-muted/50 rounded-xl p-4 text-xs sm:text-sm text-muted-foreground space-y-2 border border-border/50">
+                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-amber-600" />
+                  Por que o laboratório está bloqueado?
+                </p>
+                <p>
+                  Os jogos interativos, simuladores e quizzes desta disciplina concedem pontos e conquistas vinculados ao progresso curricular exclusivo dos alunos da série correspondente.
+                </p>
+                <p>
+                  Para responder atividades e pontuar no ranking geral, acesse as matérias vinculadas à sua série em <strong>Minhas Disciplinas</strong>.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Button 
+                  onClick={() => navigate('/student')}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground gap-2 font-semibold"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  Minhas Disciplinas
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/disciplinas')}
+                  className="w-full sm:w-auto gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Ver Todas as Disciplinas
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </MainLayout>
     );

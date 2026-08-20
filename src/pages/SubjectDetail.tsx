@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,10 +16,14 @@ import {
   Settings,
   Gamepad2,
   Wrench,
-  Megaphone
+  Megaphone,
+  Lock,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
+import { enrollmentService } from '@/services/enrollmentService';
 import { Subject } from '@/types/subject';
 import { 
   subjectContentService, 
@@ -33,14 +38,18 @@ interface QuickAccessItem {
   description: string;
   color: string;
   bgColor: string;
+  badge?: string;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
 export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user, isStudent, loading } = useAuth();
+  const { user, isStudent, isTeacher, isAdmin, loading } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [subject, setSubject] = useState<Subject | null>(null);
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
   const [content, setContent] = useState<Record<string, SubjectContent[]>>({});
   const [resources, setResources] = useState<SubjectResource[]>([]);
   const [loadingSubject, setLoadingSubject] = useState(true);
@@ -52,10 +61,24 @@ export default function SubjectDetail() {
     {
       icon: Gamepad2,
       title: 'Atividades Interativas',
-      description: 'Jogos e simuladores educativos',
-      color: 'text-purple-400',
+      description: isStudent && !isEnrolled 
+        ? 'Disponível apenas para alunos matriculados' 
+        : 'Jogos e simuladores educativos',
+      color: isStudent && !isEnrolled ? 'text-slate-400' : 'text-purple-400',
       bgColor: 'bg-gray-800',
-      onClick: () => navigate(`/disciplinas/${id}/interactive-activities`)
+      badge: isStudent && !isEnrolled ? 'Restrito' : undefined,
+      disabled: isStudent && !isEnrolled,
+      onClick: () => {
+        if (isStudent && !isEnrolled) {
+          toast({
+            title: 'Acesso Restrito',
+            description: 'Você não está matriculado nesta disciplina. As atividades interativas com pontuação são exclusivas para alunos desta série.',
+            variant: 'destructive'
+          });
+          return;
+        }
+        navigate(`/disciplinas/${id}/interactive-activities`);
+      }
     },
     {
       icon: BookOpen,
@@ -87,8 +110,26 @@ export default function SubjectDetail() {
     if (id) {
       fetchSubject();
       fetchAllContent();
+      checkEnrollment();
     }
-  }, [id]);
+  }, [id, user, isStudent]);
+
+  const checkEnrollment = async () => {
+    if (!id || !user || !isStudent) {
+      setIsEnrolled(true);
+      return;
+    }
+
+    try {
+      const enrolledSubjects = await enrollmentService.getStudentEnrolledSubjects(user.id);
+      const enrolled = enrolledSubjects.some(s => String(s.id) === String(id));
+      setIsEnrolled(enrolled);
+    } catch (err) {
+      console.warn('Erro ao checar matrícula na disciplina:', err);
+      // fallback gracioso
+      setIsEnrolled(true);
+    }
+  };
 
   const fetchSubject = async () => {
     try {
@@ -350,16 +391,43 @@ export default function SubjectDetail() {
           </div>
         </div>
         
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          {/* Banner de Aviso para Alunos Não Matriculados */}
+          {isStudent && !isEnrolled && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 flex items-start gap-3 text-sm shadow-sm">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Modo de Consulta (Disciplina de Outra Série):</p>
+                <p className="text-xs text-amber-900/90 dark:text-amber-300 mt-0.5 leading-relaxed">
+                  Você não está matriculado nesta disciplina ({subject.grade || 'outra turma'}). Você pode consultar a ementa, cronograma e materiais didáticos. No entanto, o acesso ao laboratório de <strong>atividades interativas e pontuação na gamificação</strong> é exclusivo para a turma correspondente.
+                </p>
+              </div>
+            </div>
+          )}
+
           <TabsContent value="inicio" className="space-y-10 mt-0">
             {/* Welcome Section */}
             <Card className="bg-card border">
               <CardContent className="p-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="flex-1">
-                    <h2 className="text-3xl font-bold mb-2 text-foreground">
-                      Bem-vindos à {subject.name}! 🚀
-                    </h2>
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h2 className="text-3xl font-bold text-foreground">
+                        Bem-vindos à {subject.name}! 🚀
+                      </h2>
+                      {isStudent && (
+                        isEnrolled ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-xs gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Sua Turma
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/30 text-xs">
+                            Modo Consulta
+                          </Badge>
+                        )
+                      )}
+                    </div>
                     <p className="text-lg text-muted-foreground">
                       {subject.description || 'Bem-vindo ao ambiente de aprendizado desta disciplina.'}
                     </p>
@@ -393,11 +461,23 @@ export default function SubjectDetail() {
                 {quickAccessItems.map((item: QuickAccessItem, index: number) => (
                   <Card 
                     key={index} 
-                    className="bg-card border hover:bg-accent transition-all duration-300 cursor-pointer"
+                    className={`bg-card border transition-all duration-300 ${
+                      item.disabled 
+                        ? 'opacity-70 cursor-not-allowed hover:border-amber-400/40 bg-muted/30' 
+                        : 'hover:bg-accent cursor-pointer hover:shadow-md'
+                    }`}
                     onClick={item.onClick}
                   >
                     <CardContent className="p-6">
-                      <item.icon className={`w-7 h-7 mb-4 ${item.color}`} />
+                      <div className="flex items-center justify-between mb-4">
+                        <item.icon className={`w-7 h-7 ${item.color}`} />
+                        {item.disabled && (
+                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40 gap-1">
+                            <Lock className="w-3 h-3" />
+                            Restrito
+                          </Badge>
+                        )}
+                      </div>
                       <h4 className="font-semibold text-lg mb-1 text-card-foreground">{item.title}</h4>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
                     </CardContent>

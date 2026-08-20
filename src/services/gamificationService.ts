@@ -39,12 +39,28 @@ export async function awardAccess(userId: string, subjectId?: string | number): 
  */
 export async function awardGame(userId: string, points: number, gameId?: string, subjectId?: string | number): Promise<AwardResult | null> {
   try {
+    // Verificar se o aluno está matriculado na disciplina (se informada)
+    if (subjectId) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', userId)
+        .eq('subject_id', Number(subjectId))
+        .maybeSingle();
+
+      if (!enrollment) {
+        console.warn(`[Gamification] Usuário ${userId} não matriculado na disciplina ${subjectId}. Pontuação não permitida.`);
+        return { ok: true, awarded: 0, message: 'Pontos não atribuídos pois a disciplina não pertence à sua série.' };
+      }
+    }
+
     const { data, error } = await supabase
       .from('gamification_points')
       .insert({
         user_id: userId,
         source: 'game',
         source_id: gameId || subjectId?.toString() || null,
+        subject_id: subjectId ? Number(subjectId) : null,
         points: points
       })
       .select()
@@ -67,6 +83,21 @@ export async function awardGame(userId: string, points: number, gameId?: string,
 export async function awardSubmission(userId: string, activityId: string, subjectId?: string | number): Promise<AwardResult | null> {
   try {
     const stringActivityId = activityId.toString();
+
+    // Verificar se o aluno está matriculado na disciplina (se informada)
+    if (subjectId) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', userId)
+        .eq('subject_id', Number(subjectId))
+        .maybeSingle();
+
+      if (!enrollment) {
+        console.warn(`[Gamification] Usuário ${userId} não matriculado na disciplina ${subjectId}. Envio sem pontuação.`);
+        return { ok: true, awarded: 0, message: 'Pontos não atribuídos pois a disciplina não pertence à sua série.' };
+      }
+    }
 
     // 1. Verificar se o aluno já recebeu pontos pelo envio prévio desta mesma atividade
     const { data: existingPoints, error: checkError } = await supabase
