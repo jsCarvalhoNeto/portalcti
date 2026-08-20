@@ -23,7 +23,8 @@ import {
   Zap,
   Cloud,
   Smile,
-  PenTool
+  PenTool,
+  Gamepad2
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -49,6 +50,7 @@ import CodeFormatterValidatorUtility from '@/components/teacher/utilities/CodeFo
 import UnderstandingThermometerUtility from '@/components/teacher/utilities/UnderstandingThermometerUtility';
 import FlashChallengeUtility from '@/components/teacher/utilities/FlashChallengeUtility';
 import WordCloudBrainstormUtility from '@/components/teacher/utilities/WordCloudBrainstormUtility';
+import EducationalGamesUtility from '@/components/teacher/utilities/EducationalGamesUtility';
 
 // Utilitários de Notas & Sorteios
 import GradeCalculatorUtility from '@/components/teacher/utilities/GradeCalculatorUtility';
@@ -126,6 +128,18 @@ const UTILITIES: UtilityItem[] = [
   },
 
   // Categoria: Engajamento & Gamificação
+  {
+    id: 'jogos-educativos',
+    name: 'Jogos Educativos',
+    description: 'Crie jogos interativos com HTML, CSS e JavaScript para projetar em sala ou compartilhar por QR Code e link.',
+    category: 'gamification',
+    icon: Gamepad2,
+    colorClass: 'text-violet-600 dark:text-violet-400',
+    borderClass: 'hover:border-violet-500/50',
+    bgLightClass: 'bg-violet-50 dark:bg-violet-950/30',
+    badge: { label: 'QR & Online', icon: Radio, className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+    highlight: true
+  },
   {
     id: 'termometro',
     name: 'Termômetro de Compreensão',
@@ -362,6 +376,7 @@ export default function TeacherUtilities() {
 
             {/* Engajamento & Gamificação */}
             {activeUtilityId === 'termometro' && <UnderstandingThermometerUtility />}
+            {activeUtilityId === 'jogos-educativos' && <EducationalGamesUtility />}
             {activeUtilityId === 'desafio-relampago' && <FlashChallengeUtility />}
             {activeUtilityId === 'nuvem-palavras' && <WordCloudBrainstormUtility />}
 

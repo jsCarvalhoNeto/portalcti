@@ -37,6 +37,7 @@ import WordCloudVotePage from './pages/WordCloudVotePage';
 import HelpQueueStudentPage from './pages/HelpQueueStudentPage';
 import TeamRegistrationPage from './pages/TeamRegistrationPage';
 import StudentPickerJoinPage from './pages/StudentPickerJoinPage';
+import PublicEducationalGamePage from './pages/PublicEducationalGamePage';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -108,6 +109,7 @@ const App = () => (
               <Route path="/equipes/:code" element={<TeamRegistrationPage />} />
               <Route path="/sorteio" element={<StudentPickerJoinPage />} />
               <Route path="/sorteio/:code" element={<StudentPickerJoinPage />} />
+              <Route path="/jogos/:shareCode" element={<PublicEducationalGamePage />} />
 
               {/* Rota pública para perfil de carreira */}
               <Route path="/talento/:studentId" element={<PublicCareerProfile />} />
