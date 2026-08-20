@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Trophy, BookOpen, Target, KeyRound } from 'lucide-react';
+import { Calendar, Trophy, BookOpen, Target, KeyRound, Users, CheckCircle2, GraduationCap, Clock } from 'lucide-react';
 
 interface DailyChallengeViewerProps {
   isOpen: boolean;
@@ -70,6 +70,23 @@ const DailyChallengeViewer: React.FC<DailyChallengeViewerProps> = ({
       });
     } catch {
       return dateString || 'Data não informada';
+    }
+  };
+
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString || '-';
     }
   };
 
@@ -167,32 +184,92 @@ const DailyChallengeViewer: React.FC<DailyChallengeViewerProps> = ({
             </div>
           </div>
 
-          {/* Estatísticas (se disponível) */}
-          {challenge.stats && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-3">Estatísticas</h4>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {challenge.stats.total_attempts || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Tentativas</div>
+          {/* Estatísticas e Submissões dos Alunos */}
+          <div className="bg-slate-50 border rounded-lg p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                Tentativas e Submissões dos Alunos ({challenge.stats?.total_attempts || 0})
+              </h4>
+              {(challenge.stats?.total_attempts || 0) > 0 && (
+                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
+                  {challenge.stats?.total_attempts} {challenge.stats?.total_attempts === 1 ? 'aluno completou' : 'alunos completaram'}
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-white p-3 rounded-lg border shadow-xs">
+                <div className="text-2xl font-bold text-blue-600">
+                  {challenge.stats?.total_attempts || 0}
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {challenge.stats.completed || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Concluídos</div>
+                <div className="text-xs text-gray-600 font-medium mt-0.5">Total de Tentativas</div>
+              </div>
+              <div className="bg-white p-3 rounded-lg border shadow-xs">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {challenge.stats?.completed || 0}
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {challenge.stats.success_rate || '0'}%
-                  </div>
-                  <div className="text-sm text-gray-600">Taxa de Sucesso</div>
+                <div className="text-xs text-gray-600 font-medium mt-0.5">Concluídos</div>
+              </div>
+              <div className="bg-white p-3 rounded-lg border shadow-xs">
+                <div className="text-2xl font-bold text-purple-600">
+                  {challenge.stats?.success_rate || 0}%
                 </div>
+                <div className="text-xs text-gray-600 font-medium mt-0.5">Taxa de Conclusão</div>
               </div>
             </div>
-          )}
+
+            {/* Lista dos Alunos */}
+            {challenge.submissions && challenge.submissions.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="bg-gray-100/80 px-4 py-2.5 text-xs font-semibold text-gray-700 uppercase tracking-wider grid grid-cols-12 gap-2 border-b">
+                  <span className="col-span-5 sm:col-span-5">Aluno</span>
+                  <span className="col-span-3 sm:col-span-2">Turma / Série</span>
+                  <span className="col-span-4 sm:col-span-3">Data da Tentativa</span>
+                  <span className="hidden sm:block sm:col-span-2 text-right">Pontos</span>
+                </div>
+                <div className="divide-y max-h-64 overflow-y-auto">
+                  {challenge.submissions.map((sub: any, idx: number) => (
+                    <div key={sub.id || idx} className="px-4 py-3 text-sm grid grid-cols-12 gap-2 items-center hover:bg-slate-50 transition-colors">
+                      <div className="col-span-5 sm:col-span-5 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{sub.student_name || 'Aluno'}</p>
+                        {sub.student_email && <p className="text-xs text-gray-500 truncate">{sub.student_email}</p>}
+                        {sub.student_answer && (
+                          <p className="text-xs text-indigo-600 mt-1 truncate" title={`Resposta/Chave informada: ${sub.student_answer}`}>
+                            Chave/Resposta: <span className="font-mono bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">{sub.student_answer}</span>
+                          </p>
+                        )}
+                      </div>
+                      <div className="col-span-3 sm:col-span-2 text-xs text-gray-600">
+                        {sub.student_grade ? (
+                          <Badge variant="outline" className="text-[11px] px-2 py-0.5 font-normal">
+                            {sub.student_grade}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
+                      <div className="col-span-4 sm:col-span-3 text-xs text-gray-600 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span>{formatDateTime(sub.submitted_at)}</span>
+                      </div>
+                      <div className="col-span-12 sm:col-span-2 flex sm:justify-end mt-1 sm:mt-0">
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs font-semibold">
+                          +{sub.points_awarded || challenge.points} pts
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-white rounded-lg border text-gray-500 text-sm">
+                <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                <p className="font-medium text-gray-700">Nenhum aluno realizou este desafio ainda</p>
+                <p className="text-xs text-gray-500 mt-1">Assim que os alunos executarem e concluírem a atividade, as tentativas aparecerão aqui.</p>
+              </div>
+            )}
+          </div>
 
           {/* Informações adicionais */}
           <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">

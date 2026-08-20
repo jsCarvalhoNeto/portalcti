@@ -1,5 +1,17 @@
 import { supabase } from '../lib/supabaseClient';
 
+export interface DailyChallengeSubmissionInfo {
+  id: number;
+  student_id: string;
+  student_name: string;
+  student_email?: string;
+  student_grade?: string;
+  submitted_at: string;
+  points_awarded: number;
+  is_within_deadline?: boolean;
+  student_answer?: string;
+}
+
 export interface DailyChallenge {
   id?: number;
   title: string;
@@ -26,6 +38,7 @@ export interface DailyChallenge {
     completed: number;
     success_rate: number;
   };
+  submissions?: DailyChallengeSubmissionInfo[];
 }
 
 export interface DailyChallengeStats {
@@ -62,7 +75,70 @@ class DailyChallengeService {
       console.error('Erro ao obter desafios no Supabase:', error);
       return [];
     }
-    return (data || []).map(item => this.mapFromBackend(item));
+
+    if (!data || data.length === 0) return [];
+
+    const challengeIds = data.map(item => item.id).filter(Boolean);
+
+    // Buscar todas as submissões dos desafios
+    let submissionsMap = new Map<number, DailyChallengeSubmissionInfo[]>();
+    try {
+      const { data: submissions, error: subError } = await supabase
+        .from('daily_challenge_submissions')
+        .select('*')
+        .in('challenge_id', challengeIds)
+        .order('submitted_at', { ascending: false });
+
+      if (!subError && submissions && submissions.length > 0) {
+        const studentIds = Array.from(new Set(submissions.map(s => s.student_id).filter(Boolean)));
+        let profileMap = new Map<string, { full_name?: string; email?: string; grade?: string }>();
+        
+        if (studentIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, grade')
+            .in('id', studentIds);
+
+          (profiles || []).forEach(p => profileMap.set(p.id, p));
+        }
+
+        submissions.forEach(sub => {
+          const prof = profileMap.get(sub.student_id);
+          const subInfo: DailyChallengeSubmissionInfo = {
+            id: sub.id,
+            student_id: sub.student_id,
+            student_name: prof?.full_name || 'Aluno',
+            student_email: prof?.email,
+            student_grade: prof?.grade,
+            submitted_at: sub.submitted_at || sub.created_at,
+            points_awarded: sub.points_awarded || 0,
+            is_within_deadline: sub.is_within_deadline,
+            student_answer: sub.student_answer
+          };
+
+          const list = submissionsMap.get(sub.challenge_id) || [];
+          list.push(subInfo);
+          submissionsMap.set(sub.challenge_id, list);
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar estatísticas de submissões:', e);
+    }
+
+    return (data || []).map(item => {
+      const mapped = this.mapFromBackend(item);
+      const challengeSubs = submissionsMap.get(item.id) || [];
+      const totalAttempts = challengeSubs.length;
+
+      mapped.stats = {
+        total_attempts: totalAttempts,
+        completed: totalAttempts,
+        success_rate: totalAttempts > 0 ? 100 : 0
+      };
+      mapped.submissions = challengeSubs;
+
+      return mapped;
+    });
   }
 
   async getChallengeById(id: number): Promise<DailyChallenge> {
@@ -73,7 +149,63 @@ class DailyChallengeService {
       .single();
 
     if (error) throw error;
-    return this.mapFromBackend(data);
+
+    const mapped = this.mapFromBackend(data);
+
+    try {
+      const { data: submissions } = await supabase
+        .from('daily_challenge_submissions')
+        .select('*')
+        .eq('challenge_id', id)
+        .order('submitted_at', { ascending: false });
+
+      if (submissions && submissions.length > 0) {
+        const studentIds = Array.from(new Set(submissions.map(s => s.student_id).filter(Boolean)));
+        let profileMap = new Map<string, { full_name?: string; email?: string; grade?: string }>();
+
+        if (studentIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, grade')
+            .in('id', studentIds);
+
+          (profiles || []).forEach(p => profileMap.set(p.id, p));
+        }
+
+        const subsList: DailyChallengeSubmissionInfo[] = submissions.map(sub => {
+          const prof = profileMap.get(sub.student_id);
+          return {
+            id: sub.id,
+            student_id: sub.student_id,
+            student_name: prof?.full_name || 'Aluno',
+            student_email: prof?.email,
+            student_grade: prof?.grade,
+            submitted_at: sub.submitted_at || sub.created_at,
+            points_awarded: sub.points_awarded || 0,
+            is_within_deadline: sub.is_within_deadline,
+            student_answer: sub.student_answer
+          };
+        });
+
+        mapped.stats = {
+          total_attempts: subsList.length,
+          completed: subsList.length,
+          success_rate: subsList.length > 0 ? 100 : 0
+        };
+        mapped.submissions = subsList;
+      } else {
+        mapped.stats = {
+          total_attempts: 0,
+          completed: 0,
+          success_rate: 0
+        };
+        mapped.submissions = [];
+      }
+    } catch (e) {
+      console.error('Erro ao buscar submissões do desafio por id:', e);
+    }
+
+    return mapped;
   }
 
   async createChallenge(challenge: CreateChallengeData): Promise<DailyChallenge> {

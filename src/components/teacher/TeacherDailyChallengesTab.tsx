@@ -164,18 +164,26 @@ export default function TeacherDailyChallengesTab() {
       ? Math.round((challenges.reduce((acc, c) => acc + (c.stats?.total_attempts || 0), 0) / challenges.length))
       : 0,
     completionRate: challenges.length > 0
-      ? Math.round((challenges.reduce((acc, c) => acc + (c.stats?.success_rate || 0), 0) / challenges.length))
+      ? Math.round((challenges.filter(c => (c.stats?.total_attempts || 0) > 0).length / challenges.length) * 100)
       : 0
   };
 
   const formatChallengeDate = (challenge: DailyChallenge) => {
     const rawDate = challenge.start_date || challenge.active_date || challenge.created_at;
-    if (!rawDate) return 'Não definida';
+    if (!rawDate || typeof rawDate !== 'string' || rawDate === 'Invalid Date') return 'Não definida';
     try {
-      const dateOnly = rawDate.split('T')[0];
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-        const [year, month, day] = dateOnly.split('-').map(Number);
-        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+      if (rawDate.includes('-')) {
+        const dateOnly = rawDate.split('T')[0];
+        const parts = dateOnly.split('-');
+        if (parts.length === 3) {
+          const [year, month, day] = parts.map(Number);
+          if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+            const d = new Date(year, month - 1, day);
+            if (!isNaN(d.getTime())) {
+              return d.toLocaleDateString('pt-BR');
+            }
+          }
+        }
       }
       const date = new Date(rawDate);
       if (isNaN(date.getTime())) return 'Não definida';
@@ -315,9 +323,12 @@ export default function TeacherDailyChallengesTab() {
                     <Trophy className="w-4 h-4 text-yellow-500" />
                     <span>{challenge.points} pontos</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-blue-500" />
-                    <span>{challenge.stats?.total_attempts || 0} tentativas</span>
+                  <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>
+                      {challenge.stats?.total_attempts || 0}{' '}
+                      {(challenge.stats?.total_attempts || 0) === 1 ? 'tentativa' : 'tentativas'}
+                    </span>
                   </div>
                 </div>
 
