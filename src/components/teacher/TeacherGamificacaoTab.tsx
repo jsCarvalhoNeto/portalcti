@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Filter, RefreshCw, Trophy } from 'lucide-react';
+import { GraduationCap, Filter, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StudentAchievementHistory from './StudentAchievementHistory';
+
+export type SortOption = 'points_desc' | 'points_asc' | 'name_asc' | 'name_desc';
 
 export default function TeacherGamificacaoTab() {
   const { students, grades, subjects } = useTeacherDashboard();
@@ -21,6 +23,7 @@ export default function TeacherGamificacaoTab() {
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const [scores, setScores] = useState<Record<string, number>>({});
 
   // Fetch teacher report from backend to get real totals per student
@@ -102,9 +105,17 @@ export default function TeacherGamificacaoTab() {
   const [showRaw, setShowRaw] = useState(false);
 
   const filtered = useMemo(() => {
+    let list: Array<{
+      id: string;
+      full_name: string;
+      email: string;
+      grade: string;
+      total_points: number;
+    }> = [];
+
     // Se temos a lista de estudantes do professor vinda do contexto
     if (Array.isArray(students) && students.length > 0) {
-      let list = students.map((s: any) => {
+      list = students.map((s: any) => {
         const studentId = String(s.id);
         return {
           id: studentId,
@@ -118,12 +129,9 @@ export default function TeacherGamificacaoTab() {
       if (selectedGrade !== 'all') {
         list = list.filter((s: any) => s.grade === selectedGrade);
       }
-      return list;
-    }
-
-    // Fallback: se students estiver vazio, usamos os dados do relatório de gamificação
-    if (reportRows && reportRows.length > 0) {
-      let list = reportRows.map((r: any) => {
+    } else if (reportRows && reportRows.length > 0) {
+      // Fallback: se students estiver vazio, usamos os dados do relatório de gamificação
+      list = reportRows.map((r: any) => {
         const userId = String(r.userId ?? r.user_id ?? r.id ?? '');
         return {
           id: userId,
@@ -137,11 +145,31 @@ export default function TeacherGamificacaoTab() {
       if (selectedGrade !== 'all') {
         list = list.filter((s: any) => s.grade === selectedGrade);
       }
-      return list;
     }
 
-    return [];
-  }, [reportRows, students, selectedGrade, scores]);
+    // Ordenação
+    list.sort((a, b) => {
+      if (sortBy === 'points_desc') {
+        if (b.total_points !== a.total_points) {
+          return b.total_points - a.total_points;
+        }
+        return a.full_name.localeCompare(b.full_name, 'pt-BR');
+      }
+      if (sortBy === 'points_asc') {
+        if (a.total_points !== b.total_points) {
+          return a.total_points - b.total_points;
+        }
+        return a.full_name.localeCompare(b.full_name, 'pt-BR');
+      }
+      if (sortBy === 'name_desc') {
+        return b.full_name.localeCompare(a.full_name, 'pt-BR');
+      }
+      // 'name_asc' padrão
+      return a.full_name.localeCompare(b.full_name, 'pt-BR');
+    });
+
+    return list;
+  }, [reportRows, students, selectedGrade, scores, sortBy]);
 
   const openAdjustFor = (id: string, name?: string) => {
     setAdjustTarget({ id, name });
@@ -220,7 +248,7 @@ export default function TeacherGamificacaoTab() {
             <CardDescription>Filtre por disciplina, série, semestre ou período</CardDescription>
         </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium">Disciplina</label>
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -278,6 +306,21 @@ export default function TeacherGamificacaoTab() {
                   {(subjectPeriods.length > 0 ? subjectPeriods : ['1º Período','2º Período','3º Período','4º Período']).map((p: any) => (
                     <SelectItem key={String(p)} value={String(p)}>{p}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Ordenar por</label>
+              <Select value={sortBy} onValueChange={(val: SortOption) => setSortBy(val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="points_desc">🏆 Maior Pontuação</SelectItem>
+                  <SelectItem value="points_asc">📉 Menor Pontuação</SelectItem>
+                  <SelectItem value="name_asc">🔤 Aluno (A - Z)</SelectItem>
+                  <SelectItem value="name_desc">🔤 Aluno (Z - A)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -387,9 +430,19 @@ export default function TeacherGamificacaoTab() {
       </Dialog>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Pontuação dos Alunos</CardTitle>
-          <CardDescription>Resultados filtrados</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Pontuação dos Alunos</CardTitle>
+            <CardDescription>
+              {filtered.length} aluno{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''} • Ordenado por:{' '}
+              <span className="font-medium text-foreground">
+                {sortBy === 'points_desc' && 'Maior Pontuação (Ranking)'}
+                {sortBy === 'points_asc' && 'Menor Pontuação'}
+                {sortBy === 'name_asc' && 'Nome (A - Z)'}
+                {sortBy === 'name_desc' && 'Nome (Z - A)'}
+              </span>
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingReport ? (
@@ -400,21 +453,71 @@ export default function TeacherGamificacaoTab() {
             <div className="overflow-x-auto">
               <table className="w-full table-auto">
                 <thead>
-                  <tr className="text-left text-sm text-muted-foreground">
-                    <th className="p-2">Aluno</th>
+                  <tr className="text-left text-sm text-muted-foreground border-b">
+                    {sortBy === 'points_desc' && <th className="p-2 w-16 text-center">Posição</th>}
+                    <th className="p-2">
+                      <button
+                        onClick={() => setSortBy(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc')}
+                        className="inline-flex items-center gap-1.5 font-medium hover:text-foreground transition-colors group"
+                        title="Clique para alternar ordenação por Nome"
+                      >
+                        Aluno
+                        {sortBy === 'name_asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-primary" />
+                        ) : sortBy === 'name_desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
                     <th className="p-2">Email</th>
                     <th className="p-2">Série</th>
-                    <th className="p-2">Pontos</th>
+                    <th className="p-2 text-right">
+                      <button
+                        onClick={() => setSortBy(prev => prev === 'points_desc' ? 'points_asc' : 'points_desc')}
+                        className="inline-flex items-center gap-1.5 font-medium hover:text-foreground transition-colors group ml-auto"
+                        title="Clique para alternar ordenação por Pontos"
+                      >
+                        Pontos
+                        {sortBy === 'points_desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                        ) : sortBy === 'points_asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length > 0 ? (
-                    filtered.map((s) => (
-                      <tr key={s.id} className="border-t">
+                    filtered.map((s, index) => (
+                      <tr key={s.id} className="border-t hover:bg-muted/40 transition-colors">
+                        {sortBy === 'points_desc' && (
+                          <td className="p-2 text-center font-medium">
+                            {index === 0 ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold" title="1º Lugar">
+                                🥇
+                              </span>
+                            ) : index === 1 ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:text-slate-300 text-xs font-bold" title="2º Lugar">
+                                🥈
+                              </span>
+                            ) : index === 2 ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-800 dark:text-amber-600 text-xs font-bold" title="3º Lugar">
+                                🥉
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">{index + 1}º</span>
+                            )}
+                          </td>
+                        )}
                         <td className="p-2">
                           <button
                             onClick={() => openStudentHistory(s.id, s.full_name, s.email)}
-                            className="text-left hover:text-primary hover:underline focus:outline-none focus:text-primary transition-colors"
+                            className="text-left font-medium hover:text-primary hover:underline focus:outline-none focus:text-primary transition-colors"
                             title="Clique para ver o histórico de conquistas"
                           >
                             {s.full_name}
@@ -422,15 +525,19 @@ export default function TeacherGamificacaoTab() {
                         </td>
                         <td className="p-2 text-sm text-muted-foreground">{s.email}</td>
                         <td className="p-2 text-sm">{s.grade || '-'}</td>
-                        <td className="p-2 font-medium flex items-center justify-between">
-                          <span>{Number(s.total_points ?? 0)}</span>
-                          <Button size="sm" variant="ghost" onClick={() => openAdjustFor(s.id, s.full_name)}>Ajustar</Button>
+                        <td className="p-2 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <span className="font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary text-sm">
+                              {Number(s.total_points ?? 0)} pts
+                            </span>
+                            <Button size="sm" variant="ghost" onClick={() => openAdjustFor(s.id, s.full_name)}>Ajustar</Button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="p-4 text-center text-muted-foreground">
+                      <td colSpan={sortBy === 'points_desc' ? 5 : 4} className="p-4 text-center text-muted-foreground">
                         Nenhum aluno encontrado para os filtros selecionados.
                       </td>
                     </tr>

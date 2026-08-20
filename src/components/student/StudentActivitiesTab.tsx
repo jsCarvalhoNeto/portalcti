@@ -236,7 +236,7 @@ export default function StudentActivitiesTab() {
           // A API de atividades retorna `subject_name`; se você tiver subject_id disponível no payload do backend, prefira passá-lo.
           const subjectIdForGamify = (selectedActivity as any).subject_id || selectedActivity.subject_name || undefined;
           const res = await gamificationService.awardSubmission(user.id, selectedActivity.id.toString(), subjectIdForGamify);
-          if (res && (res as any).awarded) {
+          if (res && (res as any).awarded && (res as any).awarded > 0) {
             toast({ title: 'Pontos recebidos', description: `+${(res as any).awarded} pontos por envio de atividade` });
           }
         }

@@ -62,17 +62,37 @@ export async function awardGame(userId: string, points: number, gameId?: string,
 }
 
 /**
- * Atribui pontos por envio de atividade
+ * Atribui pontos por envio de atividade (apenas no 1º envio)
  */
 export async function awardSubmission(userId: string, activityId: string, subjectId?: string | number): Promise<AwardResult | null> {
   try {
+    const stringActivityId = activityId.toString();
+
+    // 1. Verificar se o aluno já recebeu pontos pelo envio prévio desta mesma atividade
+    const { data: existingPoints, error: checkError } = await supabase
+      .from('gamification_points')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source', 'submission')
+      .eq('source_id', stringActivityId)
+      .limit(1);
+
+    if (checkError) {
+      console.warn('Aviso ao consultar envios prévios na gamificação:', checkError);
+    }
+
+    if (existingPoints && existingPoints.length > 0) {
+      console.log(`Aluno ${userId} já recebeu pontos pelo primeiro envio da atividade ${activityId}`);
+      return { ok: true, awarded: 0, message: 'Pontos já concedidos no primeiro envio desta atividade.' };
+    }
+
     const pointsToAward = 15; // Pontos padrão por entrega
     const { data, error } = await supabase
       .from('gamification_points')
       .insert({
         user_id: userId,
         source: 'submission',
-        source_id: activityId,
+        source_id: stringActivityId,
         subject_id: subjectId ? Number(subjectId) : null,
         points: pointsToAward
       })

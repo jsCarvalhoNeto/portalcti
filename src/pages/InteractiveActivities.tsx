@@ -318,53 +318,73 @@ export default function InteractiveActivities() {
         </header>
 
         <main className="container mx-auto px-4 py-8">
-          {/* Banner de Apresentação */}
-          <div className="bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-slate-900/40 border border-purple-500/20 rounded-2xl p-6 mb-8 text-foreground shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1 max-w-2xl">
-                <div className="flex items-center gap-2 text-purple-400 font-semibold text-sm">
-                  <Sparkles className="w-4 h-4" />
-                  Laboratório Interativo da Disciplina
+          {/* Banner de Apresentação com Alto Contraste */}
+          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-950 via-purple-900 to-slate-900 border border-purple-400/30 rounded-2xl p-6 md:p-8 mb-8 text-white shadow-lg shadow-purple-950/20">
+            {/* Efeitos de iluminação sutil de fundo */}
+            <div className="absolute -top-16 -right-16 w-56 h-56 bg-purple-500/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-300/40 text-purple-200 font-semibold text-xs tracking-wide">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                  <span>Laboratório Interativo da Disciplina</span>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold">
+                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
                   Aprenda na prática com jogos, simuladores e quizzes
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm md:text-base text-purple-100/90 leading-relaxed font-normal">
                   Abra qualquer atividade para executá-la no navegador com opção de tela inteira para maior imersão.
                 </p>
               </div>
 
               {/* Filtros rápidos */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 bg-black/30 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
                 <Button
                   size="sm"
-                  variant={filterType === 'all' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('all')}
-                  className="text-xs"
+                  variant="ghost"
+                  onClick={() => setFilterType("all")}
+                  className={`text-xs font-semibold rounded-lg transition-all ${
+                    filterType === "all"
+                      ? "bg-white text-indigo-950 hover:bg-white/90 shadow-sm font-bold"
+                      : "text-purple-100 hover:text-white hover:bg-white/15"
+                  }`}
                 >
                   Todas ({activities.length})
                 </Button>
                 <Button
                   size="sm"
-                  variant={filterType === 'game' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('game')}
-                  className="text-xs"
+                  variant="ghost"
+                  onClick={() => setFilterType("game")}
+                  className={`text-xs font-semibold rounded-lg transition-all ${
+                    filterType === "game"
+                      ? "bg-white text-indigo-950 hover:bg-white/90 shadow-sm font-bold"
+                      : "text-purple-100 hover:text-white hover:bg-white/15"
+                  }`}
                 >
                   Jogos
                 </Button>
                 <Button
                   size="sm"
-                  variant={filterType === 'simulation' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('simulation')}
-                  className="text-xs"
+                  variant="ghost"
+                  onClick={() => setFilterType("simulation")}
+                  className={`text-xs font-semibold rounded-lg transition-all ${
+                    filterType === "simulation"
+                      ? "bg-white text-indigo-950 hover:bg-white/90 shadow-sm font-bold"
+                      : "text-purple-100 hover:text-white hover:bg-white/15"
+                  }`}
                 >
                   Simulações
                 </Button>
                 <Button
                   size="sm"
-                  variant={filterType === 'quiz' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('quiz')}
-                  className="text-xs"
+                  variant="ghost"
+                  onClick={() => setFilterType("quiz")}
+                  className={`text-xs font-semibold rounded-lg transition-all ${
+                    filterType === "quiz"
+                      ? "bg-white text-indigo-950 hover:bg-white/90 shadow-sm font-bold"
+                      : "text-purple-100 hover:text-white hover:bg-white/15"
+                  }`}
                 >
                   Quizzes
                 </Button>
