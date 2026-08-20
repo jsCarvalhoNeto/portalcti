@@ -235,16 +235,21 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
                 className="font-mono text-sm"
               />
               {showPreview && formData.content && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-3 py-2 border-b text-sm font-medium text-gray-700">
-                    Preview Interativo
+                <div className="border rounded-lg overflow-hidden mt-3 shadow-sm">
+                  <div className="bg-gray-100 px-3 py-2 border-b text-xs font-semibold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Preview Interativo em Tempo Real
+                    </span>
+                    <span className="text-gray-500 font-normal">Sandbox Seguro</span>
                   </div>
                   <div className="bg-white">
                     <iframe
                       srcDoc={formData.content}
-                      className="w-full min-h-[300px] border-0"
+                      className="w-full min-h-[380px] h-[400px] border-0"
                       title="Preview do Desafio"
-                      sandbox="allow-scripts allow-forms allow-popups allow-modals"
+                      sandbox="allow-scripts allow-forms allow-popups allow-modals allow-same-origin allow-downloads"
+                      allow="autoplay; fullscreen; camera; microphone; clipboard-read; clipboard-write"
                     />
                   </div>
                 </div>

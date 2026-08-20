@@ -16,11 +16,12 @@ import {
   Eye, 
   Edit, 
   Trash2, 
-  Calendar,
-  Target,
-  Users,
-  BarChart3,
-  RefreshCw
+  Calendar, 
+  Target, 
+  Users, 
+  BarChart3, 
+  RefreshCw,
+  BookOpen
 } from 'lucide-react';
 
 export default function TeacherDailyChallengesTab() {
@@ -294,10 +295,7 @@ export default function TeacherDailyChallengesTab() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <CardTitle className="text-lg">{challenge.title}</CardTitle>
-                    {challenge.subject_name && (
-                      <Badge variant="outline">{challenge.subject_name}</Badge>
-                    )}
+                    <CardTitle className="text-lg leading-snug">{challenge.title}</CardTitle>
                   </div>
                 </div>
                 {challenge.description && (
@@ -332,13 +330,32 @@ export default function TeacherDailyChallengesTab() {
                   </div>
                 </div>
 
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
+                <div className="flex items-center justify-between text-sm pt-0.5">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
                     <span>
                       Data: {formatChallengeDate(challenge)}
                     </span>
                   </div>
+
+                  {challenge.subject_name ? (
+                    <Badge 
+                      variant="secondary" 
+                      className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/80 font-medium px-2 py-0.5 max-w-[170px] truncate shadow-2xs flex items-center gap-1 shrink-0"
+                      title={`Disciplina: ${challenge.subject_name}`}
+                    >
+                      <BookOpen className="w-3 h-3 shrink-0 text-indigo-600" />
+                      <span className="truncate">{challenge.subject_name}</span>
+                    </Badge>
+                  ) : (
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs text-muted-foreground bg-slate-50 border-dashed shrink-0"
+                      title="Sem disciplina vinculada"
+                    >
+                      Geral
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex gap-2">

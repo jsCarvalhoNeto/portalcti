@@ -65,6 +65,25 @@ class DailyChallengeService {
     };
   }
 
+  private async getSubjectMap(): Promise<Map<string | number, string>> {
+    const map = new Map<string | number, string>();
+    try {
+      const { data } = await supabase.from('subjects').select('id, name');
+      if (data) {
+        data.forEach((s: any) => {
+          map.set(s.id, s.name);
+          map.set(String(s.id), s.name);
+          if (!isNaN(Number(s.id))) {
+            map.set(Number(s.id), s.name);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar mapa de disciplinas:', err);
+    }
+    return map;
+  }
+
   async getAllChallenges(): Promise<DailyChallenge[]> {
     const { data, error } = await supabase
       .from(this.tableName)
@@ -79,6 +98,9 @@ class DailyChallengeService {
     if (!data || data.length === 0) return [];
 
     const challengeIds = data.map(item => item.id).filter(Boolean);
+
+    // Buscar mapa de disciplinas
+    const subjectMapPromise = this.getSubjectMap();
 
     // Buscar todas as submissões dos desafios
     let submissionsMap = new Map<number, DailyChallengeSubmissionInfo[]>();
@@ -125,10 +147,16 @@ class DailyChallengeService {
       console.error('Erro ao carregar estatísticas de submissões:', e);
     }
 
+    const subjectMap = await subjectMapPromise;
+
     return (data || []).map(item => {
       const mapped = this.mapFromBackend(item);
       const challengeSubs = submissionsMap.get(item.id) || [];
       const totalAttempts = challengeSubs.length;
+
+      if (item.subject_id) {
+        mapped.subject_name = subjectMap.get(item.subject_id) || item.subject_name;
+      }
 
       mapped.stats = {
         total_attempts: totalAttempts,
@@ -151,6 +179,21 @@ class DailyChallengeService {
     if (error) throw error;
 
     const mapped = this.mapFromBackend(data);
+
+    if (data.subject_id) {
+      try {
+        const { data: sub } = await supabase
+          .from('subjects')
+          .select('name')
+          .eq('id', data.subject_id)
+          .maybeSingle();
+        if (sub) {
+          mapped.subject_name = sub.name;
+        }
+      } catch (err) {
+        console.warn('Erro ao buscar disciplina do desafio por id:', err);
+      }
+    }
 
     try {
       const { data: submissions } = await supabase
@@ -224,7 +267,17 @@ class DailyChallengeService {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    let subjectName = challenge.subject_name;
+    if (data.subject_id && !subjectName) {
+      const { data: sub } = await supabase.from('subjects').select('name').eq('id', data.subject_id).maybeSingle();
+      if (sub) subjectName = sub.name;
+    }
+
+    return {
+      ...this.mapFromBackend(data),
+      subject_name: subjectName
+    };
   }
 
   async updateChallenge(id: number, challenge: UpdateChallengeData): Promise<DailyChallenge> {
@@ -237,7 +290,17 @@ class DailyChallengeService {
       .single();
 
     if (error) throw error;
-    return data;
+
+    let subjectName = challenge.subject_name;
+    if (data.subject_id && !subjectName) {
+      const { data: sub } = await supabase.from('subjects').select('name').eq('id', data.subject_id).maybeSingle();
+      if (sub) subjectName = sub.name;
+    }
+
+    return {
+      ...this.mapFromBackend(data),
+      subject_name: subjectName
+    };
   }
 
   // Função auxiliar para mapear campos do frontend para o backend
@@ -324,7 +387,15 @@ class DailyChallengeService {
       console.error('Erro ao buscar desafios por matéria:', error);
       return [];
     }
-    return (data || []).map(item => this.mapFromBackend(item));
+
+    const subjectMap = await this.getSubjectMap();
+    return (data || []).map(item => {
+      const mapped = this.mapFromBackend(item);
+      if (item.subject_id) {
+        mapped.subject_name = subjectMap.get(item.subject_id) || item.subject_name;
+      }
+      return mapped;
+    });
   }
 
   async getActiveChallenges(): Promise<DailyChallenge[]> {
@@ -341,7 +412,15 @@ class DailyChallengeService {
       console.error('Erro ao buscar desafios ativos:', error);
       return [];
     }
-    return (data || []).map(item => this.mapFromBackend(item));
+
+    const subjectMap = await this.getSubjectMap();
+    return (data || []).map(item => {
+      const mapped = this.mapFromBackend(item);
+      if (item.subject_id) {
+        mapped.subject_name = subjectMap.get(item.subject_id) || item.subject_name;
+      }
+      return mapped;
+    });
   }
 
   async duplicateChallenge(id: number): Promise<DailyChallenge> {
@@ -371,7 +450,17 @@ class DailyChallengeService {
         .single();
 
       if (error) throw error;
-      return data;
+
+      let subjectName = data.subject_name;
+      if (data.subject_id && !subjectName) {
+        const { data: sub } = await supabase.from('subjects').select('name').eq('id', data.subject_id).maybeSingle();
+        if (sub) subjectName = sub.name;
+      }
+
+      return {
+        ...this.mapFromBackend(data),
+        subject_name: subjectName
+      };
     } catch (error: any) {
       console.error('Erro ao alternar status ativo no Supabase:', error);
       throw new Error(error.message || 'Erro ao alterar status do desafio');
@@ -382,20 +471,33 @@ class DailyChallengeService {
   async getStudentChallenges(): Promise<DailyChallenge[]> {
     try {
       const now = new Date().toISOString();
-      const { data: challenges, error } = await supabase
-        .from(this.tableName)
-        .select('*')
-        .eq('is_active', true)
-        .lte('start_date', now)
-        .gte('end_date', now)
-        .order('created_at', { ascending: false });
+      const [challengesResult, subjectMap] = await Promise.all([
+        supabase
+          .from(this.tableName)
+          .select('*')
+          .eq('is_active', true)
+          .lte('start_date', now)
+          .gte('end_date', now)
+          .order('created_at', { ascending: false }),
+        this.getSubjectMap()
+      ]);
+
+      const { data: challenges, error } = challengesResult;
 
       if (error) throw error;
       if (!challenges || challenges.length === 0) return [];
 
       // Verificar submissões do usuário logado
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return challenges;
+      if (!user) {
+        return challenges.map(c => {
+          const mapped = this.mapFromBackend(c);
+          if (c.subject_id) {
+            mapped.subject_name = subjectMap.get(c.subject_id) || c.subject_name;
+          }
+          return mapped;
+        });
+      }
 
       const challengeIds = challenges.map(c => c.id);
       const { data: submissions } = await supabase
@@ -411,8 +513,12 @@ class DailyChallengeService {
 
       return challenges.map(c => {
         const sub = completedMap.get(c.id);
+        const mapped = this.mapFromBackend(c);
+        if (c.subject_id) {
+          mapped.subject_name = subjectMap.get(c.subject_id) || c.subject_name;
+        }
         return {
-          ...c,
+          ...mapped,
           is_completed: Boolean(sub),
           completed_at: sub?.submitted_at || sub?.created_at
         };
