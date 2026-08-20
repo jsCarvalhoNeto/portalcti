@@ -48,7 +48,7 @@ const DailyChallengeEditor: React.FC<DailyChallengeEditorProps> = ({
         difficulty: challenge.difficulty || 'medium',
         points: challenge.points || 10,
         subject_id: challenge.subject_id?.toString() || '0',
-        active_date: challenge.active_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+        active_date: (challenge.start_date || challenge.active_date || challenge.created_at)?.split('T')[0] || new Date().toISOString().split('T')[0],
         type: challenge.type || 'question',
         requires_validation: Boolean(challenge.requires_validation || challenge.correct_answer),
         correct_answer: challenge.correct_answer || ''

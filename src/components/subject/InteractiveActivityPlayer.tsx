@@ -8,7 +8,6 @@ import {
   RotateCcw, 
   X, 
   Gamepad2, 
-  Code, 
   Clock, 
   Layers, 
   CheckCircle2 
@@ -29,7 +28,6 @@ export default function InteractiveActivityPlayer({
   subjectName
 }: InteractiveActivityPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showCode, setShowCode] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -121,17 +119,6 @@ export default function InteractiveActivityPlayer({
             {/* Controles de Ação */}
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCode(!showCode)}
-                className="text-slate-300 hover:text-white hover:bg-slate-800 text-xs hidden sm:flex items-center gap-1"
-                title="Inspecionar código HTML do artefato"
-              >
-                <Code className="w-4 h-4" />
-                {showCode ? 'Ocultar Código' : 'Ver Código'}
-              </Button>
-
-              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRestart}
@@ -187,29 +174,6 @@ export default function InteractiveActivityPlayer({
                 allow="autoplay; fullscreen; camera; microphone"
               />
             </div>
-
-            {/* Painel lateral de visualização do código (opcional) */}
-            {showCode && (
-              <div className="w-96 border-l border-slate-800 bg-slate-950 p-4 overflow-y-auto flex flex-col shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Code className="w-3.5 h-3.5 text-primary" />
-                    Código Fonte do Artefato
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowCode(false)}
-                    className="text-slate-400 h-6 px-2 text-xs"
-                  >
-                    Fechar
-                  </Button>
-                </div>
-                <pre className="text-xs font-mono text-emerald-400 bg-slate-900 p-3 rounded-lg border border-slate-800 overflow-x-auto whitespace-pre-wrap flex-1">
-                  {activity.code_content}
-                </pre>
-              </div>
-            )}
           </div>
         </div>
       </DialogContent>

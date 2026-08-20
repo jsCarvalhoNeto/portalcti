@@ -9,7 +9,9 @@ export interface DailyChallenge {
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
   subject_id?: number;
-  active_date: string;
+  active_date?: string;
+  start_date?: string;
+  end_date?: string;
   type: 'question' | 'exercise' | 'quiz' | 'reflection';
   created_at?: string;
   updated_at?: string;
@@ -39,6 +41,17 @@ export type UpdateChallengeData = Partial<DailyChallenge>;
 class DailyChallengeService {
   private tableName = 'daily_challenges';
 
+  private mapFromBackend(item: any): DailyChallenge {
+    if (!item) return item;
+    const activeDate = item.start_date || item.active_date || item.created_at || new Date().toISOString();
+    return {
+      ...item,
+      active_date: activeDate,
+      start_date: item.start_date || activeDate,
+      content: item.html_content || item.content || ''
+    };
+  }
+
   async getAllChallenges(): Promise<DailyChallenge[]> {
     const { data, error } = await supabase
       .from(this.tableName)
@@ -49,7 +62,7 @@ class DailyChallengeService {
       console.error('Erro ao obter desafios no Supabase:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(item => this.mapFromBackend(item));
   }
 
   async getChallengeById(id: number): Promise<DailyChallenge> {
@@ -60,7 +73,7 @@ class DailyChallengeService {
       .single();
 
     if (error) throw error;
-    return data;
+    return this.mapFromBackend(data);
   }
 
   async createChallenge(challenge: CreateChallengeData): Promise<DailyChallenge> {
@@ -179,7 +192,7 @@ class DailyChallengeService {
       console.error('Erro ao buscar desafios por matéria:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(item => this.mapFromBackend(item));
   }
 
   async getActiveChallenges(): Promise<DailyChallenge[]> {
@@ -196,7 +209,7 @@ class DailyChallengeService {
       console.error('Erro ao buscar desafios ativos:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(item => this.mapFromBackend(item));
   }
 
   async duplicateChallenge(id: number): Promise<DailyChallenge> {

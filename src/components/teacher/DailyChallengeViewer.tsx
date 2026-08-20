@@ -49,16 +49,27 @@ const DailyChallengeViewer: React.FC<DailyChallengeViewerProps> = ({
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Data não informada';
     try {
+      const dateOnly = dateString.split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        });
+      }
       const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Data não informada';
       return date.toLocaleDateString('pt-BR', { 
         day: 'numeric', 
         month: 'long', 
         year: 'numeric' 
       });
     } catch {
-      return dateString;
+      return dateString || 'Data não informada';
     }
   };
 
@@ -102,7 +113,7 @@ const DailyChallengeViewer: React.FC<DailyChallengeViewerProps> = ({
               
               <Badge variant="outline" className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {formatDate(challenge.active_date)}
+                {formatDate(challenge.start_date || challenge.active_date || challenge.created_at)}
               </Badge>
 
               {challenge.correct_answer && (

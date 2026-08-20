@@ -168,6 +168,23 @@ export default function TeacherDailyChallengesTab() {
       : 0
   };
 
+  const formatChallengeDate = (challenge: DailyChallenge) => {
+    const rawDate = challenge.start_date || challenge.active_date || challenge.created_at;
+    if (!rawDate) return 'Não definida';
+    try {
+      const dateOnly = rawDate.split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+      }
+      const date = new Date(rawDate);
+      if (isNaN(date.getTime())) return 'Não definida';
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return 'Não definida';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -308,7 +325,7 @@ export default function TeacherDailyChallengesTab() {
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      Data: {new Date(challenge.active_date).toLocaleDateString('pt-BR')}
+                      Data: {formatChallengeDate(challenge)}
                     </span>
                   </div>
                 </div>
