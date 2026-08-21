@@ -52,7 +52,7 @@ export const subjectLessonService = {
         return subjectLessonService.getLocalLessons(numSubjectId);
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}${numSubjectId}`, JSON.stringify(data));
         return data as SubjectLesson[];
       }
@@ -102,16 +102,19 @@ export const subjectLessonService = {
       console.warn('Não foi possível obter o usuário logado para a criação da aula:', e);
     }
 
-    const payload = {
-      subject_id: data.subject_id,
+    // Sanitizar data da aula para não enviar string vazia para coluna DATE do PostgreSQL
+    const formattedDate = data.lesson_date && data.lesson_date.trim() !== '' ? data.lesson_date : null;
+
+    const payload: any = {
+      subject_id: Number(data.subject_id),
       teacher_id: currentUserId,
       title: data.title.trim(),
-      lesson_date: data.lesson_date || null,
+      lesson_date: formattedDate,
       content: data.content || '',
-      is_completed: data.is_completed ?? false,
+      is_completed: Boolean(data.is_completed),
       period: data.period || '1',
       evaluation_type: data.evaluation_type || 'none',
-      order_index: data.order_index ?? 0,
+      order_index: Number(data.order_index) || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -124,26 +127,16 @@ export const subjectLessonService = {
         .single();
 
       if (error) {
-        console.warn('Erro ao inserir aula no Supabase, salvando localmente:', error.message);
-        const fallbackItem: SubjectLesson = {
-          id: 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-          ...payload
-        };
-        subjectLessonService.saveToLocalStorage(data.subject_id, fallbackItem);
-        return fallbackItem;
+        console.error('Erro ao inserir aula no Supabase:', error);
+        throw new Error(error.message || 'Erro ao criar aula no banco de dados');
       }
 
       const createdItem = inserted as SubjectLesson;
       subjectLessonService.saveToLocalStorage(data.subject_id, createdItem);
       return createdItem;
-    } catch (err) {
-      console.warn('Exceção ao criar aula no Supabase, salvando localmente:', err);
-      const fallbackItem: SubjectLesson = {
-        id: 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-        ...payload
-      };
-      subjectLessonService.saveToLocalStorage(data.subject_id, fallbackItem);
-      return fallbackItem;
+    } catch (err: any) {
+      console.error('Exceção ao criar aula no Supabase:', err);
+      throw err;
     }
   },
 
@@ -151,12 +144,22 @@ export const subjectLessonService = {
    * Atualizar uma aula existente
    */
   update: async (id: string, data: UpdateLessonData, subjectId?: number | string): Promise<SubjectLesson> => {
+    // Sanitizar payload para o Supabase (colunas DATE exigem null quando vazias)
     const updatePayload: any = {
-      ...data,
       updated_at: new Date().toISOString()
     };
 
-    if (data.title) updatePayload.title = data.title.trim();
+    if (data.title !== undefined) updatePayload.title = data.title.trim();
+    if (data.content !== undefined) updatePayload.content = data.content;
+    if (data.is_completed !== undefined) updatePayload.is_completed = Boolean(data.is_completed);
+    if (data.period !== undefined) updatePayload.period = data.period;
+    if (data.evaluation_type !== undefined) updatePayload.evaluation_type = data.evaluation_type;
+    if (data.order_index !== undefined) updatePayload.order_index = Number(data.order_index) || 0;
+    if (data.subject_id !== undefined) updatePayload.subject_id = Number(data.subject_id);
+
+    if (data.lesson_date !== undefined) {
+      updatePayload.lesson_date = data.lesson_date && data.lesson_date.trim() !== '' ? data.lesson_date : null;
+    }
 
     try {
       const { data: updated, error } = await supabase
@@ -167,35 +170,18 @@ export const subjectLessonService = {
         .single();
 
       if (error) {
-        console.warn('Erro ao atualizar no Supabase, atualizando localmente:', error.message);
-        if (subjectId) {
-          const localList = subjectLessonService.getLocalLessons(Number(subjectId));
-          const index = localList.findIndex(item => String(item.id) === String(id));
-          if (index !== -1) {
-            const merged = { ...localList[index], ...updatePayload };
-            subjectLessonService.updateInLocalStorage(Number(subjectId), merged);
-            return merged;
-          }
-        }
-        throw error;
+        console.error('Erro ao atualizar aula no Supabase:', error);
+        throw new Error(error.message || 'Erro ao persistir alterações no banco de dados');
       }
 
       const updatedItem = updated as SubjectLesson;
-      if (subjectId || updatedItem.subject_id) {
-        subjectLessonService.updateInLocalStorage(Number(subjectId || updatedItem.subject_id), updatedItem);
+      const targetSubjectId = Number(subjectId || updatedItem.subject_id);
+      if (targetSubjectId) {
+        subjectLessonService.updateInLocalStorage(targetSubjectId, updatedItem);
       }
       return updatedItem;
-    } catch (err) {
-      console.warn('Exceção ao atualizar aula no Supabase:', err);
-      if (subjectId) {
-        const localList = subjectLessonService.getLocalLessons(Number(subjectId));
-        const index = localList.findIndex(item => String(item.id) === String(id));
-        if (index !== -1) {
-          const merged = { ...localList[index], ...updatePayload };
-          subjectLessonService.updateInLocalStorage(Number(subjectId), merged);
-          return merged;
-        }
-      }
+    } catch (err: any) {
+      console.error('Exceção ao atualizar aula no Supabase:', err);
       throw err;
     }
   },
@@ -219,13 +205,15 @@ export const subjectLessonService = {
         .eq('id', id);
 
       if (error) {
-        console.warn('Erro ao deletar no Supabase, removendo do local:', error.message);
+        console.error('Erro ao deletar no Supabase:', error);
+        throw new Error(error.message || 'Erro ao excluir aula no banco de dados');
       }
     } catch (err) {
-      console.warn('Exceção ao deletar no Supabase:', err);
+      console.error('Exceção ao deletar no Supabase:', err);
+      throw err;
     }
 
-    // Sempre remove do cache local
+    // Atualiza cache local
     const localList = subjectLessonService.getLocalLessons(numSubjectId);
     const filtered = localList.filter(item => String(item.id) !== String(id));
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${numSubjectId}`, JSON.stringify(filtered));
