@@ -46,7 +46,7 @@ export default function PublicEducationalGamePage() {
       <header className="px-4 py-3 bg-slate-900 border-b border-slate-800 text-white">
         <div className="max-w-6xl mx-auto flex gap-3 items-center"><Gamepad2 className="text-violet-400" /><div><h1 className="font-bold">{game.title}</h1>{game.description && <p className="text-xs text-slate-400">{game.description}</p>}</div></div>
       </header>
-      <section className="max-w-6xl mx-auto min-h-[calc(100vh-69px)]"><EducationalGamePlayer title={game.title} code={game.code_content} role="player" roomId={game.share_code} /></section>
+      <section className="max-w-6xl mx-auto min-h-[calc(100vh-69px)]"><EducationalGamePlayer title={game.title} code={game.code_content} gameId={game.id} role="player" roomId={game.share_code} /></section>
     </main>
   );
 }

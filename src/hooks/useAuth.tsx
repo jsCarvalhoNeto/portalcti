@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { login, logout, getCurrentUser, signUp as apiSignUp, type UserProfile as AuthUserProfile, type SignUpCredentials } from '@/services/authService';
 import { hasTemporaryPassword } from '@/services/studentService';
 import { supabase } from '@/lib/supabaseClient';
@@ -40,14 +40,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [hasTempPassword, setHasTempPassword] = useState(false);
 
+  // Referência para comparar o usuário atual e evitar re-renders desnecessários
+  const currentUserRef = useRef<{ id: string; email: string; role: string | null } | null>(null);
+
   const setUserData = useCallback((authUser: AuthUserProfile | null) => {
     if (!authUser) {
-      setUser(null);
-      setProfile(null);
-      setUserRole(null);
-      setHasTempPassword(false);
+      if (currentUserRef.current !== null) {
+        currentUserRef.current = null;
+        setUser(null);
+        setProfile(null);
+        setUserRole(null);
+        setHasTempPassword(false);
+      }
       return;
     }
+
+    // Se o usuário e papel continuam exatamente os mesmos, NÃO recria os objetos de estado
+    if (
+      currentUserRef.current &&
+      currentUserRef.current.id === authUser.id &&
+      currentUserRef.current.email === authUser.email &&
+      currentUserRef.current.role === authUser.role
+    ) {
+      return;
+    }
+
+    currentUserRef.current = {
+      id: authUser.id,
+      email: authUser.email,
+      role: authUser.role || null
+    };
 
     const userData = { id: authUser.id, email: authUser.email };
     const profileData: UserProfile = {
@@ -55,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user_id: authUser.id,
       full_name: authUser.full_name,
       email: authUser.email,
-      student_registration: null, // Pode ser obtido do backend se necessário
+      student_registration: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -80,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     const checkSession = async () => {
-      setLoading(true);
       try {
         const currentUser = await getCurrentUser();
         if (currentUser && active) {
@@ -97,8 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Escutar mudanças de estado de autenticação no Supabase de forma reativa
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔔 Supabase Auth - Evento:', event);
+      // Ignorar recarregamentos destrutivos na renovação de token se o usuário já estiver carregado
+      if (event === 'TOKEN_REFRESHED') {
+        if (session?.user && currentUserRef.current?.id === session.user.id) {
+          return;
+        }
+      }
+
       if (session?.user) {
+        if (currentUserRef.current?.id === session.user.id) {
+          return;
+        }
         const currentUser = await getCurrentUser();
         if (currentUser && active) {
           setUserData(currentUser);

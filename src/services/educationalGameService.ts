@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
 export type EducationalGameAccessMode = 'classroom' | 'online';
+export type EducationalGameCapability = 'singleplayer' | 'multiplayer' | 'keyboard' | 'touch' | 'realtime';
 
 export interface EducationalGame {
   id: string;
@@ -11,6 +12,12 @@ export interface EducationalGame {
   access_mode: EducationalGameAccessMode;
   is_published: boolean;
   share_code: string;
+  template_key?: string | null;
+  template_version?: number;
+  capabilities?: EducationalGameCapability[];
+  settings?: Record<string, unknown>;
+  revision?: number;
+  published_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +28,10 @@ export interface SaveEducationalGameData {
   code_content: string;
   access_mode: EducationalGameAccessMode;
   is_published: boolean;
+  template_key?: string | null;
+  template_version?: number;
+  capabilities?: EducationalGameCapability[];
+  settings?: Record<string, unknown>;
 }
 
 const createShareCode = () => {
@@ -64,7 +75,11 @@ export const educationalGameService = {
         code_content: game.code_content,
         access_mode: game.access_mode,
         is_published: game.is_published,
-        share_code: createShareCode()
+        share_code: createShareCode(),
+        template_key: game.template_key || null,
+        template_version: game.template_version || 1,
+        capabilities: game.capabilities || ['singleplayer', 'keyboard', 'touch'],
+        settings: game.settings || {}
       })
       .select()
       .single();
@@ -80,7 +95,11 @@ export const educationalGameService = {
         description: game.description.trim(),
         code_content: game.code_content,
         access_mode: game.access_mode,
-        is_published: game.is_published
+        is_published: game.is_published,
+        template_key: game.template_key || null,
+        template_version: game.template_version || 1,
+        capabilities: game.capabilities || ['singleplayer', 'keyboard', 'touch'],
+        settings: game.settings || {}
       })
       .eq('id', id)
       .eq('teacher_id', teacherId)

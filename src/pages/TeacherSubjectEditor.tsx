@@ -31,6 +31,7 @@ import {
   REVERSE_SECTION_TYPE_MAP 
 } from '@/services/subjectContentService';
 import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
+import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -170,10 +171,10 @@ export default function TeacherSubjectEditor() {
   }, [id, toast]);
 
   useEffect(() => {
-    if (id && user && isTeacher) {
+    if (id && user?.id && isTeacher) {
       fetchSubjectData();
     }
-  }, [id, user, isTeacher, fetchSubjectData]);
+  }, [id, user?.id, isTeacher, fetchSubjectData]);
 
   const handleSaveContent = async (section: string, content: string, showToast = true) => {
     if (!id) return;
@@ -472,92 +473,102 @@ export default function TeacherSubjectEditor() {
           {/* Editores de Conteúdo */}
           {editorTabs.map(item => (
             <TabsContent key={item.value} value={item.value} className="space-y-6 mt-0">
-              <Card className="bg-card border shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <item.icon className="w-5 h-5 text-primary" />
-                    {item.label}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <MarkdownRichTextEditor
-                      key={`${id}-${item.value}`}
-                      content={contentData[item.value] 
-                        ? contentData[item.value].map(content => content.content).join('\n\n') 
-                        : ''
-                      }
-                      className="min-h-[250px] max-h-[60vh] overflow-y-auto"
-                      onChange={(newContent: string) => {
-                        setContentData(prev => ({
-                          ...prev,
-                          [item.value]: [{
-                            id: prev[item.value]?.[0]?.id || 'new',
-                            subject_id: Number(id),
-                            section_type: item.value,
-                            title: item.label,
-                            content: newContent,
-                            order_index: 0,
-                            is_active: true
-                          }]
-                        }));
-                      }}
-                      placeholder={`Digite o conteúdo de ${item.label}...`}
-                    />
-                    
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleClearContent(item.value)}
-                      >
-                        Limpar {item.label}
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm"
-                        onClick={() => {
-                          const content = contentData[item.value]?.[0]?.content || '';
-                          handleSaveContent(item.value, content);
-                        }}
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Salvar {item.label}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Resources Section */}
-              <Card className="bg-card border shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base">Recursos de {item.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {resourcesData[item.value]?.length > 0 ? (
-                      resourcesData[item.value].map((resource, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                              <BookOpen className="w-4 h-4 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-sm">{resource.title}</h4>
-                              {resource.description && (
-                                <p className="text-xs text-muted-foreground">{resource.description}</p>
-                              )}
-                            </div>
-                          </div>
+              {item.value === 'material' ? (
+                <SubjectSchedulePanel
+                  subjectId={id || ''}
+                  subjectName={subject.name}
+                  canManage={true}
+                />
+              ) : (
+                <>
+                  <Card className="bg-card border shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <item.icon className="w-5 h-5 text-primary" />
+                        {item.label}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <MarkdownRichTextEditor
+                          key={`${id}-${item.value}`}
+                          content={contentData[item.value] 
+                            ? contentData[item.value].map(content => content.content).join('\n\n') 
+                            : ''
+                          }
+                          className="min-h-[250px] max-h-[60vh] overflow-y-auto"
+                          onChange={(newContent: string) => {
+                            setContentData(prev => ({
+                              ...prev,
+                              [item.value]: [{
+                                id: prev[item.value]?.[0]?.id || 'new',
+                                subject_id: Number(id),
+                                section_type: item.value,
+                                title: item.label,
+                                content: newContent,
+                                order_index: 0,
+                                is_active: true
+                              }]
+                            }));
+                          }}
+                          placeholder={`Digite o conteúdo de ${item.label}...`}
+                        />
+                        
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleClearContent(item.value)}
+                          >
+                            Limpar {item.label}
+                          </Button>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => {
+                              const content = contentData[item.value]?.[0]?.content || '';
+                              handleSaveContent(item.value, content);
+                            }}
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            Salvar {item.label}
+                          </Button>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground/60 italic">Nenhum recurso anexado ainda...</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Resources Section */}
+                  <Card className="bg-card border shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">Recursos de {item.label}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {resourcesData[item.value]?.length > 0 ? (
+                          resourcesData[item.value].map((resource, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                  <BookOpen className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-sm">{resource.title}</h4>
+                                  {resource.description && (
+                                    <p className="text-xs text-muted-foreground">{resource.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground/60 italic">Nenhum recurso anexado ainda...</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
           ))}
         </main>

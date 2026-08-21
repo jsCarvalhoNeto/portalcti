@@ -31,6 +31,7 @@ import {
   normalizeSectionType 
 } from '@/services/subjectContentService';
 import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
+import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -515,7 +516,11 @@ export default function SubjectDetail() {
 
           {/* Cronograma tab */}
           <TabsContent value="material" className="mt-0">
-            {renderContentSection('material')}
+            <SubjectSchedulePanel
+              subjectId={id || ''}
+              subjectName={subject.name}
+              canManage={false}
+            />
           </TabsContent>
 
           {/* Atividades tab */}

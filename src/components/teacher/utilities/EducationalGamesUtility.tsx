@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import educationalGameService, { EducationalGame, EducationalGameAccessMode, SaveEducationalGameData } from '@/services/educationalGameService';
 import EducationalGamePlayer from './EducationalGamePlayer';
-import { MAZE_GAME_DESCRIPTION, MAZE_GAME_TEMPLATE, MAZE_GAME_TITLE } from './educationalMazeGameTemplate';
+import { getEducationalGameTemplate } from './educationalGameTemplates';
 import { Check, Copy, Edit, ExternalLink, Gamepad2, Loader2, Play, Plus, QrCode, Trash2, Users } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -74,8 +74,19 @@ export default function EducationalGamesUtility() {
   };
 
   const loadMazeGame = () => {
+    const template = getEducationalGameTemplate('maze-college');
+    if (!template) return;
     setEditingGame(null);
-    setForm({ title: MAZE_GAME_TITLE, description: MAZE_GAME_DESCRIPTION, code_content: MAZE_GAME_TEMPLATE, access_mode: 'online', is_published: false });
+    setForm({
+      title: template.title,
+      description: template.description,
+      code_content: template.code,
+      access_mode: template.accessMode,
+      is_published: false,
+      template_key: template.key,
+      template_version: template.version,
+      capabilities: template.capabilities
+    });
     setIsEditorOpen(true);
   };
 
@@ -86,7 +97,11 @@ export default function EducationalGamesUtility() {
       description: game.description || '',
       code_content: game.code_content,
       access_mode: game.access_mode,
-      is_published: game.is_published
+      is_published: game.is_published,
+      template_key: game.template_key,
+      template_version: game.template_version,
+      capabilities: game.capabilities,
+      settings: game.settings
     });
     setIsEditorOpen(true);
   };
@@ -217,7 +232,7 @@ export default function EducationalGamesUtility() {
       </Dialog>
 
       <Dialog open={Boolean(gameToPlay)} onOpenChange={open => !open && setGameToPlay(null)}>
-        <DialogContent className="max-w-[96vw] w-[1300px] h-[90vh] p-0 overflow-hidden"><EducationalGamePlayer title={gameToPlay?.title || ''} code={gameToPlay?.code_content || ''} role="teacher" roomId={gameToPlay?.share_code} /></DialogContent>
+        <DialogContent className="max-w-[96vw] w-[1300px] h-[90vh] p-0 overflow-hidden"><EducationalGamePlayer title={gameToPlay?.title || ''} code={gameToPlay?.code_content || ''} gameId={gameToPlay?.id} role="teacher" roomId={gameToPlay?.share_code} /></DialogContent>
       </Dialog>
     </div>
   );

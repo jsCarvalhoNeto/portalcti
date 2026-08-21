@@ -59,7 +59,7 @@ export default function InteractiveActivities() {
     if (id) {
       loadSubjectAndActivities();
     }
-  }, [id, user]);
+  }, [id, user?.id]);
 
   const loadSubjectAndActivities = async () => {
     if (!id) return;
