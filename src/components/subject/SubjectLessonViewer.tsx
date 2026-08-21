@@ -236,7 +236,24 @@ export default function SubjectLessonViewer({
         </DialogHeader>
 
         {/* Conteúdo Renderizado da Aula */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40">
+        <div 
+          className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40"
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const copyBtn = target.closest('button') as HTMLButtonElement | null;
+            if (copyBtn && copyBtn.innerText.includes('Copiar')) {
+              const container = copyBtn.closest('.code-block-container');
+              const codeEl = container?.querySelector('code');
+              if (codeEl) {
+                navigator.clipboard.writeText(codeEl.innerText || '');
+                copyBtn.innerText = '✓ Copiado!';
+                setTimeout(() => {
+                  copyBtn.innerText = 'Copiar';
+                }, 2000);
+              }
+            }
+          }}
+        >
           <div 
             className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
             dangerouslySetWarningContent={{ __html: renderedHtml }}

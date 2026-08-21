@@ -68,21 +68,74 @@ ${cleanContent || 'Digite o conteúdo aqui...'}
 }
 
 /**
+ * Protege e escapa tags HTML soltas no texto que não estão em blocos de código,
+ * garantindo que explicações de tags (ex: <hr>, <img>, <a>) apareçam como texto/código e não como HTML executado.
+ */
+export function escapeHtmlTagsInMarkdown(markdown: string): string {
+  if (!markdown) return '';
+
+  const placeholders: Array<{ key: string; value: string }> = [];
+  let counter = 0;
+
+  // 1. Proteger blocos de código com cercas (``` ... ``` ou ~~~ ... ~~~)
+  let text = markdown.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, (match) => {
+    const key = `___CODE_BLOCK_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  // 2. Proteger código inline (` ... `)
+  text = text.replace(/(`[^`\n]+`)/g, (match) => {
+    const key = `___INLINE_CODE_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  // 3. Proteger sintaxe colapsável personalizada (??? "...")
+  text = text.replace(/^(\?\?\?\s*"[^"]+"\s*)/gm, (match) => {
+    const key = `___COLLAPSIBLE_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  // 4. Escapar tags HTML soltas no texto para que sejam exibidas como código/texto visível
+  text = text.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (match, slash, tagName, rest) => {
+    const lowerTag = tagName.toLowerCase();
+    // Preservar tags estruturais internas do sistema
+    if (['details', 'summary'].includes(lowerTag)) {
+      return match;
+    }
+    return `&lt;${slash}${tagName}${rest}&gt;`;
+  });
+
+  // 5. Restaurar os blocos protegidos
+  placeholders.forEach(({ key, value }) => {
+    text = text.replace(key, value);
+  });
+
+  return text;
+}
+
+/**
  * Converte markdown para HTML com syntax highlighting e quebras preservadas
  */
 export function markdownToHtml(markdown: string): string {
   if (!markdown) return '';
   try {
-    // Processar elementos colapsáveis antes do marked
-    const processedMarkdown = processCollapsibleElements(markdown);
+    // 1. Escapar tags HTML literais do texto (ex: <hr>, <img>, <a>) para não virarem elementos DOM
+    const escapedMarkdown = escapeHtmlTagsInMarkdown(markdown);
+
+    // 2. Processar elementos colapsáveis antes do marked
+    const processedMarkdown = processCollapsibleElements(escapedMarkdown);
     
+    // 3. Parser do Markdown
     const html = marked.parse(processedMarkdown, { 
       gfm: true,
       breaks: true,
       async: false
     }) as string;
     
-    // Aplicar syntax highlighting aos blocos de código
+    // 4. Aplicar syntax highlighting aos blocos de código
     return processCodeBlocks(html);
   } catch (error) {
     console.error('Erro ao converter markdown:', error);

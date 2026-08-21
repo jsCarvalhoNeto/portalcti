@@ -508,6 +508,21 @@ export default function SubjectLessonEditor({
               <TabsContent value="preview" className="mt-0">
                 <div 
                   className="markdown-rendered min-h-[300px] max-h-[440px] overflow-y-auto p-6 border rounded-lg bg-card/60 shadow-inner break-words"
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    const copyBtn = target.closest('button') as HTMLButtonElement | null;
+                    if (copyBtn && copyBtn.innerText.includes('Copiar')) {
+                      const container = copyBtn.closest('.code-block-container');
+                      const codeEl = container?.querySelector('code');
+                      if (codeEl) {
+                        navigator.clipboard.writeText(codeEl.innerText || '');
+                        copyBtn.innerText = '✓ Copiado!';
+                        setTimeout(() => {
+                          copyBtn.innerText = 'Copiar';
+                        }, 2000);
+                      }
+                    }
+                  }}
                   dangerouslySetWarningContent={{ __html: previewHtml }}
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
