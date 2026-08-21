@@ -31,7 +31,6 @@ import {
   Edit3, 
   HelpCircle,
   Award,
-  Clock,
   Layers,
   Code2,
   List,
@@ -94,6 +93,24 @@ Explicação introdutória sobre o assunto da aula...
 3. Prepare as dúvidas para a próxima aula.
 `;
 
+const CODE_LANGUAGES = [
+  { value: 'html', label: 'HTML5' },
+  { value: 'css', label: 'CSS3' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'jsx', label: 'React (JSX)' },
+  { value: 'tsx', label: 'React (TSX)' },
+  { value: 'php', label: 'PHP' },
+  { value: 'python', label: 'Python' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C / C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'bash', label: 'Bash / Terminal' },
+  { value: 'json', label: 'JSON' },
+  { value: 'markdown', label: 'Markdown' },
+];
+
 export default function SubjectLessonEditor({
   isOpen,
   onClose,
@@ -114,6 +131,7 @@ export default function SubjectLessonEditor({
     order_index: nextOrderIndex
   });
 
+  const [selectedLanguage, setSelectedLanguage] = useState('html');
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -156,6 +174,12 @@ export default function SubjectLessonEditor({
       ...prev,
       content: prev.content ? `${prev.content}\n\n${snippet}` : snippet
     }));
+  };
+
+  const handleInsertCodeBlock = () => {
+    const lang = selectedLanguage || 'html';
+    const snippet = `\`\`\`${lang}\n// Digite ou cole seu código ${lang.toUpperCase()} aqui\n\`\`\``;
+    handleInsertSnippet(snippet);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,7 +275,7 @@ export default function SubjectLessonEditor({
               <Input
                 id="lesson-date"
                 type="date"
-                value={formData.lesson_date || ''}
+                value={formData.lesson_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, lesson_date: e.target.value }))}
                 className="bg-background"
               />
@@ -259,7 +283,7 @@ export default function SubjectLessonEditor({
 
             <div className="space-y-2">
               <Label htmlFor="lesson-period" className="text-sm font-semibold flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-purple-500" />
+                <Layers className="w-4 h-4 text-purple-500" />
                 Período / Bimestre
               </Label>
               <Select
@@ -274,7 +298,6 @@ export default function SubjectLessonEditor({
                   <SelectItem value="2">2º Período (2º Bimestre)</SelectItem>
                   <SelectItem value="3">3º Período (3º Bimestre)</SelectItem>
                   <SelectItem value="4">4º Período (4º Bimestre)</SelectItem>
-                  <SelectItem value="none">Sem Período Específico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -303,37 +326,37 @@ export default function SubjectLessonEditor({
           {/* Switch de Status Realizada */}
           <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-colors">
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2 font-semibold text-sm text-foreground">
-                <CheckCircle2 className={`w-4 h-4 ${formData.is_completed ? 'text-green-500' : 'text-muted-foreground'}`} />
+              <Label htmlFor="lesson-status" className="text-sm font-semibold flex items-center gap-1.5 cursor-pointer">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
                 Status de Realização da Aula
-              </div>
+              </Label>
               <p className="text-xs text-muted-foreground">
                 {formData.is_completed 
-                  ? 'Esta aula já foi ministrada e concluída com a turma.'
+                  ? 'Esta aula já foi ministrada e constará como realizada para os estudantes.'
                   : 'Esta aula está agendada ou pendente de realização.'}
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant={formData.is_completed ? 'default' : 'secondary'} className={formData.is_completed ? 'bg-green-600 hover:bg-green-700 text-white' : ''}>
-                {formData.is_completed ? 'Aula Realizada' : 'Pendente / Agendada'}
+              <Badge variant={formData.is_completed ? "default" : "outline"} className={formData.is_completed ? "bg-green-600 hover:bg-green-700" : ""}>
+                {formData.is_completed ? "Concluída" : "Pendente / Agendada"}
               </Badge>
               <Switch
-                checked={Boolean(formData.is_completed)}
+                id="lesson-status"
+                checked={formData.is_completed}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_completed: checked }))}
               />
             </div>
           </div>
 
-          {/* Editor e Preview de Conteúdo em Markdown */}
+          {/* Área do Conteúdo da Aula */}
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <Label className="text-sm font-semibold flex items-center gap-1.5">
                 <Edit3 className="w-4 h-4 text-primary" />
                 Conteúdo Textual da Aula (Markdown)
               </Label>
-              
-              {/* Botões de Ações Rápidas de Markdown */}
-              <div className="flex items-center flex-wrap gap-1.5">
+
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -360,32 +383,131 @@ export default function SubjectLessonEditor({
                     Pré-visualização
                   </TabsTrigger>
                 </TabsList>
-
-                {activeTab === 'editor' && (
-                  <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded"># Título</span>
-                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">**Negrito**</span>
-                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">```código```</span>
-                  </div>
-                )}
               </div>
+
+              {activeTab === 'editor' && (
+                <div className="p-2.5 bg-muted/40 border rounded-t-lg flex flex-wrap items-center justify-between gap-2 border-b-0">
+                  {/* Atalhos Rápidos de Formatação */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('## Novo Tópico\nDescrição do tópico aqui...')}
+                      title="Título H2"
+                      className="h-7 px-2 text-xs font-bold"
+                    >
+                      H2
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('**Texto em Negrito**')}
+                      title="Negrito"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Bold className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('*Texto em Itálico*')}
+                      title="Itálico"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Italic className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('- Item 1\n- Item 2\n- Item 3')}
+                      title="Lista"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Valor A | Valor B |')}
+                      title="Tabela"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <TableIcon className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('> **Nota Importante:** Digite aqui sua observação ou aviso.')}
+                      title="Citação / Dica"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Quote className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleInsertSnippet('---\n')}
+                      title="Linha Divisória"
+                      className="h-7 px-2 text-xs font-mono"
+                    >
+                      ───
+                    </Button>
+                  </div>
+
+                  {/* Seletor de Linguagem e Inserir Código */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                      <Code2 className="w-3.5 h-3.5 text-primary" />
+                      Linguagem:
+                    </span>
+                    <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                      <SelectTrigger className="h-7 text-xs w-[130px] bg-background">
+                        <SelectValue placeholder="Linguagem" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CODE_LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.value} value={lang.value} className="text-xs">
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleInsertCodeBlock}
+                      className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1 px-2.5 shadow-sm"
+                    >
+                      <Code2 className="w-3 h-3" />
+                      + Inserir Código
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <TabsContent value="editor" className="mt-0 space-y-2">
                 <Textarea
                   placeholder="Cole ou digite aqui o conteúdo em Markdown da aula..."
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  className="font-mono text-sm min-h-[280px] max-h-[400px] leading-relaxed resize-y bg-background"
+                  className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none"
                 />
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5" />
-                  Dica: Você pode colar anotações em Markdown prontas que serão formatadas automaticamente para você e os alunos.
+                  Dica: Você pode colar anotações completas ou usar a barra de ferramentas para inserir códigos formatados com destaque de sintaxe.
                 </p>
               </TabsContent>
 
               <TabsContent value="preview" className="mt-0">
                 <div 
-                  className="min-h-[280px] max-h-[400px] overflow-y-auto p-5 border rounded-lg bg-card/60 prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed break-words prose-p:whitespace-pre-line"
+                  className="markdown-rendered min-h-[300px] max-h-[440px] overflow-y-auto p-6 border rounded-lg bg-card/60 shadow-inner break-words"
                   dangerouslySetWarningContent={{ __html: previewHtml }}
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />

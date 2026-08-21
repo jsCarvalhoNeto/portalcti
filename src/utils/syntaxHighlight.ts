@@ -712,9 +712,38 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Processa blocos de código em HTML e aplica syntax highlighting
+ * Processa blocos de código em HTML e aplica syntax highlighting com header estilizado
  */
 export function processCodeBlocks(html: string): string {
+  const langLabels: Record<string, string> = {
+    html: 'HTML5',
+    css: 'CSS3',
+    javascript: 'JavaScript',
+    js: 'JavaScript',
+    typescript: 'TypeScript',
+    ts: 'TypeScript',
+    jsx: 'React JSX',
+    tsx: 'React TSX',
+    php: 'PHP',
+    python: 'Python',
+    py: 'Python',
+    sql: 'SQL',
+    java: 'Java',
+    c: 'Linguagem C',
+    cpp: 'C++',
+    csharp: 'C#',
+    cs: 'C#',
+    bash: 'Bash / Terminal',
+    sh: 'Shell',
+    powershell: 'PowerShell',
+    json: 'JSON',
+    markdown: 'Markdown',
+    md: 'Markdown',
+    yaml: 'YAML',
+    yml: 'YAML',
+    text: 'Código'
+  };
+
   return html.replace(
     /<pre><code(?:\s+class=["']language-(\w+)["'])?>(.*?)<\/code><\/pre>/gis,
     (_, language, code) => {
@@ -726,11 +755,32 @@ export function processCodeBlocks(html: string): string {
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'");
 
-      // Aplicar syntax highlighting
-      const highlightedCode = highlightCode(decodedCode, language);
-      const detectedLang = language || detectLanguage(decodedCode);
+      const detectedLang = (language || detectLanguage(decodedCode) || 'text').toLowerCase();
+      const highlightedCode = highlightCode(decodedCode, detectedLang);
+      const displayLabel = langLabels[detectedLang] || detectedLang.toUpperCase();
       
-      return `<pre><code class="language-${detectedLang}" data-lang="${detectedLang}">${highlightedCode}</code></pre>`;
+      return `<div class="code-block-container not-prose my-4 rounded-xl border border-slate-800 bg-[#0d1117] overflow-hidden shadow-md">
+  <div class="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-slate-800 text-xs font-mono text-slate-300 select-none">
+    <div class="flex items-center gap-2">
+      <span class="flex gap-1.5 mr-1">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
+      </span>
+      <span class="font-bold text-[11px] tracking-wider text-sky-400 bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800/60">
+        ${displayLabel}
+      </span>
+    </div>
+    <button 
+      type="button" 
+      class="px-2.5 py-1 text-[11px] font-sans font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700/80"
+      onclick="navigator.clipboard.writeText(this.closest('.code-block-container').querySelector('code').innerText); this.innerText='✓ Copiado'; setTimeout(() => this.innerText='Copiar', 2000)"
+    >
+      Copiar
+    </button>
+  </div>
+  <pre class="p-4 text-xs md:text-sm font-mono overflow-x-auto text-slate-100 leading-relaxed bg-transparent m-0"><code class="language-${detectedLang}">${highlightedCode}</code></pre>
+</div>`;
     }
   );
 }
