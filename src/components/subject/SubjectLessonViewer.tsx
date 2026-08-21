@@ -238,11 +238,11 @@ export default function SubjectLessonViewer({
         {/* Conteúdo Renderizado da Aula */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40">
           <div 
-            className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed
+            className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words
               prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-foreground
               prose-h1:text-2xl prose-h2:text-xl prose-h2:border-b prose-h2:pb-2 prose-h2:mt-6 prose-h2:mb-4
               prose-h3:text-lg prose-h3:text-primary prose-h3:mt-4
-              prose-p:leading-relaxed prose-p:my-3
+              prose-p:leading-relaxed prose-p:my-3 prose-p:whitespace-pre-line
               prose-code:bg-muted prose-code:text-primary prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-xs
               prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-xl prose-pre:p-4 prose-pre:shadow-inner
               prose-ul:list-disc prose-ul:my-3 prose-li:my-1

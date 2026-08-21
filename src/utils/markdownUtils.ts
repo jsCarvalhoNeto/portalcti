@@ -5,8 +5,8 @@ import { processCodeBlocks } from './syntaxHighlight';
  * Utilitários para conversão e manipulação de Markdown
  */
 
-// Configurar marked para melhor compatibilidade
-marked.setOptions({
+// Configurar marked para máxima compatibilidade com quebras de linha e Markdown GitHub Flavored
+marked.use({
   breaks: true, // Quebras de linha simples se tornam <br>
   gfm: true, // GitHub Flavored Markdown
 });
@@ -68,16 +68,18 @@ ${cleanContent || 'Digite o conteúdo aqui...'}
 }
 
 /**
- * Converte markdown para HTML com syntax highlighting
+ * Converte markdown para HTML com syntax highlighting e quebras preservadas
  */
 export function markdownToHtml(markdown: string): string {
+  if (!markdown) return '';
   try {
     // Processar elementos colapsáveis antes do marked
     const processedMarkdown = processCollapsibleElements(markdown);
     
-    const html = marked(processedMarkdown, { 
+    const html = marked.parse(processedMarkdown, { 
       gfm: true,
-      breaks: true
+      breaks: true,
+      async: false
     }) as string;
     
     // Aplicar syntax highlighting aos blocos de código

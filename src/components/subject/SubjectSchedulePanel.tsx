@@ -480,7 +480,7 @@ export default function SubjectSchedulePanel({
                 </CardHeader>
 
                 {/* Conteúdo / Prévia */}
-                <CardContent className="pt-2 pb-4 text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                <CardContent className="pt-2 pb-4 text-xs text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line break-words">
                   {lesson.content ? (
                     lesson.content
                       .replace(/^#+\s+/gm, '')

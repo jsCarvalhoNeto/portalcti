@@ -385,7 +385,7 @@ export default function SubjectLessonEditor({
 
               <TabsContent value="preview" className="mt-0">
                 <div 
-                  className="min-h-[280px] max-h-[400px] overflow-y-auto p-5 border rounded-lg bg-card/60 prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed"
+                  className="min-h-[280px] max-h-[400px] overflow-y-auto p-5 border rounded-lg bg-card/60 prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed break-words prose-p:whitespace-pre-line"
                   dangerouslySetWarningContent={{ __html: previewHtml }}
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
