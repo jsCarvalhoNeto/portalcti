@@ -10,6 +10,9 @@ export interface SubjectLesson {
   is_completed: boolean;
   period: '1' | '2' | '3' | '4' | 'none' | string;
   evaluation_type: 'none' | 'parcial' | 'global' | string;
+  pdf_url?: string | null;
+  presentation_url?: string | null;
+  video_url?: string | null;
   order_index: number;
   created_at?: string;
   updated_at?: string;
@@ -23,6 +26,9 @@ export type CreateLessonData = {
   is_completed?: boolean;
   period?: string;
   evaluation_type?: string;
+  pdf_url?: string | null;
+  presentation_url?: string | null;
+  video_url?: string | null;
   order_index?: number;
 };
 
@@ -114,6 +120,9 @@ export const subjectLessonService = {
       is_completed: Boolean(data.is_completed),
       period: data.period || '1',
       evaluation_type: data.evaluation_type || 'none',
+      pdf_url: data.pdf_url && data.pdf_url.trim() !== '' ? data.pdf_url.trim() : null,
+      presentation_url: data.presentation_url && data.presentation_url.trim() !== '' ? data.presentation_url.trim() : null,
+      video_url: data.video_url && data.video_url.trim() !== '' ? data.video_url.trim() : null,
       order_index: Number(data.order_index) || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -156,6 +165,16 @@ export const subjectLessonService = {
     if (data.evaluation_type !== undefined) updatePayload.evaluation_type = data.evaluation_type;
     if (data.order_index !== undefined) updatePayload.order_index = Number(data.order_index) || 0;
     if (data.subject_id !== undefined) updatePayload.subject_id = Number(data.subject_id);
+
+    if (data.pdf_url !== undefined) {
+      updatePayload.pdf_url = data.pdf_url && data.pdf_url.trim() !== '' ? data.pdf_url.trim() : null;
+    }
+    if (data.presentation_url !== undefined) {
+      updatePayload.presentation_url = data.presentation_url && data.presentation_url.trim() !== '' ? data.presentation_url.trim() : null;
+    }
+    if (data.video_url !== undefined) {
+      updatePayload.video_url = data.video_url && data.video_url.trim() !== '' ? data.video_url.trim() : null;
+    }
 
     if (data.lesson_date !== undefined) {
       updatePayload.lesson_date = data.lesson_date && data.lesson_date.trim() !== '' ? data.lesson_date : null;

@@ -24,7 +24,11 @@ import {
   Printer,
   Sparkles,
   Layers,
-  FileText
+  FileText,
+  Presentation,
+  Video,
+  ExternalLink,
+  Link2
 } from 'lucide-react';
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -233,6 +237,57 @@ export default function SubjectLessonViewer({
               </Button>
             </div>
           </div>
+
+          {/* Barra de Recursos Extras & Materiais da Aula */}
+          {(lesson.pdf_url || lesson.presentation_url || lesson.video_url) && (
+            <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between flex-wrap gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <Link2 className="w-3.5 h-3.5 text-primary" />
+                <span>Materiais Complementares:</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {lesson.pdf_url && (
+                  <a
+                    href={lesson.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                  >
+                    <FileText className="w-4 h-4 text-red-500" />
+                    Abrir Material (PDF)
+                    <ExternalLink className="w-3 h-3 opacity-70 ml-0.5" />
+                  </a>
+                )}
+
+                {lesson.presentation_url && (
+                  <a
+                    href={lesson.presentation_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                  >
+                    <Presentation className="w-4 h-4 text-amber-500" />
+                    Abrir Slides / Apresentação
+                    <ExternalLink className="w-3 h-3 opacity-70 ml-0.5" />
+                  </a>
+                )}
+
+                {lesson.video_url && (
+                  <a
+                    href={lesson.video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                  >
+                    <Video className="w-4 h-4 text-purple-500" />
+                    Assistir Videoaula
+                    <ExternalLink className="w-3 h-3 opacity-70 ml-0.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </DialogHeader>
 
         {/* Conteúdo Renderizado da Aula */}

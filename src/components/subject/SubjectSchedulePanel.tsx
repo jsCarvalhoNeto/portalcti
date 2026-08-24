@@ -23,7 +23,10 @@ import {
   Layers,
   ChevronRight,
   GraduationCap,
-  CalendarCheck2
+  CalendarCheck2,
+  Presentation,
+  Video,
+  ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import subjectLessonService, { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
@@ -480,7 +483,7 @@ export default function SubjectSchedulePanel({
                 </CardHeader>
 
                 {/* Conteúdo / Prévia */}
-                <CardContent className="pt-2 pb-4 text-xs text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line break-words">
+                <CardContent className="pt-2 pb-3 text-xs text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line break-words">
                   {lesson.content ? (
                     lesson.content
                       .replace(/^#+\s+/gm, '')
@@ -492,6 +495,54 @@ export default function SubjectSchedulePanel({
                     <span className="italic">Nenhum texto de resumo cadastrado.</span>
                   )}
                 </CardContent>
+
+                {/* Recursos Extras da Aula (PDF, Slides, Vídeo) */}
+                {(lesson.pdf_url || lesson.presentation_url || lesson.video_url) && (
+                  <div className="px-6 pb-3 pt-0 flex items-center gap-2 flex-wrap">
+                    {lesson.pdf_url && (
+                      <a
+                        href={lesson.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 hover:bg-red-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                        title="Abrir Material Complementar em PDF"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-red-500" />
+                        PDF
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                      </a>
+                    )}
+                    {lesson.presentation_url && (
+                      <a
+                        href={lesson.presentation_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 hover:bg-amber-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                        title="Abrir Apresentação de Slides"
+                      >
+                        <Presentation className="w-3.5 h-3.5 text-amber-500" />
+                        Apresentação
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                      </a>
+                    )}
+                    {lesson.video_url && (
+                      <a
+                        href={lesson.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/25 hover:bg-purple-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                        title="Assistir Videoaula"
+                      >
+                        <Video className="w-3.5 h-3.5 text-purple-500" />
+                        Vídeo
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Rodapé com Ações */}
@@ -500,11 +551,11 @@ export default function SubjectSchedulePanel({
                   variant="default"
                   size="sm"
                   onClick={() => handleOpenView(lesson)}
-                  className="flex-1 bg-primary/90 hover:bg-primary text-primary-foreground font-semibold text-xs gap-1.5 h-8"
+                  className="flex-1 w-full bg-primary/90 hover:bg-primary text-primary-foreground font-semibold text-xs gap-1.5 h-8 px-3"
                 >
-                  <FileText className="w-3.5 h-3.5" />
-                  Ver Aula Completa
-                  <ChevronRight className="w-3 h-3 ml-auto opacity-70" />
+                  <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Ver Aula Completa</span>
+                  <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-70 flex-shrink-0" />
                 </Button>
 
                 {canManage && (

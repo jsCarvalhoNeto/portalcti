@@ -37,7 +37,11 @@ import {
   Bold,
   Italic,
   Quote,
-  Table as TableIcon
+  Table as TableIcon,
+  Presentation,
+  Video,
+  ExternalLink,
+  Link2
 } from 'lucide-react';
 import { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -128,6 +132,9 @@ export default function SubjectLessonEditor({
     is_completed: false,
     period: '1',
     evaluation_type: 'none',
+    pdf_url: '',
+    presentation_url: '',
+    video_url: '',
     order_index: nextOrderIndex
   });
 
@@ -145,6 +152,9 @@ export default function SubjectLessonEditor({
         is_completed: Boolean(lesson.is_completed),
         period: lesson.period ? String(lesson.period) : '1',
         evaluation_type: lesson.evaluation_type || 'none',
+        pdf_url: lesson.pdf_url || '',
+        presentation_url: lesson.presentation_url || '',
+        video_url: lesson.video_url || '',
         order_index: lesson.order_index ?? nextOrderIndex
       });
     } else {
@@ -156,6 +166,9 @@ export default function SubjectLessonEditor({
         is_completed: false,
         period: '1',
         evaluation_type: 'none',
+        pdf_url: '',
+        presentation_url: '',
+        video_url: '',
         order_index: nextOrderIndex
       });
     }
@@ -345,6 +358,107 @@ export default function SubjectLessonEditor({
                 checked={formData.is_completed}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_completed: checked }))}
               />
+            </div>
+          </div>
+
+          {/* Seção de Recursos Extras (PDF, Apresentação, Vídeo) */}
+          <div className="p-4 rounded-xl border bg-muted/20 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-bold flex items-center gap-1.5 text-foreground">
+                  <Link2 className="w-4 h-4 text-primary" />
+                  Recursos Extras & Links Complementares (Opcional)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Informe os links diretos para que os alunos possam abrir a apostila em PDF, os slides e a videoaula com um único clique.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Campo 1: PDF */}
+              <div className="space-y-1.5 bg-background p-3 rounded-lg border border-red-500/20 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lesson-pdf" className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    Material / PDF
+                  </Label>
+                  {formData.pdf_url && (
+                    <a
+                      href={formData.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Testar
+                    </a>
+                  )}
+                </div>
+                <Input
+                  id="lesson-pdf"
+                  placeholder="https://.../apostila.pdf ou Drive"
+                  value={formData.pdf_url || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pdf_url: e.target.value }))}
+                  className="h-8 text-xs bg-muted/30 focus-visible:ring-red-500/30"
+                />
+              </div>
+
+              {/* Campo 2: Apresentação */}
+              <div className="space-y-1.5 bg-background p-3 rounded-lg border border-amber-500/20 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lesson-presentation" className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <Presentation className="w-3.5 h-3.5" />
+                    Apresentação / Slides
+                  </Label>
+                  {formData.presentation_url && (
+                    <a
+                      href={formData.presentation_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Testar
+                    </a>
+                  )}
+                </div>
+                <Input
+                  id="lesson-presentation"
+                  placeholder="Google Slides, Canva ou PPT"
+                  value={formData.presentation_url || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, presentation_url: e.target.value }))}
+                  className="h-8 text-xs bg-muted/30 focus-visible:ring-amber-500/30"
+                />
+              </div>
+
+              {/* Campo 3: Vídeo */}
+              <div className="space-y-1.5 bg-background p-3 rounded-lg border border-purple-500/20 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lesson-video" className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5" />
+                    Videoaula / Vídeo
+                  </Label>
+                  {formData.video_url && (
+                    <a
+                      href={formData.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Testar
+                    </a>
+                  )}
+                </div>
+                <Input
+                  id="lesson-video"
+                  placeholder="YouTube, Drive, Vimeo, Loom"
+                  value={formData.video_url || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, video_url: e.target.value }))}
+                  className="h-8 text-xs bg-muted/30 focus-visible:ring-purple-500/30"
+                />
+              </div>
             </div>
           </div>
 
