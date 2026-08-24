@@ -24,9 +24,11 @@ import {
   Cloud,
   Smile,
   PenTool,
-  Gamepad2
+  Gamepad2,
+  Star,
+  History
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ComponentType } from 'react';
 
 // Utilitários existentes
 import PollUtility from '@/components/teacher/PollUtility';
@@ -55,13 +57,17 @@ import EducationalGamesUtility from '@/components/teacher/utilities/EducationalG
 // Utilitários de Notas & Sorteios
 import GradeCalculatorUtility from '@/components/teacher/utilities/GradeCalculatorUtility';
 import GradeConverterUtility from '@/components/teacher/utilities/GradeConverterUtility';
-import SingleStudentPickerUtility from '@/components/teacher/utilities/SingleStudentPickerUtility';
-import LiveStudentPickerUtility from '@/components/teacher/utilities/LiveStudentPickerUtility';
+import StudentPickerUtility from '@/components/teacher/utilities/StudentPickerUtility';
 
 type CategoryType = 'all' | 'code' | 'dynamics' | 'gamification' | 'feedback' | 'grades';
 
+const FAVORITES_STORAGE_KEY = 'teacher-utilities-favorites';
+const RECENT_STORAGE_KEY = 'teacher-utilities-recent';
+const MAX_RECENT_UTILITIES = 5;
+
 interface UtilityItem {
   id: string;
+  component: ComponentType;
   name: string;
   description: string;
   category: CategoryType;
@@ -82,6 +88,7 @@ const UTILITIES: UtilityItem[] = [
   // Categoria: Prática Técnica & Programação
   {
     id: 'quadro-branco',
+    component: WhiteboardUtility,
     name: 'Quadro Branco (Estilo Excalidraw)',
     description: 'Lousa minimalista para diagramas, fluxogramas de lógica, anotações de aula, post-its e desenhos ao vivo para Datashow.',
     category: 'code',
@@ -94,6 +101,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'quadro-codigo',
+    component: ClassCodeBoardUtility,
     name: 'Quadro de Códigos & Comandos',
     description: 'Compartilhe comandos Git, trechos de código e links para a turma com controle de tamanho para Datashow.',
     category: 'code',
@@ -106,6 +114,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'gerador-dados',
+    component: MockDataGeneratorUtility,
     name: 'Gerador de Dados Fictícios (Mock)',
     description: 'Gere listas brasileiras de teste (Nomes, CPFs, E-mails, Cidades) prontas em JSON, SQL (INSERT INTO) e CSV.',
     category: 'code',
@@ -117,6 +126,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'formatador-codigo',
+    component: CodeFormatterValidatorUtility,
     name: 'Formatador & Validador (JSON/SQL)',
     description: 'Valide JSONs de APIs, identifique erros de sintaxe e formate queries SQL instantaneamente.',
     category: 'code',
@@ -130,6 +140,7 @@ const UTILITIES: UtilityItem[] = [
   // Categoria: Engajamento & Gamificação
   {
     id: 'jogos-educativos',
+    component: EducationalGamesUtility,
     name: 'Jogos Educativos',
     description: 'Crie jogos interativos com HTML, CSS e JavaScript para projetar em sala ou compartilhar por QR Code e link.',
     category: 'gamification',
@@ -142,6 +153,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'termometro',
+    component: UnderstandingThermometerUtility,
     name: 'Termômetro de Compreensão',
     description: 'Avaliação formativa instantânea com diagnóstico pedagógico do nível de entendimento da turma.',
     category: 'gamification',
@@ -154,6 +166,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'desafio-relampago',
+    component: FlashChallengeUtility,
     name: 'Desafio Relâmpago (Quiz)',
     description: 'Quiz com timer e pontuação gamificada para warm-up e revisão de matérias no Datashow.',
     category: 'gamification',
@@ -165,6 +178,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'nuvem-palavras',
+    component: WordCloudBrainstormUtility,
     name: 'Nuvem de Palavras Coletiva',
     description: 'Brainstorming ao vivo com geração dinâmica de nuvem de ideias com tamanhos proporcionais.',
     category: 'gamification',
@@ -178,6 +192,7 @@ const UTILITIES: UtilityItem[] = [
   // Categoria: Dinâmica & Sala de Aula
   {
     id: 'timer',
+    component: ClassTimerUtility,
     name: 'Timer & Pomodoro de Aula',
     description: 'Cronômetro visual com modo Pomodoro e Tela Cheia ideal para projetar no Datashow durante atividades.',
     category: 'dynamics',
@@ -189,6 +204,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'fila-duvidas',
+    component: HelpQueueUtility,
     name: 'Fila de Dúvidas no Lab',
     description: 'Organize os chamados de atendimento e dúvidas dos alunos por ordem de chegada com aviso sonoro e tela para Datashow.',
     category: 'dynamics',
@@ -200,6 +216,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'roteiro-aula',
+    component: ClassTimelineUtility,
     name: 'Roteiro & Cronograma da Aula',
     description: 'Planeje os blocos de tempo da aula (Teoria, Prática, Intervalo) e acompanhe o progresso em tempo real.',
     category: 'dynamics',
@@ -211,6 +228,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'roleta',
+    component: SpinWheel,
     name: 'Roleta de Temas',
     description: 'Sorteie temas, tópicos de estudo ou grupos de forma interativa com uma roleta giratória colorida.',
     category: 'dynamics',
@@ -222,6 +240,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'sorteador-equipes',
+    component: SorteadorEquipes,
     name: 'Sorteador de Equipes',
     description: 'Divida alunos automaticamente em grupos balanceados, defina líderes e exporte as equipes.',
     category: 'dynamics',
@@ -233,6 +252,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'equipes-tempo-real',
+    component: TeamLiveRegistrationUtility,
     name: 'Cadastro de Equipes (Tempo Real)',
     description: 'Os alunos entram pelo celular via QR Code, escolhem a série (1º, 2º ou 3º Ano), definem o time, líder e membros ao vivo.',
     category: 'dynamics',
@@ -244,32 +264,23 @@ const UTILITIES: UtilityItem[] = [
     highlight: true
   },
   {
-    id: 'sorteador-aluno-ao-vivo',
-    name: 'Sorteador de Alunos (Tempo Real & Séries)',
-    description: 'Sorteie alunos importando direto do banco por série (1º, 2º ou 3º Ano), adicionando nomes ou com entrada dos alunos via QR Code.',
-    category: 'dynamics',
-    icon: UserCheck,
-    colorClass: 'text-amber-600 dark:text-amber-400',
-    borderClass: 'hover:border-amber-500/50',
-    bgLightClass: 'bg-amber-50 dark:bg-amber-950/30',
-    badge: { label: 'Tempo Real & QR', icon: Radio, className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-    highlight: true
-  },
-  {
     id: 'sorteador-aluno',
-    name: 'Sorteador de Aluno',
-    description: 'Escolha aleatoriamente um aluno para responder perguntas ou apresentar sem repetição.',
+    component: StudentPickerUtility,
+    name: 'Sorteador de Alunos',
+    description: 'Escolha entre o modo local, com lista manual, e o modo em tempo real, com séries, QR Code e PIN.',
     category: 'dynamics',
     icon: UserCheck,
-    colorClass: 'text-purple-600 dark:text-purple-400',
-    borderClass: 'hover:border-purple-500/50',
-    bgLightClass: 'bg-purple-50 dark:bg-purple-950/30',
-    badge: { label: 'Individual', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' }
+    colorClass: 'text-indigo-600 dark:text-indigo-400',
+    borderClass: 'hover:border-indigo-500/50',
+    bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/30',
+    badge: { label: 'Local & Tempo Real', icon: Radio, className: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+    highlight: true
   },
 
   // Categoria: Votação & Pesquisa
   {
     id: 'pesquisa-online',
+    component: PollUtility,
     name: 'Pesquisa Online (Enquetes)',
     description: 'Crie enquetes e pesquisas instantâneas para os alunos responderem pelo celular em tempo real.',
     category: 'feedback',
@@ -281,6 +292,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'votacao-rapida',
+    component: QuickVoteUtility,
     name: 'Votação Rápida',
     description: 'Gere um link por turma para os alunos avaliarem de 0 a 10 com painel sincronizado ao vivo.',
     category: 'feedback',
@@ -294,6 +306,7 @@ const UTILITIES: UtilityItem[] = [
   // Categoria: Notas & Cálculos
   {
     id: 'calculadora-media',
+    component: GradeCalculatorUtility,
     name: 'Calculadora de Média',
     description: 'Calcule médias simples ou ponderadas com pesos e simulação do status de aprovação.',
     category: 'grades',
@@ -305,6 +318,7 @@ const UTILITIES: UtilityItem[] = [
   },
   {
     id: 'conversor-notas',
+    component: GradeConverterUtility,
     name: 'Conversor de Notas',
     description: 'Converta notas instantaneamente entre escalas 0 a 10, 0 a 100 pontos e conceitos acadêmicos (A, B, C, D).',
     category: 'grades',
@@ -320,6 +334,22 @@ export default function TeacherUtilities() {
   const [activeUtilityId, setActiveUtilityId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all');
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(RECENT_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const filteredUtilities = useMemo(() => {
     return UTILITIES.filter(item => {
@@ -331,7 +361,37 @@ export default function TeacherUtilities() {
     });
   }, [searchQuery, selectedCategory]);
 
+  const favoriteUtilities = useMemo(
+    () => favoriteIds.map(id => UTILITIES.find(utility => utility.id === id)).filter(Boolean) as UtilityItem[],
+    [favoriteIds]
+  );
+
+  const recentUtilities = useMemo(
+    () => recentIds.map(id => UTILITIES.find(utility => utility.id === id)).filter(Boolean) as UtilityItem[],
+    [recentIds]
+  );
+
+  const toggleFavorite = (utilityId: string) => {
+    setFavoriteIds(current => {
+      const next = current.includes(utilityId)
+        ? current.filter(id => id !== utilityId)
+        : [...current, utilityId];
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const openUtility = (utilityId: string) => {
+    setActiveUtilityId(utilityId);
+    setRecentIds(current => {
+      const next = [utilityId, ...current.filter(id => id !== utilityId)].slice(0, MAX_RECENT_UTILITIES);
+      localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const activeUtility = UTILITIES.find(u => u.id === activeUtilityId);
+  const ActiveUtilityComponent = activeUtility?.component;
 
   return (
     <div className="space-y-6">
@@ -368,35 +428,7 @@ export default function TeacherUtilities() {
 
           {/* Componente Específico Renderizado */}
           <div className="pt-2">
-            {/* Prática Técnica & Programação */}
-            {activeUtilityId === 'quadro-branco' && <WhiteboardUtility />}
-            {activeUtilityId === 'quadro-codigo' && <ClassCodeBoardUtility />}
-            {activeUtilityId === 'gerador-dados' && <MockDataGeneratorUtility />}
-            {activeUtilityId === 'formatador-codigo' && <CodeFormatterValidatorUtility />}
-
-            {/* Engajamento & Gamificação */}
-            {activeUtilityId === 'termometro' && <UnderstandingThermometerUtility />}
-            {activeUtilityId === 'jogos-educativos' && <EducationalGamesUtility />}
-            {activeUtilityId === 'desafio-relampago' && <FlashChallengeUtility />}
-            {activeUtilityId === 'nuvem-palavras' && <WordCloudBrainstormUtility />}
-
-            {/* Dinâmica & Gestão de Tempo */}
-            {activeUtilityId === 'timer' && <ClassTimerUtility />}
-            {activeUtilityId === 'fila-duvidas' && <HelpQueueUtility />}
-            {activeUtilityId === 'roteiro-aula' && <ClassTimelineUtility />}
-            {activeUtilityId === 'roleta' && <SpinWheel />}
-            {activeUtilityId === 'sorteador-equipes' && <SorteadorEquipes />}
-            {activeUtilityId === 'equipes-tempo-real' && <TeamLiveRegistrationUtility />}
-            {activeUtilityId === 'sorteador-aluno-ao-vivo' && <LiveStudentPickerUtility />}
-            {activeUtilityId === 'sorteador-aluno' && <SingleStudentPickerUtility />}
-
-            {/* Votação & Pesquisa */}
-            {activeUtilityId === 'pesquisa-online' && <PollUtility />}
-            {activeUtilityId === 'votacao-rapida' && <QuickVoteUtility />}
-
-            {/* Notas & Cálculos */}
-            {activeUtilityId === 'calculadora-media' && <GradeCalculatorUtility />}
-            {activeUtilityId === 'conversor-notas' && <GradeConverterUtility />}
+            {ActiveUtilityComponent && <ActiveUtilityComponent />}
           </div>
         </div>
       ) : (
@@ -423,6 +455,43 @@ export default function TeacherUtilities() {
               />
             </div>
           </div>
+
+          {(favoriteUtilities.length > 0 || recentUtilities.length > 0) && !searchQuery && selectedCategory === 'all' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {favoriteUtilities.length > 0 && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                    <h3 className="font-semibold text-sm">Favoritos</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteUtilities.map(utility => (
+                      <Button key={utility.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => openUtility(utility.id)}>
+                        <utility.icon className={`w-3.5 h-3.5 ${utility.colorClass}`} />
+                        {utility.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recentUtilities.length > 0 && (
+                <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <History className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <h3 className="font-semibold text-sm">Utilizados recentemente</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentUtilities.map(utility => (
+                      <Button key={utility.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => openUtility(utility.id)}>
+                        <utility.icon className={`w-3.5 h-3.5 ${utility.colorClass}`} />
+                        {utility.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Filtros por Categoria */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
@@ -494,7 +563,7 @@ export default function TeacherUtilities() {
                 return (
                   <Card
                     key={utility.id}
-                    onClick={() => setActiveUtilityId(utility.id)}
+                    onClick={() => openUtility(utility.id)}
                     className={`group relative overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg cursor-pointer border border-border/70 ${utility.borderClass} flex flex-col justify-between`}
                   >
                     {/* Top Accent Line */}
@@ -505,13 +574,24 @@ export default function TeacherUtilities() {
                         <div className={`p-2.5 rounded-xl ${utility.bgLightClass} transition-transform group-hover:scale-110 duration-200`}>
                           <Icon className={`w-5 h-5 ${utility.colorClass}`} />
                         </div>
-                        <Badge 
-                          variant="outline" 
-                          className={`text-[10px] font-medium py-0.5 px-2 flex items-center gap-1 ${utility.badge.className || ''}`}
-                        >
-                          {BadgeIcon && <BadgeIcon className="w-3 h-3" />}
-                          {utility.badge.label}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            aria-label={favoriteIds.includes(utility.id) ? `Remover ${utility.name} dos favoritos` : `Adicionar ${utility.name} aos favoritos`}
+                            title={favoriteIds.includes(utility.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-500"
+                            onClick={(event) => { event.stopPropagation(); toggleFavorite(utility.id); }}
+                          >
+                            <Star className={`w-4 h-4 ${favoriteIds.includes(utility.id) ? 'fill-amber-500 text-amber-500' : ''}`} />
+                          </button>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] font-medium py-0.5 px-2 flex items-center gap-1 ${utility.badge.className || ''}`}
+                          >
+                            {BadgeIcon && <BadgeIcon className="w-3 h-3" />}
+                            {utility.badge.label}
+                          </Badge>
+                        </div>
                       </div>
 
                       <CardTitle className="text-base font-semibold group-hover:text-primary transition-colors">

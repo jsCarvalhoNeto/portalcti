@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getActivityGrades, assignActivityGrade, updateActivityGrade, deleteActivityGrade, ActivityGrade, setActivityTeacherObservation, assignManualGradeToTeamMember } from '@/services/activityService';
 import ManualGradeModal from './ManualGradeModal';
+import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 
 interface ActivityGradesModalProps {
   isOpen: boolean;
@@ -452,8 +453,13 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => { setPreviewHtml(submission.text_submission || ''); setPreviewOpen(true); }}
                               className="h-8 w-8 p-0"
+                              onClick={() => {
+                                const text = submission.text_submission || '';
+                                const formatted = detectMarkdown(text) ? sanitizeHtml(markdownToHtml(text)) : sanitizeHtml(text);
+                                setPreviewHtml(formatted);
+                                setPreviewOpen(true);
+                              }}
                               title="Visualizar texto da submissão"
                               aria-label="Visualizar submissão"
                             >

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useState, useEffect, useRef } from 'react';
+import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContext';
 import { updateActivity, deleteActivity, ActivityData } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -316,16 +317,15 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
             <Label htmlFor="description" className="text-right pt-2">
               Descrição
             </Label>
-            <div className="col-span-3">
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descrição da atividade..."
-                className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background"
+            <div className="col-span-3 space-y-1">
+              <MarkdownRichTextEditor
+                content={typeof description === 'string' ? description : ''}
+                onChange={(value) => setDescription(typeof value === 'string' ? value : '')}
+                placeholder="Descrição detalhada da atividade... Suporta Markdown (títulos, listas, códigos, links, tabelas, etc.)"
+                className="min-h-[220px]"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Use a barra de ferramentas para formatar o texto com negrito, itálico, cores, listas, etc.
+              <p className="text-xs text-muted-foreground">
+                Suporta formatação rica e Markdown. Alterne entre os modos Visual e Markdown para pré-visualizar.
               </p>
             </div>
           </div>

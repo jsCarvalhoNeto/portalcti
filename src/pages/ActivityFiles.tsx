@@ -18,6 +18,7 @@ import { subjectService } from '@/services/subjectService';
 import { Subject } from '@/types/subject';
 import FileUpload from '@/components/FileUpload';
 import FileList from '@/components/FileList';
+import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 
 export default function ActivityFiles() {
   const { id, activityId } = useParams<{ id: string; activityId: string }>();
@@ -139,7 +140,11 @@ export default function ActivityFiles() {
             <CardContent>
               <div 
                 className="text-muted-foreground mb-4 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: mockActivity.description }}
+                dangerouslySetInnerHTML={{ 
+                  __html: detectMarkdown(mockActivity.description) 
+                    ? sanitizeHtml(markdownToHtml(mockActivity.description)) 
+                    : sanitizeHtml(mockActivity.description) 
+                }}
               />
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">

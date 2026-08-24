@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, FileText, Search } from 'lucide-react';
 import { StudentActivity, getStudentActivities, submitStudentActivity } from '@/services/activityService';
 import * as gamificationService from '@/services/gamificationService';
+import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
+import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 
 interface SubmissionData {
   activity_id: number;
@@ -41,8 +43,14 @@ export default function StudentActivitiesTab() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Using React-Quill for rich text; value is stored in submissionData.text_submission
-  // Estados de notas removidos - todas as funcionalidades de notas estão no painel Notas & Desempenho
+
+  const renderFormattedContent = (rawContent?: string | null): string => {
+    if (!rawContent) return '';
+    if (detectMarkdown(rawContent)) {
+      return sanitizeHtml(markdownToHtml(rawContent));
+    }
+    return sanitizeHtml(rawContent);
+  };
 
   useEffect(() => {
     if (user) {
@@ -414,8 +422,8 @@ export default function StudentActivitiesTab() {
                 <div>
                   <Label>Descrição</Label>
                   <div 
-                    className="text-sm text-muted-foreground mt-1 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedActivity.description }}
+                    className="text-sm text-muted-foreground mt-1 prose prose-sm max-w-none bg-background/50 p-4 border rounded-md"
+                    dangerouslySetInnerHTML={{ __html: renderFormattedContent(selectedActivity.description) }}
                   />
                 </div>
               )}
@@ -466,18 +474,19 @@ export default function StudentActivitiesTab() {
                 </div>
               )}
 
-              {/* Campo de texto grande para submissões manuscritas (editor WYSIWYG com React-Quill) */}
+              {/* Campo de texto com suporte a Markdown e formatação rica para submissão */}
               <div>
                 <Label htmlFor="text_submission">Texto de Submissão</Label>
-                <div className="mt-2">
-                  <textarea
-                    id="text_submission"
-                    value={submissionData.text_submission || ''}
-                    onChange={(e) => setSubmissionData(prev => ({ ...prev, text_submission: e.target.value }))}
-                    placeholder="Texto de submissão da atividade..."
-                    className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background/50"
+                <div className="mt-2 space-y-1">
+                  <MarkdownRichTextEditor
+                    content={submissionData.text_submission || ''}
+                    onChange={(value) => setSubmissionData(prev => ({ ...prev, text_submission: value }))}
+                    placeholder="Digite a resposta ou submissão do trabalho... Suporta formatação rica e Markdown."
+                    className="min-h-[200px]"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Use o campo acima para digitar trabalhos manuscritos. A formatação básica (negrito, itálico, sublinhado e listas) está disponível.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Você pode digitar respostas manuscritas com suporte a Markdown, tabelas, código e formatação visual.
+                  </p>
                 </div>
               </div>
 
@@ -585,7 +594,7 @@ export default function StudentActivitiesTab() {
                     {activity.description && (
                       <div 
                         className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: activity.description }}
+                        dangerouslySetInnerHTML={{ __html: renderFormattedContent(activity.description) }}
                       />
                     )}
 

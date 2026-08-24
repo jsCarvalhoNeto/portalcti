@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useState, useEffect, useRef } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -318,31 +317,15 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
             <Label htmlFor="description" className="text-right pt-2">
               Descrição
             </Label>
-            <div className="col-span-3">
-              <div className="bg-background rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500">
-                <ReactQuill
-                  id="description"
-                  theme="snow"
-                  value={typeof description === 'string' ? description : ''}
-                  onChange={value => setDescription(typeof value === 'string' ? value : '')}
-                  placeholder="Descrição da atividade..."
-                  style={{ minHeight: 200, maxHeight: 400, resize: 'vertical', overflow: 'auto' }}
-                  modules={{
-                    toolbar: [
-                      [{ 'header': [1, 2, 3, false] }],
-                      ['bold', 'italic', 'underline', 'strike'],
-                      [{ 'color': [] }, { 'background': [] }],
-                      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                      [{ 'align': [] }],
-                      ['blockquote', 'code-block'],
-                      ['link', 'image'],
-                      ['clean']
-                    ]
-                  }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Use a barra de ferramentas para formatar o texto com negrito, itálico, listas, links, etc.
+            <div className="col-span-3 space-y-1">
+              <MarkdownRichTextEditor
+                content={typeof description === 'string' ? description : ''}
+                onChange={(value) => setDescription(typeof value === 'string' ? value : '')}
+                placeholder="Descrição detalhada da atividade... Suporta Markdown (títulos, listas, códigos, links, tabelas, etc.)"
+                className="min-h-[220px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Suporta formatação rica e Markdown. Alterne entre os modos Visual e Markdown para pré-visualizar.
               </p>
             </div>
           </div>
