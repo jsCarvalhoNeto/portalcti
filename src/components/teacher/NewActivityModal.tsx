@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useState, useEffect, useRef } from 'react';
-import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
+import MarkdownEditor from '@/components/MarkdownEditor';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import { createActivity } from '@/services/activityService';
 import { useAuth } from '@/hooks/useAuth';
@@ -210,7 +210,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[850px] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Criar Nova Atividade</DialogTitle>
           <DialogDescription>
@@ -314,19 +314,17 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
             </RadioGroup>
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="description" className="text-right pt-2">
+            <Label htmlFor="description" className="text-right pt-2 font-semibold">
               Descrição
             </Label>
-            <div className="col-span-3 space-y-1">
-              <MarkdownRichTextEditor
-                content={typeof description === 'string' ? description : ''}
-                onChange={(value) => setDescription(typeof value === 'string' ? value : '')}
-                placeholder="Descrição detalhada da atividade... Suporta Markdown (títulos, listas, códigos, links, tabelas, etc.)"
-                className="min-h-[220px]"
+            <div className="col-span-3">
+              <MarkdownEditor
+                value={typeof description === 'string' ? description : ''}
+                onChange={(val) => setDescription(val)}
+                placeholder="Cole ou digite aqui a descrição em Markdown da atividade..."
+                minHeight="min-h-[200px]"
+                maxHeight="max-h-[360px]"
               />
-              <p className="text-xs text-muted-foreground">
-                Suporta formatação rica e Markdown. Alterne entre os modos Visual e Markdown para pré-visualizar.
-              </p>
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">

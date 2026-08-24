@@ -11,7 +11,7 @@ import { Download, FileText, Search } from 'lucide-react';
 import { StudentActivity, getStudentActivities, submitStudentActivity } from '@/services/activityService';
 import * as gamificationService from '@/services/gamificationService';
 import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
-import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
+import MarkdownEditor from '@/components/MarkdownEditor';
 
 interface SubmissionData {
   activity_id: number;
@@ -419,10 +419,10 @@ export default function StudentActivitiesTab() {
               </div>
 
               {selectedActivity.description && (
-                <div>
-                  <Label>Descrição</Label>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-foreground text-sm">Descrição da Atividade</Label>
                   <div 
-                    className="text-sm text-muted-foreground mt-1 prose prose-sm max-w-none bg-background/50 p-4 border rounded-md"
+                    className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words bg-card/60 p-6 border rounded-lg shadow-sm"
                     dangerouslySetInnerHTML={{ __html: renderFormattedContent(selectedActivity.description) }}
                   />
                 </div>
@@ -474,20 +474,18 @@ export default function StudentActivitiesTab() {
                 </div>
               )}
 
-              {/* Campo de texto com suporte a Markdown e formatação rica para submissão */}
-              <div>
-                <Label htmlFor="text_submission">Texto de Submissão</Label>
-                <div className="mt-2 space-y-1">
-                  <MarkdownRichTextEditor
-                    content={submissionData.text_submission || ''}
-                    onChange={(value) => setSubmissionData(prev => ({ ...prev, text_submission: value }))}
-                    placeholder="Digite a resposta ou submissão do trabalho... Suporta formatação rica e Markdown."
-                    className="min-h-[200px]"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Você pode digitar respostas manuscritas com suporte a Markdown, tabelas, código e formatação visual.
-                  </p>
-                </div>
+              {/* Campo de texto com suporte a Markdown idêntico ao módulo de aulas */}
+              <div className="space-y-2">
+                <Label htmlFor="text_submission" className="font-semibold text-foreground text-sm">
+                  Texto de Submissão (Markdown)
+                </Label>
+                <MarkdownEditor
+                  value={submissionData.text_submission || ''}
+                  onChange={(value) => setSubmissionData(prev => ({ ...prev, text_submission: value }))}
+                  placeholder="Digite a resposta ou submissão do trabalho em Markdown ou use os atalhos..."
+                  minHeight="min-h-[180px]"
+                  maxHeight="max-h-[320px]"
+                />
               </div>
 
               <div>

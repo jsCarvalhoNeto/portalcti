@@ -122,20 +122,17 @@ export function escapeHtmlTagsInMarkdown(markdown: string): string {
 export function markdownToHtml(markdown: string): string {
   if (!markdown) return '';
   try {
-    // 1. Escapar tags HTML literais do texto (ex: <hr>, <img>, <a>) para não virarem elementos DOM
-    const escapedMarkdown = escapeHtmlTagsInMarkdown(markdown);
-
-    // 2. Processar elementos colapsáveis antes do marked
-    const processedMarkdown = processCollapsibleElements(escapedMarkdown);
+    // 1. Processar elementos colapsáveis antes do marked
+    const processedMarkdown = processCollapsibleElements(markdown);
     
-    // 3. Parser do Markdown
+    // 2. Parser do Markdown
     const html = marked.parse(processedMarkdown, { 
       gfm: true,
       breaks: true,
       async: false
     }) as string;
     
-    // 4. Aplicar syntax highlighting aos blocos de código
+    // 3. Aplicar syntax highlighting aos blocos de código
     return processCodeBlocks(html);
   } catch (error) {
     console.error('Erro ao converter markdown:', error);
