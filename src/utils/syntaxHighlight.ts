@@ -773,8 +773,7 @@ export function processCodeBlocks(html: string): string {
     </div>
     <button 
       type="button" 
-      class="px-2.5 py-1 text-[11px] font-sans font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700/80"
-      onclick="navigator.clipboard.writeText(this.closest('.code-block-container').querySelector('code').innerText); this.innerText='✓ Copiado'; setTimeout(() => this.innerText='Copiar', 2000)"
+      class="copy-code-btn px-2.5 py-1 text-[11px] font-sans font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700/80 cursor-pointer"
     >
       Copiar
     </button>
@@ -815,3 +814,23 @@ export const supportedLanguages = [
   { code: 'swift', name: 'Swift' },
   { code: 'kotlin', name: 'Kotlin' },
 ];
+
+// Configura evento de clique delegado global para os botões de copiar código
+if (typeof window !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const copyBtn = target?.closest?.('.copy-code-btn') as HTMLButtonElement | null;
+    if (copyBtn) {
+      const container = copyBtn.closest('.code-block-container');
+      const codeEl = container?.querySelector('code');
+      if (codeEl) {
+        navigator.clipboard.writeText(codeEl.innerText || '');
+        const prevText = copyBtn.innerText;
+        copyBtn.innerText = '✓ Copiado!';
+        setTimeout(() => {
+          copyBtn.innerText = prevText.includes('Copiado') ? 'Copiar' : prevText;
+        }, 2000);
+      }
+    }
+  });
+}
