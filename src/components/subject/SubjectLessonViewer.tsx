@@ -33,6 +33,7 @@ import {
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
+import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 
 interface SubjectLessonViewerProps {
   isOpen: boolean;
@@ -104,7 +105,21 @@ export default function SubjectLessonViewer({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!lesson) return;
+    try {
+      toast({
+        title: 'Gerando Documento...',
+        description: 'Preparando o conteúdo da aula para impressão/PDF.',
+      });
+      exportLessonToPdf(lesson, subjectName);
+    } catch (error) {
+      console.error('Erro ao imprimir/exportar PDF:', error);
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: 'Não foi possível preparar o documento para impressão/PDF.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Formatação amigável da data
@@ -215,6 +230,17 @@ export default function SubjectLessonViewer({
 
             {/* Ações de topo */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                title="Exportar Aula em PDF / Imprimir"
+                className="h-8 text-xs gap-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/30"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Exportar PDF</span>
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -373,15 +399,28 @@ export default function SubjectLessonViewer({
             </div>
           )}
 
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={onClose}
-            className="min-w-[90px]"
-          >
-            Fechar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="text-xs gap-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/30"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Exportar PDF
+            </Button>
+
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onClose}
+              className="min-w-[90px]"
+            >
+              Fechar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

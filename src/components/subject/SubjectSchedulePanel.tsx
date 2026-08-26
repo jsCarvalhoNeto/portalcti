@@ -26,12 +26,14 @@ import {
   CalendarCheck2,
   Presentation,
   Video,
-  ExternalLink
+  ExternalLink,
+  Printer
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import subjectLessonService, { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import SubjectLessonEditor from './SubjectLessonEditor';
 import SubjectLessonViewer from './SubjectLessonViewer';
+import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 
 interface SubjectSchedulePanelProps {
   subjectId: number | string;
@@ -177,6 +179,23 @@ export default function SubjectSchedulePanel({
   const handleOpenView = (lesson: SubjectLesson) => {
     setSelectedLessonForView(lesson);
     setIsViewerOpen(true);
+  };
+
+  const handleExportPdf = (lesson: SubjectLesson) => {
+    try {
+      toast({
+        title: 'Gerando Documento...',
+        description: `Preparando conteúdo da ${lesson.title} para impressão/PDF.`,
+      });
+      exportLessonToPdf(lesson, subjectName);
+    } catch (error) {
+      console.error('Erro ao exportar aula para PDF:', error);
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: 'Não foi possível gerar a versão em PDF desta aula.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Métricas
@@ -558,47 +577,62 @@ export default function SubjectSchedulePanel({
                   <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-70 flex-shrink-0" />
                 </Button>
 
-                {canManage && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant={lesson.is_completed ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleToggleCompleted(String(lesson.id), lesson.is_completed)}
-                      title={lesson.is_completed ? "Marcar como pendente" : "Marcar como realizada"}
-                      className={`h-8 w-8 p-0 ${
-                        lesson.is_completed 
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                          : 'hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/30'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                    </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExportPdf(lesson);
+                    }}
+                    title="Exportar Aula em PDF / Imprimir"
+                    className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/30"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </Button>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEdit(lesson)}
-                      title="Editar Aula"
-                      className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
+                  {canManage && (
+                    <>
+                      <Button
+                        variant={lesson.is_completed ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleToggleCompleted(String(lesson.id), lesson.is_completed)}
+                        title={lesson.is_completed ? "Marcar como pendente" : "Marcar como realizada"}
+                        className={`h-8 w-8 p-0 ${
+                          lesson.is_completed 
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                            : 'hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/30'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </Button>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (window.confirm(`Deseja realmente excluir "${lesson.title}"?`)) {
-                          handleDeleteLesson(String(lesson.id));
-                        }
-                      }}
-                      title="Excluir Aula"
-                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 border-destructive/20"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenEdit(lesson)}
+                        title="Editar Aula"
+                        className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm(`Deseja realmente excluir "${lesson.title}"?`)) {
+                            handleDeleteLesson(String(lesson.id));
+                          }
+                        }}
+                        title="Excluir Aula"
+                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 border-destructive/20"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
