@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,21 +13,23 @@ import {
   Calendar, 
   CheckCircle2, 
   Clock, 
-  Award, 
-  Maximize2, 
-  Minimize2, 
+  Printer, 
   Copy, 
   Check, 
+  Maximize2, 
+  Minimize2, 
   Edit, 
   Trash2, 
-  Printer,
+  Award,
   Sparkles,
-  Layers,
-  FileText,
   Presentation,
   Video,
+  FileText,
   ExternalLink,
-  Link2
+  Link2,
+  ClipboardList,
+  Lock,
+  Plus
 } from 'lucide-react';
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -41,6 +42,7 @@ interface SubjectLessonViewerProps {
   lesson: SubjectLesson | null;
   subjectName?: string;
   isTeacher?: boolean;
+  initialTab?: 'content' | 'plan';
   onEdit?: (lesson: SubjectLesson) => void;
   onDelete?: (lessonId: string) => void;
   onToggleCompleted?: (lessonId: string, currentStatus: boolean) => void;
@@ -52,6 +54,7 @@ export default function SubjectLessonViewer({
   lesson,
   subjectName,
   isTeacher = false,
+  initialTab = 'content',
   onEdit,
   onDelete,
   onToggleCompleted
@@ -59,7 +62,14 @@ export default function SubjectLessonViewer({
   const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'content' | 'plan'>(initialTab);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -71,11 +81,18 @@ export default function SubjectLessonViewer({
     };
   }, []);
 
-  const renderedHtml = useMemo(() => {
+  const renderedContentHtml = useMemo(() => {
     if (!lesson || !lesson.content || !lesson.content.trim()) {
       return '<div class="text-center py-12 text-muted-foreground"><p class="text-base font-medium">Nenhum conteúdo textual registrado para esta aula ainda.</p><p class="text-xs mt-1">O professor disponibilizará as anotações e roteiro em breve.</p></div>';
     }
     return sanitizeHtml(markdownToHtml(lesson.content));
+  }, [lesson]);
+
+  const renderedPlanHtml = useMemo(() => {
+    if (!lesson || !lesson.lesson_plan || !lesson.lesson_plan.trim()) {
+      return '';
+    }
+    return sanitizeHtml(markdownToHtml(lesson.lesson_plan));
   }, [lesson]);
 
   if (!lesson) return null;
@@ -94,12 +111,13 @@ export default function SubjectLessonViewer({
   };
 
   const handleCopy = () => {
-    if (!lesson?.content) return;
-    navigator.clipboard.writeText(lesson.content);
+    const textToCopy = activeTab === 'plan' ? lesson.lesson_plan : lesson.content;
+    if (!textToCopy) return;
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     toast({
       title: 'Copiado!',
-      description: 'Conteúdo da aula copiado para a área de transferência.',
+      description: activeTab === 'plan' ? 'Plano de aula copiado com sucesso.' : 'Conteúdo da aula copiado para a área de transferência.',
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -208,6 +226,12 @@ export default function SubjectLessonViewer({
                     Agendada / Pendente
                   </Badge>
                 )}
+                {isTeacher && lesson.lesson_plan && (
+                  <Badge variant="outline" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 flex items-center gap-1 text-xs">
+                    <ClipboardList className="w-3 h-3" />
+                    Plano Docente Cadastrado
+                  </Badge>
+                )}
               </div>
 
               <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground pt-1">
@@ -264,9 +288,50 @@ export default function SubjectLessonViewer({
             </div>
           </div>
 
-          {/* Barra de Recursos Extras & Materiais da Aula */}
-          {(lesson.pdf_url || lesson.presentation_url || lesson.video_url) && (
-            <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between flex-wrap gap-2.5">
+          {/* Abas de Navegação quando for Professor */}
+          {isTeacher && (
+            <div className="mt-4 pt-3 border-t flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('content')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'content'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Conteúdo da Aula
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('plan')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'plan'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
+                  }`}
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>Plano de Aula (Docente)</span>
+                  <Lock className="w-2.5 h-2.5 opacity-70" />
+                </button>
+              </div>
+
+              {activeTab === 'plan' && (
+                <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Exclusivo para o Professor</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Barra de Recursos Extras & Materiais da Aula (Apenas na aba de Conteúdo) */}
+          {activeTab === 'content' && (lesson.pdf_url || lesson.presentation_url || lesson.video_url) && (
+            <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between flex-wrap gap-2.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                 <Link2 className="w-3.5 h-3.5 text-primary" />
                 <span>Materiais Complementares:</span>
@@ -316,7 +381,7 @@ export default function SubjectLessonViewer({
           )}
         </DialogHeader>
 
-        {/* Conteúdo Renderizado da Aula */}
+        {/* Conteúdo Renderizado da Aula ou do Plano */}
         <div 
           className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40"
           onClick={(e) => {
@@ -335,11 +400,63 @@ export default function SubjectLessonViewer({
             }
           }}
         >
-          <div 
-            className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
-            dangerouslySetWarningContent={{ __html: renderedHtml }}
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
-          />
+          {activeTab === 'plan' ? (
+            renderedPlanHtml ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                    <ClipboardList className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                      Plano de Aula & Roteiro Pedagógico do Professor
+                      <Badge className="bg-indigo-600 text-white text-[10px] h-4">Docente</Badge>
+                    </h4>
+                    <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
+                      Estrutura de objetivos didáticos, metodologia de aplicação em sala de aula, recursos necessários e critérios de avaliação.
+                    </p>
+                  </div>
+                </div>
+
+                <div 
+                  className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words pt-2"
+                  dangerouslySetWarningContent={{ __html: renderedPlanHtml }}
+                  dangerouslySetInnerHTML={{ __html: renderedPlanHtml }}
+                />
+              </div>
+            ) : (
+              /* Empty State do Plano de Aula */
+              <div className="text-center py-16 px-4 space-y-4 max-w-md mx-auto">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+                  <ClipboardList className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-foreground">Nenhum Plano de Aula cadastrado</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Você pode cadastrar os objetivos pedagógicos, recursos e anotações didáticas que ficam salvos exclusivamente para a gestão docente.
+                  </p>
+                </div>
+                {onEdit && (
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      onEdit(lesson);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs gap-1.5 shadow"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Cadastrar Plano de Aula
+                  </Button>
+                )}
+              </div>
+            )
+          ) : (
+            <div 
+              className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
+              dangerouslySetWarningContent={{ __html: renderedContentHtml }}
+              dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
+            />
+          )}
         </div>
 
         {/* Rodapé */}

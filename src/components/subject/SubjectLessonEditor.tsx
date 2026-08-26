@@ -41,7 +41,12 @@ import {
   Presentation,
   Video,
   ExternalLink,
-  Link2
+  Link2,
+  ClipboardList,
+  Lock,
+  Target,
+  Wrench,
+  GraduationCap
 } from 'lucide-react';
 import { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -97,6 +102,42 @@ Explicação introdutória sobre o assunto da aula...
 3. Prepare as dúvidas para a próxima aula.
 `;
 
+const LESSON_PLAN_TEMPLATE = `## 🎯 Objetivos de Aprendizagem & Competências
+- **Geral:** Capacitar os estudantes no domínio conceitual e prático do tema abordado.
+- **Específicos:**
+  1. Identificar e compreender a estrutura e a sintaxe aplicadas.
+  2. Desenvolver a atividade prática em laboratório com autonomia.
+  3. Relacionar os conceitos com cenários do mercado profissional.
+
+---
+
+## 🛠️ Metodologia & Estratégia Didática
+- **Momento 1 (15 min):** Acolhimento, contextualização e revisão da aula anterior.
+- **Momento 2 (35 min):** Exposição dialogada com exemplos interativos e projeção.
+- **Momento 3 (40 min):** Prática guiada em laboratório (exercícios mão na massa).
+- **Momento 4 (10 min):** Fechamento, síntese dos pontos-chave e encaminhamento das próximas tarefas.
+
+---
+
+## 📦 Recursos Didáticos & Laboratório
+- Projetor / Smart TV
+- Ambiente de desenvolvimento (VS Code / Navegador)
+- Repositório de códigos e exercícios de fixação
+
+---
+
+## 📊 Avaliação & Critérios de Desempenho
+- Participação e engajamento durante a aula.
+- Resolução dos exercícios propostos no laboratório.
+- Pontualidade e organização na entrega de atividades.
+
+---
+
+## 🔒 Orientações Docentes & Gabaritos
+- *Pontos de atenção:* Reforçar com os alunos a atenção à sintaxe e boas práticas.
+- *Gabarito/Resolução esperada:* Código funcional conforme os critérios estabelecidos.
+`;
+
 const CODE_LANGUAGES = [
   { value: 'html', label: 'HTML5' },
   { value: 'css', label: 'CSS3' },
@@ -129,6 +170,7 @@ export default function SubjectLessonEditor({
     title: '',
     lesson_date: new Date().toISOString().split('T')[0],
     content: '',
+    lesson_plan: '',
     is_completed: false,
     period: '1',
     evaluation_type: 'none',
@@ -138,6 +180,8 @@ export default function SubjectLessonEditor({
     order_index: nextOrderIndex
   });
 
+  // Qual conteúdo estamos editando: 'content' (Conteúdo da Aula) ou 'plan' (Plano de Aula Docente)
+  const [contentSection, setContentSection] = useState<'content' | 'plan'>('content');
   const [selectedLanguage, setSelectedLanguage] = useState('html');
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSaving, setIsSaving] = useState(false);
@@ -149,6 +193,7 @@ export default function SubjectLessonEditor({
         title: lesson.title || '',
         lesson_date: lesson.lesson_date ? lesson.lesson_date.split('T')[0] : '',
         content: lesson.content || '',
+        lesson_plan: lesson.lesson_plan || '',
         is_completed: Boolean(lesson.is_completed),
         period: lesson.period ? String(lesson.period) : '1',
         evaluation_type: lesson.evaluation_type || 'none',
@@ -163,6 +208,7 @@ export default function SubjectLessonEditor({
         title: '',
         lesson_date: new Date().toISOString().split('T')[0],
         content: '',
+        lesson_plan: '',
         is_completed: false,
         period: '1',
         evaluation_type: 'none',
@@ -173,20 +219,35 @@ export default function SubjectLessonEditor({
       });
     }
     setActiveTab('editor');
+    setContentSection('content');
   }, [lesson, subjectId, nextOrderIndex, isOpen]);
 
-  const previewHtml = useMemo(() => {
+  const previewContentHtml = useMemo(() => {
     if (!formData.content || !formData.content.trim()) {
-      return '<p class="text-muted-foreground italic">Nenhum conteúdo digitado para pré-visualização...</p>';
+      return '<p class="text-muted-foreground italic">Nenhum conteúdo da aula digitado para pré-visualização...</p>';
     }
     return sanitizeHtml(markdownToHtml(formData.content));
   }, [formData.content]);
 
+  const previewPlanHtml = useMemo(() => {
+    if (!formData.lesson_plan || !formData.lesson_plan.trim()) {
+      return '<p class="text-muted-foreground italic">Nenhum plano de aula docente cadastrado ainda...</p>';
+    }
+    return sanitizeHtml(markdownToHtml(formData.lesson_plan));
+  }, [formData.lesson_plan]);
+
   const handleInsertSnippet = (snippet: string) => {
-    setFormData(prev => ({
-      ...prev,
-      content: prev.content ? `${prev.content}\n\n${snippet}` : snippet
-    }));
+    if (contentSection === 'plan') {
+      setFormData(prev => ({
+        ...prev,
+        lesson_plan: prev.lesson_plan ? `${prev.lesson_plan}\n\n${snippet}` : snippet
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content ? `${prev.content}\n\n${snippet}` : snippet
+      }));
+    }
   };
 
   const handleInsertCodeBlock = () => {
@@ -231,7 +292,7 @@ export default function SubjectLessonEditor({
                   {lesson ? 'Editar Aula do Cronograma' : 'Nova Aula do Cronograma'}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  {subjectName ? `${subjectName} • ` : ''}Configure os dados e o conteúdo em Markdown da aula
+                  {subjectName ? `${subjectName} • ` : ''}Configure os dados, conteúdo da aula e plano pedagógico do docente
                 </DialogDescription>
               </div>
             </div>
@@ -288,7 +349,7 @@ export default function SubjectLessonEditor({
               <Input
                 id="lesson-date"
                 type="date"
-                value={formData.lesson_date}
+                value={formData.lesson_date || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, lesson_date: e.target.value }))}
                 className="bg-background"
               />
@@ -350,7 +411,7 @@ export default function SubjectLessonEditor({
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant={formData.is_completed ? "default" : "outline"} className={formData.is_completed ? "bg-green-600 hover:bg-green-700" : ""}>
+              <Badge variant={formData.is_completed ? "default" : "outline"} className={formData.is_completed ? "bg-green-600 hover:bg-green-700 text-white" : ""}>
                 {formData.is_completed ? "Concluída" : "Pendente / Agendada"}
               </Badge>
               <Switch
@@ -462,27 +523,74 @@ export default function SubjectLessonEditor({
             </div>
           </div>
 
-          {/* Área do Conteúdo da Aula */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <Label className="text-sm font-semibold flex items-center gap-1.5">
-                <Edit3 className="w-4 h-4 text-primary" />
-                Conteúdo Textual da Aula (Markdown)
-              </Label>
-
+          {/* Seletor do Tipo de Conteúdo: Conteúdo da Aula vs Plano de Aula Docente */}
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-muted/30 rounded-xl border">
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setContentSection('content')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                    contentSection === 'content'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  📖 Conteúdo da Aula (Alunos & Professor)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setContentSection('plan')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all relative ${
+                    contentSection === 'plan'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-background hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/40'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4 text-indigo-300" />
+                  <span>🔒 Plano de Aula (Docente)</span>
+                  {formData.lesson_plan && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  )}
+                </button>
+              </div>
+
+              {contentSection === 'content' ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleInsertSnippet(LESSON_TEMPLATE)}
-                  className="text-xs h-7 gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                  className="text-xs h-8 gap-1 text-primary border-primary/30 hover:bg-primary/10"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  Inserir Modelo Padrão
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Modelo Padrão de Aula
                 </Button>
-              </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInsertSnippet(LESSON_PLAN_TEMPLATE)}
+                  className="text-xs h-8 gap-1.5 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:hover:bg-indigo-950/50"
+                >
+                  <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  Modelo Pedagógico de Plano
+                </Button>
+              )}
             </div>
+
+            {/* Aviso Informativo do Plano de Aula */}
+            {contentSection === 'plan' && (
+              <div className="flex items-center gap-2 p-2.5 px-3.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-800 dark:text-indigo-300 text-xs">
+                <Lock className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                <span>
+                  <strong>Área Exclusiva do Docente:</strong> Este conteúdo (estratégia didática, objetivos pedagógicos, gabaritos e anotações) só é visível para os professores da disciplina.
+                </span>
+              </div>
+            )}
 
             {/* Abas Editor / Preview */}
             <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-full">
@@ -490,7 +598,7 @@ export default function SubjectLessonEditor({
                 <TabsList className="grid grid-cols-2 w-56 h-8">
                   <TabsTrigger value="editor" className="text-xs flex items-center gap-1">
                     <Edit3 className="w-3.5 h-3.5" />
-                    Editor
+                    Editor Markdown
                   </TabsTrigger>
                   <TabsTrigger value="preview" className="text-xs flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5" />
@@ -547,7 +655,7 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Valor A | Valor B |')}
+                      onClick={() => handleInsertSnippet('| Item / Tópico | Duração / Detalhe |\n| --- | --- |\n| Acolhimento | 15 minutos |')}
                       title="Tabela"
                       className="h-7 px-2 text-xs"
                     >
@@ -573,52 +681,95 @@ export default function SubjectLessonEditor({
                     >
                       ───
                     </Button>
+
+                    {contentSection === 'plan' && (
+                      <>
+                        <div className="h-4 w-px bg-border mx-1" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleInsertSnippet('### 🎯 Objetivos Específicos\n- Objetivo 1...\n- Objetivo 2...')}
+                          title="Inserir Bloco de Objetivos"
+                          className="h-7 px-2 text-xs text-indigo-600 font-semibold gap-1"
+                        >
+                          <Target className="w-3 h-3" />
+                          Objetivos
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleInsertSnippet('### 🛠️ Estratégia Metodológica\n1. Passo 1...\n2. Passo 2...')}
+                          title="Inserir Bloco de Metodologia"
+                          className="h-7 px-2 text-xs text-indigo-600 font-semibold gap-1"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          Metodologia
+                        </Button>
+                      </>
+                    )}
                   </div>
 
-                  {/* Seletor de Linguagem e Inserir Código */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
-                      <Code2 className="w-3.5 h-3.5 text-primary" />
-                      Linguagem:
-                    </span>
-                    <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                      <SelectTrigger className="h-7 text-xs w-[130px] bg-background">
-                        <SelectValue placeholder="Linguagem" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CODE_LANGUAGES.map((lang) => (
-                          <SelectItem key={lang.value} value={lang.value} className="text-xs">
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleInsertCodeBlock}
-                      className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1 px-2.5 shadow-sm"
-                    >
-                      <Code2 className="w-3 h-3" />
-                      + Inserir Código
-                    </Button>
-                  </div>
+                  {/* Seletor de Linguagem e Inserir Código (Mais relevante no conteúdo de aula) */}
+                  {contentSection === 'content' && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                        <Code2 className="w-3.5 h-3.5 text-primary" />
+                        Linguagem:
+                      </span>
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger className="h-7 text-xs w-[130px] bg-background">
+                          <SelectValue placeholder="Linguagem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CODE_LANGUAGES.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value} className="text-xs">
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleInsertCodeBlock}
+                        className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1 px-2.5 shadow-sm"
+                      >
+                        <Code2 className="w-3 h-3" />
+                        + Inserir Código
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
+              {/* Aba Editor */}
               <TabsContent value="editor" className="mt-0 space-y-2">
-                <Textarea
-                  placeholder="Cole ou digite aqui o conteúdo em Markdown da aula..."
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none"
-                />
+                {contentSection === 'content' ? (
+                  <Textarea
+                    placeholder="Cole ou digite aqui o conteúdo em Markdown da aula que será disponibilizado aos alunos..."
+                    value={formData.content}
+                    onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                    className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none"
+                  />
+                ) : (
+                  <Textarea
+                    placeholder="Cole ou digite aqui o Plano de Aula Docente (Objetivos pedagógicos, metodologia, recursos necessários, critérios de avaliação e orientações internas)..."
+                    value={formData.lesson_plan || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lesson_plan: e.target.value }))}
+                    className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none border-indigo-300 dark:border-indigo-800/60 focus-visible:ring-indigo-500"
+                  />
+                )}
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5" />
-                  Dica: Você pode colar anotações completas ou usar a barra de ferramentas para inserir códigos formatados com destaque de sintaxe.
+                  {contentSection === 'content'
+                    ? 'Dica: O conteúdo da aula é o material didático formatado exibido a todos os estudantes.'
+                    : 'Dica: O Plano de Aula fica reservado ao professor para planejamento pedagógico e gestão das aulas.'}
                 </p>
               </TabsContent>
 
+              {/* Aba Preview */}
               <TabsContent value="preview" className="mt-0">
                 <div 
                   className="markdown-rendered min-h-[300px] max-h-[440px] overflow-y-auto p-6 border rounded-lg bg-card/60 shadow-inner break-words"
@@ -637,8 +788,8 @@ export default function SubjectLessonEditor({
                       }
                     }
                   }}
-                  dangerouslySetWarningContent={{ __html: previewHtml }}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  dangerouslySetWarningContent={{ __html: contentSection === 'content' ? previewContentHtml : previewPlanHtml }}
+                  dangerouslySetInnerHTML={{ __html: contentSection === 'content' ? previewContentHtml : previewPlanHtml }}
                 />
               </TabsContent>
             </Tabs>

@@ -7,6 +7,7 @@ export interface SubjectLesson {
   title: string;
   lesson_date?: string | null;
   content: string;
+  lesson_plan?: string | null;
   is_completed: boolean;
   period: '1' | '2' | '3' | '4' | 'none' | string;
   evaluation_type: 'none' | 'parcial' | 'global' | string;
@@ -23,6 +24,7 @@ export type CreateLessonData = {
   title: string;
   lesson_date?: string | null;
   content: string;
+  lesson_plan?: string | null;
   is_completed?: boolean;
   period?: string;
   evaluation_type?: string;

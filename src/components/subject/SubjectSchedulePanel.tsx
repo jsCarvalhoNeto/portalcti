@@ -27,7 +27,9 @@ import {
   Presentation,
   Video,
   ExternalLink,
-  Printer
+  Printer,
+  ClipboardList,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import subjectLessonService, { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
@@ -60,6 +62,7 @@ export default function SubjectSchedulePanel({
   // Modais
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerInitialTab, setViewerInitialTab] = useState<'content' | 'plan'>('content');
   const [selectedLessonForEdit, setSelectedLessonForEdit] = useState<SubjectLesson | null>(null);
   const [selectedLessonForView, setSelectedLessonForView] = useState<SubjectLesson | null>(null);
 
@@ -178,6 +181,13 @@ export default function SubjectSchedulePanel({
 
   const handleOpenView = (lesson: SubjectLesson) => {
     setSelectedLessonForView(lesson);
+    setViewerInitialTab('content');
+    setIsViewerOpen(true);
+  };
+
+  const handleOpenLessonPlan = (lesson: SubjectLesson) => {
+    setSelectedLessonForView(lesson);
+    setViewerInitialTab('plan');
     setIsViewerOpen(true);
   };
 
@@ -515,9 +525,24 @@ export default function SubjectSchedulePanel({
                   )}
                 </CardContent>
 
-                {/* Recursos Extras da Aula (PDF, Slides, Vídeo) */}
-                {(lesson.pdf_url || lesson.presentation_url || lesson.video_url) && (
+                {/* Recursos Extras da Aula (PDF, Slides, Vídeo, Plano Docente) */}
+                {(lesson.pdf_url || lesson.presentation_url || lesson.video_url || (canManage && lesson.lesson_plan)) && (
                   <div className="px-6 pb-3 pt-0 flex items-center gap-2 flex-wrap">
+                    {canManage && lesson.lesson_plan && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenLessonPlan(lesson);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 hover:scale-[1.02] transition-all shadow-xs"
+                        title="Abrir Plano de Aula do Professor"
+                      >
+                        <ClipboardList className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Plano Docente
+                        <Lock className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                      </button>
+                    )}
                     {lesson.pdf_url && (
                       <a
                         href={lesson.pdf_url}
@@ -578,6 +603,25 @@ export default function SubjectSchedulePanel({
                 </Button>
 
                 <div className="flex items-center gap-1">
+                  {canManage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenLessonPlan(lesson);
+                      }}
+                      title="Plano de Aula & Roteiro do Professor"
+                      className={`h-8 w-8 p-0 ${
+                        lesson.lesson_plan
+                          ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20'
+                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/30'
+                      }`}
+                    >
+                      <ClipboardList className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -705,6 +749,7 @@ export default function SubjectSchedulePanel({
         lesson={selectedLessonForView}
         subjectName={subjectName}
         isTeacher={canManage}
+        initialTab={viewerInitialTab}
         onEdit={(lesson) => {
           setIsViewerOpen(false);
           handleOpenEdit(lesson);
