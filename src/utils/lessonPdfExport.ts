@@ -66,6 +66,10 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
     let renderedContent = '';
     if (lesson.content && lesson.content.trim()) {
       renderedContent = sanitizeHtml(markdownToHtml(lesson.content));
+      // Remove botões de copiar código e quaisquer botões interativos do HTML impresso
+      renderedContent = renderedContent.replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '');
+      // Garante que seções colapsáveis estejam abertas para impressão completa
+      renderedContent = renderedContent.replace(/<details\b(?![^>]*\bopen\b)/gi, '<details open');
     } else {
       renderedContent = '<div class="empty-notice"><p>Nenhum texto de roteiro ou anotação registrado para esta aula.</p></div>';
     }
@@ -109,9 +113,17 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
       color: #1e293b;
       background-color: #ffffff;
       line-height: 1.6;
-      font-size: 11pt;
+      font-size: 10.5pt;
       margin: 0;
       padding: 0;
+    }
+
+    /* Ocultar elementos desnecessários em documento impresso */
+    button,
+    .copy-code-btn,
+    .copy-button,
+    .no-print {
+      display: none !important;
     }
 
     /* Cabeçalho Institucional */
@@ -176,10 +188,10 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
     }
 
     .lesson-title {
-      font-size: 16pt;
+      font-size: 15pt;
       font-weight: 800;
       color: #0f172a;
-      line-height: 1.25;
+      line-height: 1.3;
       margin: 4px 0 10px 0;
     }
 
@@ -253,15 +265,15 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
     .lesson-content h4 {
       color: #0f172a;
       font-weight: 800;
-      margin-top: 1.4em;
+      margin-top: 1.3em;
       margin-bottom: 0.5em;
       page-break-after: avoid;
     }
 
-    .lesson-content h1 { font-size: 14pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-    .lesson-content h2 { font-size: 12.5pt; }
-    .lesson-content h3 { font-size: 11.5pt; }
-    .lesson-content h4 { font-size: 10.5pt; }
+    .lesson-content h1 { font-size: 13.5pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .lesson-content h2 { font-size: 12pt; }
+    .lesson-content h3 { font-size: 11pt; }
+    .lesson-content h4 { font-size: 10pt; }
 
     .lesson-content p {
       margin-top: 0;
@@ -296,11 +308,13 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
       color: #334155;
       font-style: italic;
       border-radius: 0 6px 6px 0;
+      page-break-inside: avoid;
     }
 
-    .lesson-content code {
+    /* Código inline */
+    .lesson-content code:not([class*="language-"]) {
       font-family: Consolas, Monaco, "Courier New", Courier, monospace;
-      font-size: 9.5pt;
+      font-size: 9pt;
       background-color: #f1f5f9;
       color: #0f172a;
       padding: 2px 5px;
@@ -308,27 +322,124 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
       border: 1px solid #e2e8f0;
     }
 
-    .lesson-content pre {
-      background-color: #0f172a;
-      color: #f8fafc;
-      padding: 12px 14px;
-      border-radius: 6px;
-      overflow-x: auto;
-      font-family: Consolas, Monaco, "Courier New", Courier, monospace;
-      font-size: 9pt;
-      line-height: 1.45;
-      margin: 1em 0;
-      page-break-inside: avoid;
+    /* Blocos de Código e Syntax Highlighting */
+    .code-block-container {
+      background-color: #0d1117 !important;
+      border: 1px solid #30363d !important;
+      border-radius: 8px !important;
+      margin: 1.2em 0 !important;
+      overflow: hidden !important;
+      page-break-inside: avoid !important;
     }
 
-    .lesson-content pre code {
-      background: transparent;
-      color: inherit;
-      padding: 0;
-      border: none;
-      font-size: inherit;
+    .code-block-container > div:first-child {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 6px 12px !important;
+      background-color: #161b22 !important;
+      border-bottom: 1px solid #30363d !important;
+      font-family: Consolas, Monaco, "Courier New", monospace !important;
+      font-size: 8pt !important;
+      color: #c9d1d9 !important;
     }
 
+    .code-block-container .flex {
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    .code-block-container span.rounded-full {
+      border-radius: 9999px !important;
+      width: 7px !important;
+      height: 7px !important;
+      display: inline-block !important;
+      margin-right: 3px !important;
+    }
+
+    .code-block-container .bg-red-500\\/80,
+    .code-block-container [class*="bg-red-500"] { background-color: #ef4444 !important; }
+    
+    .code-block-container .bg-amber-500\\/80,
+    .code-block-container [class*="bg-amber-500"] { background-color: #f59e0b !important; }
+    
+    .code-block-container .bg-emerald-500\\/80,
+    .code-block-container [class*="bg-emerald-500"] { background-color: #10b981 !important; }
+
+    .code-block-container span.font-bold,
+    .code-block-container [class*="text-sky-400"] {
+      font-weight: 700 !important;
+      color: #38bdf8 !important;
+      background-color: #0c4a6e !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+      border: 1px solid #075985 !important;
+      font-size: 7.5pt !important;
+      letter-spacing: 0.05em !important;
+      display: inline-block !important;
+    }
+
+    .code-block-container pre {
+      background-color: #0d1117 !important;
+      color: #e6edf3 !important;
+      padding: 10px 14px !important;
+      margin: 0 !important;
+      overflow-x: auto !important;
+      font-family: Consolas, Monaco, "Courier New", Courier, monospace !important;
+      font-size: 9pt !important;
+      line-height: 1.5 !important;
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+    }
+
+    .code-block-container pre code {
+      background: transparent !important;
+      color: inherit !important;
+      padding: 0 !important;
+      border: none !important;
+      font-size: inherit !important;
+      font-family: inherit !important;
+    }
+
+    /* Cores de Syntax Highlighting (Prism) no Documento PDF */
+    .token.comment,
+    .token.prolog,
+    .token.doctype,
+    .token.cdata { color: #8b949e !important; font-style: italic !important; }
+
+    .token.punctuation { color: #c9d1d9 !important; }
+
+    .token.property,
+    .token.tag,
+    .token.boolean,
+    .token.number,
+    .token.constant,
+    .token.symbol { color: #79c0ff !important; font-weight: 600 !important; }
+
+    .token.selector,
+    .token.attr-name,
+    .token.string,
+    .token.char,
+    .token.builtin,
+    .token.inserted { color: #7ee787 !important; }
+
+    .token.operator,
+    .token.entity,
+    .token.url,
+    .language-css .token.string { color: #d2a8ff !important; }
+
+    .token.atrule,
+    .token.attr-value,
+    .token.keyword { color: #ff7b72 !important; font-weight: 700 !important; }
+
+    .token.function,
+    .token.class-name { color: #d2a8ff !important; font-weight: 600 !important; }
+
+    .token.regex,
+    .token.important,
+    .token.variable { color: #ffa657 !important; }
+
+    /* Tabelas */
     .lesson-content table {
       width: 100%;
       border-collapse: collapse;
@@ -366,6 +477,27 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
       border-radius: 6px;
       margin: 1em 0;
       page-break-inside: avoid;
+    }
+
+    /* Seções Colapsáveis (expandidas no PDF) */
+    details.collapsible-section {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      margin: 1em 0;
+      padding: 8px 12px;
+      background-color: #f8fafc;
+      page-break-inside: avoid;
+    }
+
+    details.collapsible-section summary {
+      font-weight: 700;
+      color: #1e40af;
+      cursor: default;
+      list-style: none;
+    }
+
+    details.collapsible-section .collapsible-content {
+      padding-top: 8px;
     }
 
     .empty-notice {
