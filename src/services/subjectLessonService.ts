@@ -119,6 +119,7 @@ export const subjectLessonService = {
       title: data.title.trim(),
       lesson_date: formattedDate,
       content: data.content || '',
+      lesson_plan: data.lesson_plan && data.lesson_plan.trim() !== '' ? data.lesson_plan : null,
       is_completed: Boolean(data.is_completed),
       period: data.period || '1',
       evaluation_type: data.evaluation_type || 'none',
@@ -162,6 +163,9 @@ export const subjectLessonService = {
 
     if (data.title !== undefined) updatePayload.title = data.title.trim();
     if (data.content !== undefined) updatePayload.content = data.content;
+    if (data.lesson_plan !== undefined) {
+      updatePayload.lesson_plan = data.lesson_plan && data.lesson_plan.trim() !== '' ? data.lesson_plan : null;
+    }
     if (data.is_completed !== undefined) updatePayload.is_completed = Boolean(data.is_completed);
     if (data.period !== undefined) updatePayload.period = data.period;
     if (data.evaluation_type !== undefined) updatePayload.evaluation_type = data.evaluation_type;
