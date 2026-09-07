@@ -19,62 +19,7 @@ export interface ShirtOrder {
 
 const LOCAL_STORAGE_KEY = 'cti_shirt_orders_cache';
 
-const INITIAL_MOCK_ORDERS: ShirtOrder[] = [
-  {
-    id: 'mock-1',
-    student_name: 'Lucas Gabriel Silveira',
-    grade: '1º Ano',
-    model: 'masculino',
-    size: 'M',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 65).toISOString()
-  },
-  {
-    id: 'mock-2',
-    student_name: 'Mariana Costa Ribeiro',
-    grade: '1º Ano',
-    model: 'feminino',
-    size: 'P',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString()
-  },
-  {
-    id: 'mock-3',
-    student_name: 'Matheus Henrique Ramos',
-    grade: '2º Ano',
-    model: 'masculino',
-    size: 'G',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString()
-  },
-  {
-    id: 'mock-4',
-    student_name: 'Beatriz Almeida Rocha',
-    grade: '2º Ano',
-    model: 'feminino',
-    size: 'M',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString()
-  },
-  {
-    id: 'mock-5',
-    student_name: 'Gabriel Ferreira Santos',
-    grade: '3º Ano',
-    model: 'masculino',
-    size: 'GG',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString()
-  },
-  {
-    id: 'mock-6',
-    student_name: 'Juliana Mendes Lima',
-    grade: '3º Ano',
-    model: 'feminino',
-    size: 'G',
-    session_code: 'GERAL',
-    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString()
-  }
-];
+const INITIAL_MOCK_ORDERS: ShirtOrder[] = [];
 
 // Helper para ler do localStorage
 function getLocalOrders(): ShirtOrder[] {
@@ -82,13 +27,11 @@ function getLocalOrders(): ShirtOrder[] {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    // Inicializar com mocks caso não haja nada ainda no cache local
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_ORDERS));
-    return INITIAL_MOCK_ORDERS;
+    return [];
   } catch {
-    return INITIAL_MOCK_ORDERS;
+    return [];
   }
 }
 
@@ -117,18 +60,10 @@ export async function getShirtOrders(sessionCode?: string): Promise<ShirtOrder[]
 
     const { data, error } = await query;
 
-    if (!error && data && data.length >= 0) {
-      // Atualiza o cache local
-      const local = getLocalOrders();
-      const combinedMap = new Map<string, ShirtOrder>();
-      data.forEach((item: any) => combinedMap.set(item.id, item as ShirtOrder));
-      // Preserva mocks locais caso banco esteja vazio
-      if (data.length === 0) {
-        local.forEach(item => combinedMap.set(item.id, item));
-      }
-      const list = Array.from(combinedMap.values());
-      saveLocalOrders(list);
-      return data.length > 0 ? (data as ShirtOrder[]) : list;
+    if (!error && data) {
+      // Atualiza o cache local com os dados reais do Supabase
+      saveLocalOrders(data as ShirtOrder[]);
+      return data as ShirtOrder[];
     }
   } catch (err) {
     console.warn('Tabela shirt_orders não acessível no Supabase, usando dados locais sincronizados:', err);
@@ -283,3 +218,45 @@ export async function updateShirtOrder(id: string, updates: Partial<ShirtOrder>)
   }
   return null;
 }
+
+/**
+ * Limpa todos os pedidos de camisa (do Supabase e do cache local)
+ */
+export async function clearAllShirtOrders(sessionCode?: string): Promise<boolean> {
+  try {
+    let query = supabase.from('shirt_orders').delete();
+    if (sessionCode && sessionCode !== 'ALL') {
+      query = query.eq('session_code', sessionCode);
+    } else {
+      query = query.neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    await query;
+  } catch (err) {
+    console.warn('Erro ao limpar pedidos no Supabase:', err);
+  }
+
+  saveLocalOrders([]);
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  } catch {}
+
+  // Broadcast de reset para os clientes conectados
+  try {
+    const code = (sessionCode || 'GERAL').toUpperCase().trim();
+    const channel = supabase.channel(`shirt_channel_${code}`, {
+      config: { broadcast: { ack: false } }
+    });
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event: 'shirt_reset',
+          payload: {}
+        });
+      }
+    });
+  } catch {}
+
+  return true;
+}
+

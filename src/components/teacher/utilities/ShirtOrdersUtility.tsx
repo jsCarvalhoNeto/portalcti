@@ -26,7 +26,8 @@ import {
   Share2,
   Calendar,
   Layers,
-  BarChart3
+  BarChart3,
+  RotateCcw
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ import {
   saveShirtOrder, 
   deleteShirtOrder, 
   updateShirtOrder, 
+  clearAllShirtOrders,
   type ShirtOrder, 
   type ShirtSize, 
   type ShirtModel 
@@ -56,6 +58,8 @@ export default function ShirtOrdersUtility() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<ShirtOrder | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
 
@@ -111,6 +115,20 @@ export default function ShirtOrdersUtility() {
     }
   };
 
+  const handleConfirmReset = async () => {
+    setIsResetting(true);
+    try {
+      await clearAllShirtOrders(sessionCode);
+      setOrders([]);
+      setIsResetModalOpen(false);
+      toast.success('Censo de camisas zerado com sucesso! Todos os registros foram limpos.');
+    } catch (err) {
+      toast.error('Erro ao zerar o censo.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   useEffect(() => {
     loadOrders();
 
@@ -135,6 +153,10 @@ export default function ShirtOrdersUtility() {
           playChime();
           toast.success(`👕 Novo pedido registrado: ${newOrder.student_name} (${newOrder.grade} - ${newOrder.size} ${newOrder.model})!`);
         }
+      })
+      .on('broadcast', { event: 'shirt_reset' }, () => {
+        setOrders([]);
+        toast.info('O censo de camisas foi zerado pelo professor.');
       })
       .subscribe();
 
@@ -388,6 +410,16 @@ _Gerado pelo Módulo de Utilitários em ${new Date().toLocaleDateString('pt-BR')
           >
             <Download className="w-4 h-4" />
             CSV
+          </Button>
+
+          <Button 
+            onClick={() => setIsResetModalOpen(true)}
+            variant="secondary"
+            className="bg-red-500/25 hover:bg-red-500/40 text-red-100 hover:text-white border border-red-400/30 gap-1.5"
+            title="Zerar todos os registros do censo de camisas"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="hidden xl:inline">Zerar Censo</span>
           </Button>
 
           <Button 
@@ -986,6 +1018,41 @@ _Gerado pelo Módulo de Utilitários em ${new Date().toLocaleDateString('pt-BR')
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação para Zerar Censo */}
+      <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
+        <DialogContent className="max-w-md p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-2">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">
+              Zerar Todos os Pedidos?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-center text-muted-foreground">
+              Esta ação removerá todos os pedidos de camisa cadastrados atualmente e iniciará uma contagem totalmente limpa (do zero). Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsResetModalOpen(false)}
+              disabled={isResetting}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmReset}
+              disabled={isResetting}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold gap-1.5"
+            >
+              <RotateCcw className={`w-4 h-4 ${isResetting ? 'animate-spin' : ''}`} />
+              {isResetting ? 'Zerando...' : 'Sim, Zerar Tudo'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
