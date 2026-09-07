@@ -38,6 +38,7 @@ import HelpQueueStudentPage from './pages/HelpQueueStudentPage';
 import TeamRegistrationPage from './pages/TeamRegistrationPage';
 import StudentPickerJoinPage from './pages/StudentPickerJoinPage';
 import PublicEducationalGamePage from './pages/PublicEducationalGamePage';
+import ShirtOrderStudentPage from './pages/ShirtOrderStudentPage';
 
 // Adicionar esta interface se não existir
 interface PollData {
@@ -110,6 +111,12 @@ const App = () => (
               <Route path="/sorteio" element={<StudentPickerJoinPage />} />
               <Route path="/sorteio/:code" element={<StudentPickerJoinPage />} />
               <Route path="/jogos/:shareCode" element={<PublicEducationalGamePage />} />
+
+              {/* Rotas para o Censo/Pedido de Camisas do Curso */}
+              <Route path="/camisas" element={<ShirtOrderStudentPage />} />
+              <Route path="/camisas/:code" element={<ShirtOrderStudentPage />} />
+              <Route path="/camisa" element={<ShirtOrderStudentPage />} />
+              <Route path="/camisa/:code" element={<ShirtOrderStudentPage />} />
 
               {/* Rota pública para perfil de carreira */}
               <Route path="/talento/:studentId" element={<PublicCareerProfile />} />

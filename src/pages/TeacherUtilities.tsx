@@ -26,7 +26,8 @@ import {
   PenTool,
   Gamepad2,
   Star,
-  History
+  History,
+  Shirt
 } from 'lucide-react';
 import { useState, useMemo, type ComponentType } from 'react';
 
@@ -42,6 +43,7 @@ import HelpQueueUtility from '@/components/teacher/utilities/HelpQueueUtility';
 import ClassTimelineUtility from '@/components/teacher/utilities/ClassTimelineUtility';
 import WhiteboardUtility from '@/components/teacher/utilities/WhiteboardUtility';
 import TeamLiveRegistrationUtility from '@/components/teacher/utilities/TeamLiveRegistrationUtility';
+import ShirtOrdersUtility from '@/components/teacher/utilities/ShirtOrdersUtility';
 
 // Utilitários de Prática Técnica & Programação
 import ClassCodeBoardUtility from '@/components/teacher/utilities/ClassCodeBoardUtility';
@@ -261,6 +263,19 @@ const UTILITIES: UtilityItem[] = [
     borderClass: 'hover:border-pink-500/50',
     bgLightClass: 'bg-pink-50 dark:bg-pink-950/30',
     badge: { label: 'Tempo Real & QR', icon: Radio, className: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' },
+    highlight: true
+  },
+  {
+    id: 'censo-camisas',
+    component: ShirtOrdersUtility,
+    name: 'Censo de Camisas do Curso',
+    description: 'Colete e acompanhe os tamanhos (P ao XGG) e modelos (Masculino/Feminina) com filtro por turma e QR Code para alunos.',
+    category: 'dynamics',
+    icon: Shirt,
+    colorClass: 'text-emerald-600 dark:text-emerald-400',
+    borderClass: 'hover:border-emerald-500/50',
+    bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/30',
+    badge: { label: 'Novo & Tempo Real', icon: Radio, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
     highlight: true
   },
   {

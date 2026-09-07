@@ -30,7 +30,9 @@ import {
   Layers,
   Clock,
   UserCheck,
-  Search
+  Search,
+  Shirt,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -614,6 +616,35 @@ export default function StudentDashboard() {
           </div>
 
           <TabsContent value="overview" className="space-y-8">
+            {/* Banner Oficial: Censo de Camisas do Curso */}
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 dark:from-emerald-950 dark:via-teal-900 dark:to-cyan-950 rounded-2xl p-4 sm:p-6 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden border border-emerald-500/20">
+              <div className="space-y-1.5 z-10">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-none text-[11px] font-semibold">
+                    <Sparkles className="w-3 h-3 text-amber-300 mr-1" />
+                    Censo Oficial
+                  </Badge>
+                  <span className="text-xs text-emerald-100 font-medium">Camisa Oficial do Curso Técnico</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black">
+                  Já informou o tamanho da sua camisa do curso?
+                </h2>
+                <p className="text-xs text-emerald-100/90 max-w-xl">
+                  Informe se prefere o modelo <strong>Masculino</strong> ou <strong>Feminina</strong> e seu tamanho (<strong>P, M, G, GG ou XGG</strong>) para garantirmos a produção da sua camisa.
+                </p>
+              </div>
+
+              <Button 
+                asChild
+                className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold shrink-0 shadow-md gap-2 z-10"
+              >
+                <Link to="/camisas">
+                  <Shirt className="w-4 h-4 text-emerald-600" />
+                  Informar Meu Tamanho
+                </Link>
+              </Button>
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {stats.map((stat, index) => {
