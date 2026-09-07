@@ -436,7 +436,12 @@ export async function updateActivity(activityId: number, activityData: ActivityD
       deadline: activityData.deadline || null,
       period: activityData.period || null,
       evaluation_type: activityData.evaluation_type || null,
+      updated_at: new Date().toISOString(),
     };
+
+    if (activityData.subject_id) {
+      updatePayload.subject_id = activityData.subject_id;
+    }
 
     if (activityData.grade) {
       updatePayload.grade = activityData.grade;

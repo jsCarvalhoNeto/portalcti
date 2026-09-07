@@ -71,9 +71,8 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Corrige desmontagem abrupta do Select ao fechar o Dialog
+  // Atualiza os campos sempre que a atividade for carregada ou o modal for aberto
   useEffect(() => {
-    let timeout: number | undefined;
     if (activity && isOpen) {
       setActivityName(activity.name || '');
       setSelectedSubject(activity.subject_id?.toString() || '');
@@ -87,27 +86,9 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
       setDeadline(activity.deadline ? formatDateTimeLocal(activity.deadline) : '');
       setPeriod(activity.period || '');
       setEvaluationType(activity.evaluation_type || '');
-      if (activity.file_name) {
-        setFileName(activity.file_name);
-      }
-    } else {
-      // Aguarda animação do Dialog antes de limpar campos
-      timeout = window.setTimeout(() => {
-        setActivityName('');
-        setSelectedSubject('');
-        setSelectedGrade('');
-        setActivityType('individual');
-        setDescription('');
-        setDeadline('');
-        setPeriod('');
-        setEvaluationType('');
-        setFile(null);
-        setFileName('');
-      }, 300);
+      setFileName(activity.file_name || '');
+      setFile(null);
     }
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
   }, [activity, isOpen]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
