@@ -47,6 +47,7 @@ export interface Activity {
   deadline?: string;
   period?: string;
   evaluation_type?: string;
+  files?: any[];
 }
 
 export interface ActivityGrade {
@@ -159,6 +160,13 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
         grade,
         type,
         teacher_id,
+        description,
+        deadline,
+        period,
+        evaluation_type,
+        file_path,
+        file_name,
+        files,
         created_at,
         updated_at,
         subjects(name)
@@ -179,6 +187,13 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
       grade: activity.grade || '',
       type: activity.type || 'individual',
       teacher_id: activity.teacher_id,
+      description: activity.description || '',
+      deadline: activity.deadline || undefined,
+      period: activity.period || '',
+      evaluation_type: activity.evaluation_type || '',
+      file_path: activity.file_path || '',
+      file_name: activity.file_name || '',
+      files: activity.files || [],
       created_at: activity.created_at,
       updated_at: activity.updated_at
     }));

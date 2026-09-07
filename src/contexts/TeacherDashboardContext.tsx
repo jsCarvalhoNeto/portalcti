@@ -37,6 +37,7 @@ export interface Activity {
   deadline?: string;
   period?: string;
   evaluation_type?: string;
+  files?: any[];
 }
 
 export interface CalendarEvent {

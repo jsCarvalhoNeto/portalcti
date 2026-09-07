@@ -141,6 +141,11 @@ export default function TeacherGradesActivitiesTab() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm font-medium">Criada em: {new Date(activity.created_at).toLocaleDateString()}</p>
+                        {activity.deadline && (
+                          <p className="text-xs text-muted-foreground">
+                            Prazo: {new Date(activity.deadline).toLocaleDateString()} {new Date(activity.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
                       </div>
                       <Badge variant="secondary">
                         {activity.type === 'individual' ? 'Individual' : 'Equipe'}
