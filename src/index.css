@@ -857,3 +857,67 @@ Todas as cores em HSL para consistência
   font-weight: 700;
 }
 
+/* Marca-Texto de Estudo (Lesson Highlights) */
+mark.lesson-highlight {
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.28rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+  font-weight: inherit;
+}
+
+mark.lesson-highlight:hover {
+  filter: brightness(0.92);
+}
+
+.dark mark.lesson-highlight:hover {
+  filter: brightness(1.15);
+}
+
+mark.lesson-highlight.highlight-yellow {
+  background-color: #fef08a;
+  color: #713f12;
+}
+.dark mark.lesson-highlight.highlight-yellow {
+  background-color: rgba(234, 179, 8, 0.45);
+  color: #fef9c3;
+}
+
+mark.lesson-highlight.highlight-green {
+  background-color: #bbf7d0;
+  color: #14532d;
+}
+.dark mark.lesson-highlight.highlight-green {
+  background-color: rgba(34, 197, 94, 0.45);
+  color: #dcfce7;
+}
+
+mark.lesson-highlight.highlight-blue {
+  background-color: #bae6fd;
+  color: #0c4a6e;
+}
+.dark mark.lesson-highlight.highlight-blue {
+  background-color: rgba(14, 165, 233, 0.45);
+  color: #e0f2fe;
+}
+
+mark.lesson-highlight.highlight-pink {
+  background-color: #fbcfe8;
+  color: #831843;
+}
+.dark mark.lesson-highlight.highlight-pink {
+  background-color: rgba(236, 72, 153, 0.45);
+  color: #fce7f3;
+}
+
+mark.lesson-highlight.highlight-orange {
+  background-color: #fed7aa;
+  color: #7c2d12;
+}
+.dark mark.lesson-highlight.highlight-orange {
+  background-color: rgba(249, 115, 22, 0.45);
+  color: #ffedd5;
+}
+

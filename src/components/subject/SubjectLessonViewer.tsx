@@ -8,6 +8,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent
+} from '@/components/ui/popover';
 import { 
   BookOpen, 
   Calendar, 
@@ -29,12 +34,26 @@ import {
   Link2,
   ClipboardList,
   Lock,
-  Plus
+  Plus,
+  Highlighter
 } from 'lucide-react';
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
 import { exportLessonToPdf } from '@/utils/lessonPdfExport';
+import TextHighlightToolbar from './TextHighlightToolbar';
+import {
+  HIGHLIGHT_COLORS,
+  getColorById,
+  applyHighlight,
+  removeHighlightById,
+  updateHighlightColor,
+  clearAllHighlights,
+  countUniqueHighlights,
+  saveLessonHighlights,
+  loadSavedHighlightsHtml,
+  removeSavedHighlights
+} from '@/utils/lessonHighlightUtils';
 
 interface SubjectLessonViewerProps {
   isOpen: boolean;
@@ -64,6 +83,21 @@ export default function SubjectLessonViewer({
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'plan'>(initialTab);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentContainerRef = useRef<HTMLDivElement>(null);
+
+  // Estados da Ferramenta de Marca-Texto
+  const [highlightsCount, setHighlightsCount] = useState<number>(0);
+  const [activeColorId, setActiveColorId] = useState<string>('yellow');
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [highlightToolbar, setHighlightToolbar] = useState<{
+    position: { top: number; left: number };
+    isBelow?: boolean;
+    selectedText?: string;
+    isExistingMark?: boolean;
+    markId?: string;
+    markColorId?: string;
+    range?: Range;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,19 +115,51 @@ export default function SubjectLessonViewer({
     };
   }, []);
 
-  const renderedContentHtml = useMemo(() => {
+  // Assinatura do conteúdo para detecção de alterações
+  const contentSignature = useMemo(() => {
+    if (!lesson) return '';
+    return activeTab === 'plan' ? (lesson.lesson_plan || '') : (lesson.content || '');
+  }, [lesson, activeTab]);
+
+  const defaultContentHtml = useMemo(() => {
     if (!lesson || !lesson.content || !lesson.content.trim()) {
       return '<div class="text-center py-12 text-muted-foreground"><p class="text-base font-medium">Nenhum conteúdo textual registrado para esta aula ainda.</p><p class="text-xs mt-1">O professor disponibilizará as anotações e roteiro em breve.</p></div>';
     }
     return sanitizeHtml(markdownToHtml(lesson.content));
   }, [lesson]);
 
-  const renderedPlanHtml = useMemo(() => {
+  const defaultPlanHtml = useMemo(() => {
     if (!lesson || !lesson.lesson_plan || !lesson.lesson_plan.trim()) {
       return '';
     }
     return sanitizeHtml(markdownToHtml(lesson.lesson_plan));
   }, [lesson]);
+
+  const activeDefaultHtml = activeTab === 'plan' ? defaultPlanHtml : defaultContentHtml;
+  const [currentHtml, setCurrentHtml] = useState<string>('');
+
+  // Carrega marcações salvas ao abrir a aula ou mudar de aba
+  useEffect(() => {
+    if (!lesson || !isOpen) {
+      setHighlightToolbar(null);
+      return;
+    }
+    const saved = loadSavedHighlightsHtml(lesson.id, activeTab, contentSignature);
+    if (saved) {
+      setCurrentHtml(saved);
+    } else {
+      setCurrentHtml(activeDefaultHtml);
+    }
+    setHighlightToolbar(null);
+  }, [lesson?.id, activeTab, contentSignature, activeDefaultHtml, isOpen]);
+
+  // Recalcula contagem de destaques
+  useEffect(() => {
+    if (!contentContainerRef.current) return;
+    const targetEl = (contentContainerRef.current.querySelector('.markdown-rendered') as HTMLElement) || contentContainerRef.current;
+    const count = countUniqueHighlights(targetEl);
+    setHighlightsCount(count);
+  }, [currentHtml, activeTab]);
 
   if (!lesson) return null;
 
@@ -129,7 +195,9 @@ export default function SubjectLessonViewer({
         title: 'Gerando Documento...',
         description: 'Preparando o conteúdo da aula para impressão/PDF.',
       });
-      exportLessonToPdf(lesson, subjectName);
+      const markdownEl = contentContainerRef.current?.querySelector('.markdown-rendered') as HTMLElement | null;
+      const htmlToExport = markdownEl?.innerHTML || currentHtml;
+      exportLessonToPdf(lesson, subjectName, htmlToExport);
     } catch (error) {
       console.error('Erro ao imprimir/exportar PDF:', error);
       toast({
@@ -137,6 +205,188 @@ export default function SubjectLessonViewer({
         description: 'Não foi possível preparar o documento para impressão/PDF.',
         variant: 'destructive'
       });
+    }
+  };
+
+  // Persiste destaques no localStorage
+  const persistCurrentHighlights = () => {
+    if (!contentContainerRef.current || !lesson) return;
+    const markdownEl = contentContainerRef.current.querySelector('.markdown-rendered') as HTMLElement | null;
+    if (markdownEl) {
+      const newHtml = markdownEl.innerHTML;
+      setCurrentHtml(newHtml);
+      saveLessonHighlights(lesson.id, activeTab, contentSignature, markdownEl);
+      const count = countUniqueHighlights(markdownEl);
+      setHighlightsCount(count);
+    } else {
+      const newHtml = contentContainerRef.current.innerHTML;
+      setCurrentHtml(newHtml);
+      saveLessonHighlights(lesson.id, activeTab, contentSignature, contentContainerRef.current);
+      const count = countUniqueHighlights(contentContainerRef.current);
+      setHighlightsCount(count);
+    }
+  };
+
+  // Aplica marca-texto ao trecho selecionado ou altera cor de destaque existente
+  const handleApplyColor = (colorId: string) => {
+    if (!contentContainerRef.current || !lesson) return;
+    const targetEl = (contentContainerRef.current.querySelector('.markdown-rendered') as HTMLElement) || contentContainerRef.current;
+
+    if (highlightToolbar?.isExistingMark && highlightToolbar.markId) {
+      updateHighlightColor(highlightToolbar.markId, colorId, targetEl);
+      setActiveColorId(colorId);
+      setHighlightToolbar(null);
+      persistCurrentHighlights();
+      toast({
+        title: 'Cor alterada!',
+        description: `Destaque atualizado para ${getColorById(colorId).name.toLowerCase()}.`
+      });
+      return;
+    }
+
+    let range = highlightToolbar?.range;
+    if (!range) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        range = selection.getRangeAt(0);
+      }
+    }
+
+    if (range) {
+      const id = applyHighlight(range, colorId, targetEl);
+      if (id) {
+        setActiveColorId(colorId);
+        persistCurrentHighlights();
+        window.getSelection()?.removeAllRanges();
+        setHighlightToolbar(null);
+        toast({
+          title: 'Texto destacado!',
+          description: 'Sua marcação foi salva automaticamente nesta aula.'
+        });
+      }
+    }
+  };
+
+  // Remove um destaque individual
+  const handleRemoveHighlight = () => {
+    if (!contentContainerRef.current || !highlightToolbar?.markId) return;
+    const targetEl = (contentContainerRef.current.querySelector('.markdown-rendered') as HTMLElement) || contentContainerRef.current;
+    removeHighlightById(highlightToolbar.markId, targetEl);
+    setHighlightToolbar(null);
+    persistCurrentHighlights();
+    toast({
+      title: 'Destaque removido!'
+    });
+  };
+
+  // Limpa todas as marcações da aula na aba atual
+  const handleClearAllHighlights = () => {
+    if (!contentContainerRef.current || !lesson) return;
+    const targetEl = (contentContainerRef.current.querySelector('.markdown-rendered') as HTMLElement) || contentContainerRef.current;
+    clearAllHighlights(targetEl);
+    removeSavedHighlights(lesson.id, activeTab);
+    setCurrentHtml(activeDefaultHtml);
+    setHighlightsCount(0);
+    setHighlightToolbar(null);
+    setIsPopoverOpen(false);
+    toast({
+      title: 'Marcações removidas',
+      description: 'Todas as marcações de texto desta aula foram limpas.'
+    });
+  };
+
+  // Copia o texto selecionado
+  const handleCopySelectedText = () => {
+    if (!highlightToolbar?.selectedText) return;
+    navigator.clipboard.writeText(highlightToolbar.selectedText);
+    toast({
+      title: 'Copiado!',
+      description: 'Trecho copiado para a área de transferência.'
+    });
+  };
+
+  // Manipulador para capturar seleção de texto e exibir a toolbar flutuante
+  const handleMouseUp = () => {
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        return;
+      }
+
+      const text = selection.toString().trim();
+      if (!text || text.length === 0) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const container = contentContainerRef.current;
+      const targetEl = (container?.querySelector('.markdown-rendered') as HTMLElement) || container;
+      if (!targetEl || !targetEl.contains(range.commonAncestorContainer)) {
+        return;
+      }
+
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+
+      const isNearTop = rect.top < 70;
+      setHighlightToolbar({
+        position: {
+          top: isNearTop ? rect.bottom + 8 : Math.max(rect.top - 8, 20),
+          left: Math.min(Math.max(rect.left + rect.width / 2, 90), window.innerWidth - 90)
+        },
+        isBelow: isNearTop,
+        selectedText: text,
+        isExistingMark: false,
+        range: range.cloneRange()
+      });
+    }, 20);
+  };
+
+  // Clique no container para interceptar marcações existentes e botões de código
+  const handleContainerClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    // Se clicar em um botão de copiar código
+    const copyBtn = target.closest('button') as HTMLButtonElement | null;
+    if (copyBtn && copyBtn.innerText.includes('Copiar')) {
+      const codeContainer = copyBtn.closest('.code-block-container');
+      const codeEl = codeContainer?.querySelector('code');
+      if (codeEl) {
+        navigator.clipboard.writeText(codeEl.innerText || '');
+        copyBtn.innerText = '✓ Copiado!';
+        setTimeout(() => {
+          copyBtn.innerText = 'Copiar';
+        }, 2000);
+      }
+      return;
+    }
+
+    // Se clicar em uma marcação existente (<mark.lesson-highlight>)
+    const markEl = target.closest('mark.lesson-highlight') as HTMLElement | null;
+    if (markEl) {
+      e.stopPropagation();
+      const markId = markEl.getAttribute('data-highlight-id') || '';
+      const colorId = markEl.getAttribute('data-color') || 'yellow';
+      const rect = markEl.getBoundingClientRect();
+      const isNearTop = rect.top < 70;
+      setHighlightToolbar({
+        position: {
+          top: isNearTop ? rect.bottom + 8 : Math.max(rect.top - 8, 20),
+          left: Math.min(Math.max(rect.left + rect.width / 2, 90), window.innerWidth - 90)
+        },
+        isBelow: isNearTop,
+        selectedText: markEl.textContent || '',
+        isExistingMark: true,
+        markId,
+        markColorId: colorId
+      });
+      return;
+    }
+
+    // Se clicou fora de seleção, remove a toolbar
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setHighlightToolbar(null);
     }
   };
 
@@ -205,6 +455,19 @@ export default function SubjectLessonViewer({
           isFullscreen ? 'w-screen h-screen max-w-none max-h-none rounded-none' : ''
         }`}
       >
+        {/* Barra Flutuante de Marca-Texto */}
+        <TextHighlightToolbar
+          position={highlightToolbar?.position || null}
+          isBelow={highlightToolbar?.isBelow}
+          selectedText={highlightToolbar?.selectedText}
+          isExistingMark={highlightToolbar?.isExistingMark}
+          activeColorId={highlightToolbar?.markColorId || activeColorId}
+          onApplyColor={handleApplyColor}
+          onRemoveHighlight={handleRemoveHighlight}
+          onCopyText={handleCopySelectedText}
+          onClose={() => setHighlightToolbar(null)}
+        />
+
         {/* Cabeçalho */}
         <DialogHeader className="p-6 pb-4 border-b bg-gradient-to-r from-card via-muted/30 to-card flex-shrink-0">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -253,7 +516,103 @@ export default function SubjectLessonViewer({
             </div>
 
             {/* Ações de topo */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+              {/* Ferramenta Marca-Texto */}
+              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Ferramenta Marca-Texto (destacar trechos importantes)"
+                    className={`h-8 text-xs gap-1.5 transition-all ${
+                      highlightsCount > 0 
+                        ? 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border-yellow-500/40 font-semibold' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Highlighter className="w-3.5 h-3.5 text-yellow-500" />
+                    <span className="hidden sm:inline">Marca-Texto</span>
+                    {highlightsCount > 0 && (
+                      <Badge className="h-4 px-1.5 text-[10px] bg-yellow-500 text-yellow-950 font-black hover:bg-yellow-500">
+                        {highlightsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3 text-xs space-y-3" align="end">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-foreground">
+                      <Highlighter className="w-4 h-4 text-yellow-500" />
+                      <span>Marca-Texto de Estudo</span>
+                    </div>
+                    {highlightsCount > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {highlightsCount} {highlightsCount === 1 ? 'destaque' : 'destaques'}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Selecione qualquer trecho de texto no conteúdo para destacar com suas cores favoritas.
+                    </p>
+                    
+                    {/* Seletor de cor padrão */}
+                    <div className="pt-1">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                        Cor Padrão
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {HIGHLIGHT_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveColorId(color.id);
+                              toast({ title: `Cor padrão alterada para ${color.name}` });
+                            }}
+                            style={{ backgroundColor: color.lightBg }}
+                            className={`w-6 h-6 rounded-full border transition-all duration-150 flex items-center justify-center ${
+                              activeColorId === color.id
+                                ? 'ring-2 ring-primary ring-offset-1 border-primary scale-110 shadow-xs'
+                                : 'border-black/10 dark:border-white/20 hover:scale-105'
+                            }`}
+                            title={`Definir ${color.name} como padrão`}
+                          >
+                            {activeColorId === color.id && (
+                              <div 
+                                className="w-2.5 h-2.5 rounded-full" 
+                                style={{ backgroundColor: color.borderColor }} 
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {highlightsCount > 0 ? (
+                    <div className="pt-2 border-t flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearAllHighlights}
+                        className="w-full text-xs text-destructive hover:bg-destructive/10 h-7 gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Limpar todos os destaques
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="pt-1 border-t text-[10px] text-muted-foreground italic flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      Dica: Os destaques ficam salvos no seu navegador.
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -383,25 +742,14 @@ export default function SubjectLessonViewer({
 
         {/* Conteúdo Renderizado da Aula ou do Plano */}
         <div 
-          className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40"
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            const copyBtn = target.closest('button') as HTMLButtonElement | null;
-            if (copyBtn && copyBtn.innerText.includes('Copiar')) {
-              const container = copyBtn.closest('.code-block-container');
-              const codeEl = container?.querySelector('code');
-              if (codeEl) {
-                navigator.clipboard.writeText(codeEl.innerText || '');
-                copyBtn.innerText = '✓ Copiado!';
-                setTimeout(() => {
-                  copyBtn.innerText = 'Copiar';
-                }, 2000);
-              }
-            }
-          }}
+          ref={contentContainerRef}
+          className="flex-1 overflow-y-auto p-6 md:p-8 bg-card/40 relative selection:bg-primary/20"
+          onMouseUp={handleMouseUp}
+          onTouchEnd={handleMouseUp}
+          onClick={handleContainerClick}
         >
           {activeTab === 'plan' ? (
-            renderedPlanHtml ? (
+            defaultPlanHtml ? (
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
@@ -420,8 +768,7 @@ export default function SubjectLessonViewer({
 
                 <div 
                   className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words pt-2"
-                  dangerouslySetWarningContent={{ __html: renderedPlanHtml }}
-                  dangerouslySetInnerHTML={{ __html: renderedPlanHtml }}
+                  dangerouslySetInnerHTML={{ __html: currentHtml || defaultPlanHtml }}
                 />
               </div>
             ) : (
@@ -453,8 +800,7 @@ export default function SubjectLessonViewer({
           ) : (
             <div 
               className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
-              dangerouslySetWarningContent={{ __html: renderedContentHtml }}
-              dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
+              dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
             />
           )}
         </div>
@@ -512,7 +858,7 @@ export default function SubjectLessonViewer({
           ) : (
             <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Bons estudos! Revise este conteúdo com frequência.
+              Bons estudos! Use o marca-texto para destacar pontos-chave do conteúdo.
             </div>
           )}
 

@@ -35,6 +35,7 @@ export function detectMarkdown(text: string): boolean {
     { pattern: /^[-=]{3,}$/m, name: 'Separadores horizontais' },
     { pattern: /~~.*?~~/g, name: 'Tachado' },
     { pattern: /^\?\?\?\s*"[^"]+"\s*$/m, name: 'Elementos colapsáveis' },
+    { pattern: /\n\s*\n/, name: 'Múltiplos parágrafos' },
   ];
 
   const matches = markdownPatterns.filter(({ pattern }) => pattern.test(text));
@@ -126,18 +127,85 @@ export function markdownToHtml(markdown: string): string {
     const processedMarkdown = processCollapsibleElements(markdown);
     
     // 2. Parser do Markdown
-    const html = marked.parse(processedMarkdown, { 
+    let html = marked.parse(processedMarkdown, { 
       gfm: true,
       breaks: true,
       async: false
     }) as string;
     
-    // 3. Aplicar syntax highlighting aos blocos de código
+    // 3. Garantir que links externos abram em nova aba com segurança
+    html = html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>/gi, (match, href, rest) => {
+      if (rest.includes('target=')) return match;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer"${rest}>`;
+    });
+
+    // 4. Aplicar syntax highlighting aos blocos de código
     return processCodeBlocks(html);
   } catch (error) {
     console.error('Erro ao converter markdown:', error);
     return markdown; // Retorna o texto original em caso de erro
   }
+}
+
+/**
+ * Analisa um texto puro ou semi-formatado e estrutura automaticamente em Markdown elegante:
+ * - Detecta seções e títulos comuns (Objetivo, Passo a passo, etc.) e converte em cabeçalhos (## )
+ * - Transforma listas e etapas em itens organizados (- ou 1.)
+ * - Ajusta espaçamentos entre parágrafos
+ */
+export function autoFormatToMarkdown(rawText: string): string {
+  if (!rawText || !rawText.trim()) return '';
+
+  let text = rawText.replace(/\r\n/g, '\n').trim();
+
+  // Padrões de seções comumente usadas em instruções escolares/atividades
+  const sectionKeywords = [
+    'Objetivo',
+    'Objetivos',
+    'Situação proposta',
+    'Contexto',
+    'Passo a passo',
+    'Etapas',
+    'Instruções',
+    'Orientações',
+    'Critérios de Avaliação',
+    'Critérios',
+    'Exemplo de Modelo de Conteúdo de Postagem',
+    'Exemplo de Modelo',
+    'Exemplo',
+    'Observação Final',
+    'Observações',
+    'Observação',
+    'Atenção',
+    'Importante',
+    'Prazo de Entrega',
+    'Requisitos'
+  ];
+
+  // Separar tópicos conhecidos mesmo se vierem grudados no texto
+  for (const keyword of sectionKeywords) {
+    const re = new RegExp(`(^|[.!?]\\s+|\\n)(${keyword}[:.]?)(\\s+|$)`, 'gi');
+    text = text.replace(re, (_, prefix, title) => {
+      const cleanPrefix = prefix.trim();
+      const cleanTitle = title.replace(/[:.]$/, '').trim();
+      return `${cleanPrefix ? cleanPrefix + '\n\n' : '\n\n'}## ${cleanTitle}\n\n`;
+    });
+  }
+
+  // Separar instruções de ação em itens de lista
+  const actionVerbs = 'Acesse|Clique|No menu|Digite|Escreva|Adicione|Use|No painel|Defina|Revise|Publique|Confirme|Envie|Abra|Crie|Selecione|Faça';
+  const actionRe = new RegExp(`([.!?])\\s+(${actionVerbs})\\b`, 'gi');
+  text = text.replace(actionRe, '$1\n- $2');
+
+  // Separar rótulos conhecidos como "Título sugerido:", "Parágrafo 1:" etc.
+  text = text.replace(/([.!?]|\n|^)\s*(Título sugerido|Parágrafo \d+|Lista sugerida)[:.]\s*/gi, (_, __, label) => {
+    return `\n- **${label}:** `;
+  });
+
+  // Garantir que a primeira instrução após Passo a passo comece com '- ' se for verbo de ação
+  text = text.replace(/(## Passo a passo\s*\n\s*)((?:Acesse|Abra|Clique|Crie|No menu)\b)/gi, '$1- $2');
+
+  return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**

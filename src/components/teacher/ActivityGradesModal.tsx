@@ -456,7 +456,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                               className="h-8 w-8 p-0"
                               onClick={() => {
                                 const text = submission.text_submission || '';
-                                const formatted = detectMarkdown(text) ? sanitizeHtml(markdownToHtml(text)) : sanitizeHtml(text);
+                                const formatted = sanitizeHtml(markdownToHtml(text));
                                 setPreviewHtml(formatted);
                                 setPreviewOpen(true);
                               }}

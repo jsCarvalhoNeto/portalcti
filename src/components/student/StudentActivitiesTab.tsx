@@ -46,10 +46,7 @@ export default function StudentActivitiesTab() {
 
   const renderFormattedContent = (rawContent?: string | null): string => {
     if (!rawContent) return '';
-    if (detectMarkdown(rawContent)) {
-      return sanitizeHtml(markdownToHtml(rawContent));
-    }
-    return sanitizeHtml(rawContent);
+    return sanitizeHtml(markdownToHtml(rawContent));
   };
 
   useEffect(() => {
@@ -423,6 +420,21 @@ export default function StudentActivitiesTab() {
                   <Label className="font-semibold text-foreground text-sm">Descrição da Atividade</Label>
                   <div 
                     className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words bg-card/60 p-6 border rounded-lg shadow-sm"
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      const copyBtn = target.closest('button') as HTMLButtonElement | null;
+                      if (copyBtn && copyBtn.innerText.includes('Copiar')) {
+                        const container = copyBtn.closest('.code-block-container');
+                        const codeEl = container?.querySelector('code');
+                        if (codeEl) {
+                          navigator.clipboard.writeText(codeEl.innerText || '');
+                          copyBtn.innerText = '✓ Copiado!';
+                          setTimeout(() => {
+                            copyBtn.innerText = 'Copiar';
+                          }, 2000);
+                        }
+                      }
+                    }}
                     dangerouslySetInnerHTML={{ __html: renderFormattedContent(selectedActivity.description) }}
                   />
                 </div>

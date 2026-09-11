@@ -139,11 +139,9 @@ export default function ActivityFiles() {
             </CardHeader>
             <CardContent>
               <div 
-                className="text-muted-foreground mb-4 prose prose-sm max-w-none"
+                className="markdown-rendered text-foreground mb-4 prose prose-slate dark:prose-invert max-w-none leading-relaxed break-words"
                 dangerouslySetInnerHTML={{ 
-                  __html: detectMarkdown(mockActivity.description) 
-                    ? sanitizeHtml(markdownToHtml(mockActivity.description)) 
-                    : sanitizeHtml(mockActivity.description) 
+                  __html: sanitizeHtml(markdownToHtml(mockActivity.description || ''))
                 }}
               />
               <div className="flex items-center gap-4 text-sm text-muted-foreground">

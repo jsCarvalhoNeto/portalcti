@@ -204,10 +204,7 @@ export default function SubjectDetail() {
 
   const formatContentHtml = (rawContent: string): string => {
     if (!rawContent) return '<p class="text-muted-foreground">Nenhum conteúdo detalhado disponível.</p>';
-    if (detectMarkdown(rawContent)) {
-      return sanitizeHtml(markdownToHtml(rawContent));
-    }
-    return sanitizeHtml(rawContent);
+    return sanitizeHtml(markdownToHtml(rawContent));
   };
 
   if (loading || loadingSubject) {

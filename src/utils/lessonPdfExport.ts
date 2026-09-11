@@ -51,7 +51,11 @@ function getEvaluationLabel(evalType?: string | null): string {
 /**
  * Exporta e aciona a impressão / salvamento em PDF de uma aula
  */
-export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): void {
+export function exportLessonToPdf(
+  lesson: SubjectLesson, 
+  subjectName?: string,
+  customContentHtml?: string
+): void {
   try {
     const title = lesson.title || 'Conteúdo da Aula';
     const orderIndex = lesson.order_index || 1;
@@ -62,9 +66,15 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
     const courseName = lesson.course_name || 'Curso Técnico em Informática Integrado ao Ensino Médio';
     const currentYear = new Date().getFullYear();
 
-    // Renderiza o markdown para HTML
+    // Renderiza o markdown para HTML (ou aproveita o HTML customizado/destacado)
     let renderedContent = '';
-    if (lesson.content && lesson.content.trim()) {
+    if (customContentHtml && customContentHtml.trim()) {
+      renderedContent = customContentHtml;
+      // Remove botões de copiar código e quaisquer botões interativos do HTML impresso
+      renderedContent = renderedContent.replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '');
+      // Garante que seções colapsáveis estejam abertas para impressão completa
+      renderedContent = renderedContent.replace(/<details\b(?![^>]*\bopen\b)/gi, '<details open');
+    } else if (lesson.content && lesson.content.trim()) {
       renderedContent = sanitizeHtml(markdownToHtml(lesson.content));
       // Remove botões de copiar código e quaisquer botões interativos do HTML impresso
       renderedContent = renderedContent.replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '');
@@ -257,6 +267,32 @@ export function exportLessonToPdf(lesson: SubjectLesson, subjectName?: string): 
       font-size: 10.5pt;
       line-height: 1.65;
       color: #1e293b;
+    }
+
+    /* Marca-Texto (Texto Destacado na Impressão/PDF) */
+    mark.lesson-highlight {
+      border-radius: 3px;
+      padding: 1px 3px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color: #0f172a !important;
+    }
+    mark.lesson-highlight.highlight-yellow {
+      background-color: #fef08a !important;
+    }
+    mark.lesson-highlight.highlight-green {
+      background-color: #bbf7d0 !important;
+    }
+    mark.lesson-highlight.highlight-blue {
+      background-color: #bae6fd !important;
+    }
+    mark.lesson-highlight.highlight-pink {
+      background-color: #fbcfe8 !important;
+    }
+    mark.lesson-highlight.highlight-orange {
+      background-color: #fed7aa !important;
     }
 
     .lesson-content h1, 
