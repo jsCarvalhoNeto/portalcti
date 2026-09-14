@@ -40,13 +40,15 @@ import {
   Type,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  CircleDot
 } from 'lucide-react';
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
 import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 import TextHighlightToolbar from './TextHighlightToolbar';
+import LaserPointerOverlay from './LaserPointerOverlay';
 import {
   HIGHLIGHT_COLORS,
   getColorById,
@@ -108,6 +110,7 @@ export default function SubjectLessonViewer({
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isWideLayout, setIsWideLayout] = useState(false);
+  const [isLaserActive, setIsLaserActive] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -115,6 +118,7 @@ export default function SubjectLessonViewer({
     } else {
       setIsPresentationMode(false);
       setZoomLevel(100);
+      setIsLaserActive(false);
     }
   }, [isOpen, initialTab]);
 
@@ -124,6 +128,7 @@ export default function SubjectLessonViewer({
       setIsFullscreen(isDocFs);
       if (!isDocFs && isPresentationMode) {
         setIsPresentationMode(false);
+        setIsLaserActive(false);
       }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -132,12 +137,26 @@ export default function SubjectLessonViewer({
     };
   }, [isPresentationMode]);
 
-  // Atalhos de teclado no Modo Projetor (ESC para sair, + para Zoom In, - para Zoom Out, 0 para 100%)
+  // Atalhos de teclado no Modo Projetor (ESC para sair, L para Laser, + para Zoom In, - para Zoom Out, 0 para 100%)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isPresentationMode) return;
       if (e.key === 'Escape') {
         setIsPresentationMode(false);
+        setIsLaserActive(false);
+      } else if (e.key === 'l' || e.key === 'L') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (!tag || !['INPUT', 'TEXTAREA'].includes(tag)) {
+          e.preventDefault();
+          setIsLaserActive((prev) => {
+            const next = !prev;
+            toast({
+              title: next ? 'Apontador Laser Ativado' : 'Apontador Laser Desativado',
+              description: next ? 'Mova o mouse para apontar com rastro dinâmico.' : 'Cursor comum restaurado.',
+            });
+            return next;
+          });
+        }
       } else if (e.key === '+' || e.key === '=') {
         const tag = (e.target as HTMLElement)?.tagName;
         if (!tag || !['INPUT', 'TEXTAREA'].includes(tag)) {
@@ -227,6 +246,7 @@ export default function SubjectLessonViewer({
 
   const exitPresentationMode = async () => {
     setIsPresentationMode(false);
+    setIsLaserActive(false);
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
@@ -661,6 +681,9 @@ export default function SubjectLessonViewer({
           onClose={() => setHighlightToolbar(null)}
         />
 
+        {/* Efeito de Apontador Laser com Rastro no Modo Projetor */}
+        <LaserPointerOverlay isActive={isPresentationMode && isLaserActive} />
+
         {isPresentationMode ? (
           /* ======================================================= */
           /* MODO PROJETOR / APRESENTAÇÃO TOTALMENTE LIMPA           */
@@ -772,6 +795,35 @@ export default function SubjectLessonViewer({
                 {/* Marca-Texto */}
                 {renderHighlightButton(true)}
 
+                {/* Apontador Laser com Rastro */}
+                <Button
+                  type="button"
+                  variant={isLaserActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const next = !isLaserActive;
+                    setIsLaserActive(next);
+                    toast({
+                      title: next ? 'Apontador Laser Ativado' : 'Apontador Laser Desativado',
+                      description: next 
+                        ? 'Mova o mouse para apontar com rastro dinâmico. Clique para pulsar.' 
+                        : 'Cursor comum restaurado.',
+                    });
+                  }}
+                  title={isLaserActive ? "Desativar Apontador Laser (tecla L)" : "Ativar Apontador Laser com Rastro (tecla L)"}
+                  className={`h-8 text-xs gap-1.5 transition-all font-semibold ${
+                    isLaserActive
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs ring-2 ring-rose-500/40'
+                      : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-300 dark:border-rose-900/40'
+                  }`}
+                >
+                  <CircleDot className={`w-3.5 h-3.5 ${isLaserActive ? 'animate-pulse text-white' : 'text-rose-600 dark:text-rose-400'}`} />
+                  <span className="hidden sm:inline">Laser</span>
+                  {isLaserActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping ml-0.5" />
+                  )}
+                </Button>
+
                 {/* Botão Sair da Apresentação */}
                 <Button
                   type="button"
@@ -793,7 +845,9 @@ export default function SubjectLessonViewer({
             {/* Conteúdo Renderizado em Tela Cheia no Modo Projetor */}
             <div 
               ref={contentContainerRef}
-              className="flex-1 overflow-y-auto p-6 sm:p-10 md:p-14 lg:p-16 bg-background relative selection:bg-primary/20"
+              className={`flex-1 overflow-y-auto p-6 sm:p-10 md:p-14 lg:p-16 bg-background relative selection:bg-primary/20 ${
+                isLaserActive ? 'cursor-none' : ''
+              }`}
               onMouseUp={handleMouseUp}
               onTouchEnd={handleMouseUp}
               onClick={handleContainerClick}
