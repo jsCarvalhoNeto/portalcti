@@ -37,7 +37,10 @@ import {
   Plus,
   Highlighter,
   Columns,
-  Type
+  Type,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw
 } from 'lucide-react';
 import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -103,7 +106,7 @@ export default function SubjectLessonViewer({
 
   // Estados do Modo Projetor / Apresentação em Tela Cheia
   const [isPresentationMode, setIsPresentationMode] = useState(false);
-  const [presentationFontSize, setPresentationFontSize] = useState<'normal' | 'large' | 'xlarge' | 'xxlarge'>('large');
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isWideLayout, setIsWideLayout] = useState(false);
 
   useEffect(() => {
@@ -111,6 +114,7 @@ export default function SubjectLessonViewer({
       setActiveTab(initialTab);
     } else {
       setIsPresentationMode(false);
+      setZoomLevel(100);
     }
   }, [isOpen, initialTab]);
 
@@ -128,11 +132,30 @@ export default function SubjectLessonViewer({
     };
   }, [isPresentationMode]);
 
-  // Atalho de teclado ESC para sair do Modo Projetor
+  // Atalhos de teclado no Modo Projetor (ESC para sair, + para Zoom In, - para Zoom Out, 0 para 100%)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isPresentationMode) {
+      if (!isPresentationMode) return;
+      if (e.key === 'Escape') {
         setIsPresentationMode(false);
+      } else if (e.key === '+' || e.key === '=') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (!tag || !['INPUT', 'TEXTAREA'].includes(tag)) {
+          e.preventDefault();
+          setZoomLevel((prev) => Math.min(250, prev + (prev < 100 ? 10 : 15)));
+        }
+      } else if (e.key === '-' || e.key === '_') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (!tag || !['INPUT', 'TEXTAREA'].includes(tag)) {
+          e.preventDefault();
+          setZoomLevel((prev) => Math.max(60, prev - (prev <= 100 ? 10 : 15)));
+        }
+      } else if (e.key === '0') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (!tag || !['INPUT', 'TEXTAREA'].includes(tag)) {
+          e.preventDefault();
+          setZoomLevel(100);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -213,34 +236,28 @@ export default function SubjectLessonViewer({
     }
   };
 
-  const increaseFontSize = () => {
-    setPresentationFontSize((prev) => {
-      if (prev === 'normal') return 'large';
-      if (prev === 'large') return 'xlarge';
-      return 'xxlarge';
+  const ZOOM_PRESETS = [60, 75, 90, 100, 115, 130, 150, 175, 200, 250];
+
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => {
+      const next = ZOOM_PRESETS.find((z) => z > prev);
+      return next !== undefined ? next : Math.min(250, prev + 25);
     });
   };
 
-  const decreaseFontSize = () => {
-    setPresentationFontSize((prev) => {
-      if (prev === 'xxlarge') return 'xlarge';
-      if (prev === 'xlarge') return 'large';
-      return 'normal';
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => {
+      const prevPreset = [...ZOOM_PRESETS].reverse().find((z) => z < prev);
+      return prevPreset !== undefined ? prevPreset : Math.max(60, prev - 20);
     });
   };
 
-  const fontSizeClasses: Record<'normal' | 'large' | 'xlarge' | 'xxlarge', string> = {
-    normal: 'text-base prose-base leading-relaxed',
-    large: 'text-lg prose-lg leading-relaxed',
-    xlarge: 'text-xl prose-xl leading-loose',
-    xxlarge: 'text-2xl prose-2xl leading-loose'
-  };
-
-  const fontSizeLabels: Record<'normal' | 'large' | 'xlarge' | 'xxlarge', string> = {
-    normal: '100%',
-    large: '125%',
-    xlarge: '150%',
-    xxlarge: '175%'
+  const handleResetZoom = () => {
+    setZoomLevel(100);
+    toast({
+      title: 'Zoom Redefinido',
+      description: 'O zoom do conteúdo voltou para 100%.',
+    });
   };
 
   const toggleFullscreen = async () => {
@@ -700,32 +717,42 @@ export default function SubjectLessonViewer({
 
               {/* Lado Direito: Controles de Projeção */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                {/* Controles de Tamanho de Fonte para Projetor */}
-                <div className="flex items-center bg-muted/60 border rounded-lg p-0.5" title="Ajustar tamanho da fonte para leitura no projetor">
+                {/* Controles de Zoom In / Zoom Out para Projetor */}
+                <div 
+                  className="flex items-center bg-muted/60 border rounded-lg p-0.5 shadow-2xs" 
+                  title="Zoom do Conteúdo (Atalhos: + para aumentar, - para diminuir, 0 para 100%)"
+                >
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={decreaseFontSize}
-                    disabled={presentationFontSize === 'normal'}
-                    title="Diminuir tamanho da fonte"
-                    className="h-7 w-7 p-0 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={handleZoomOut}
+                    disabled={zoomLevel <= 60}
+                    title="Diminuir Zoom (Zoom Out / tecla -)"
+                    className="h-7 w-7 p-0 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
                   >
-                    A-
+                    <ZoomOut className="w-3.5 h-3.5" />
                   </Button>
-                  <span className="px-1.5 text-[11px] font-semibold text-muted-foreground hidden sm:inline select-none">
-                    {fontSizeLabels[presentationFontSize]}
-                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleResetZoom}
+                    title="Clique para redefinir o zoom para 100% (tecla 0)"
+                    className="px-2 py-0.5 text-[11px] font-bold text-foreground hover:text-primary hover:bg-background/80 rounded transition-all select-none min-w-[46px] text-center"
+                  >
+                    {zoomLevel}%
+                  </button>
+
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={increaseFontSize}
-                    disabled={presentationFontSize === 'xxlarge'}
-                    title="Aumentar tamanho da fonte (ideal para o fundo da sala)"
-                    className="h-7 w-7 p-0 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={handleZoomIn}
+                    disabled={zoomLevel >= 250}
+                    title="Aumentar Zoom (Zoom In / tecla +)"
+                    className="h-7 w-7 p-0 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
                   >
-                    A+
+                    <ZoomIn className="w-3.5 h-3.5" />
                   </Button>
                 </div>
 
@@ -771,7 +798,10 @@ export default function SubjectLessonViewer({
               onTouchEnd={handleMouseUp}
               onClick={handleContainerClick}
             >
-              <div className={`mx-auto transition-all duration-150 ${isWideLayout ? 'max-w-none w-full px-2' : 'max-w-4xl'}`}>
+              <div 
+                className={`mx-auto transition-all duration-150 origin-top ${isWideLayout ? 'max-w-none w-full px-2' : 'max-w-4xl'}`}
+                style={{ zoom: `${zoomLevel}%` }}
+              >
                 {activeTab === 'plan' ? (
                   defaultPlanHtml ? (
                     <div className="space-y-6">
@@ -785,7 +815,7 @@ export default function SubjectLessonViewer({
                         <Badge className="bg-indigo-600 text-white text-xs">Docente</Badge>
                       </div>
                       <div 
-                        className={`markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground break-words ${fontSizeClasses[presentationFontSize]}`}
+                        className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground text-base sm:text-lg leading-relaxed break-words"
                         dangerouslySetInnerHTML={{ __html: currentHtml || defaultPlanHtml }}
                       />
                     </div>
@@ -796,7 +826,7 @@ export default function SubjectLessonViewer({
                   )
                 ) : (
                   <div 
-                    className={`markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground break-words ${fontSizeClasses[presentationFontSize]}`}
+                    className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground text-base sm:text-lg leading-relaxed break-words"
                     dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
                   />
                 )}
