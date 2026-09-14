@@ -46,10 +46,14 @@ import {
   Lock,
   Target,
   Wrench,
-  GraduationCap
+  GraduationCap,
+  ImageIcon
 } from 'lucide-react';
 import { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
+import { useToast } from '@/hooks/use-toast';
+import fileUploadService from '@/services/fileUploadService';
+import SubjectLessonImageModal from './SubjectLessonImageModal';
 
 interface SubjectLessonEditorProps {
   isOpen: boolean;
@@ -183,8 +187,60 @@ export default function SubjectLessonEditor({
   // Qual conteúdo estamos editando: 'content' (Conteúdo da Aula) ou 'plan' (Plano de Aula Docente)
   const [contentSection, setContentSection] = useState<'content' | 'plan'>('content');
   const [selectedLanguage, setSelectedLanguage] = useState('html');
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Captura imagem colada diretamente via Ctrl+V no editor de texto
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        toast({
+          title: 'Processando imagem colada...',
+          description: 'Aguarde o carregamento da imagem na aula.',
+        });
+
+        try {
+          let finalUrl = '';
+          try {
+            finalUrl = await fileUploadService.uploadImage(file);
+          } catch (uploadErr) {
+            console.warn('Upload via API falhou na colagem, usando Base64:', uploadErr);
+            finalUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+          }
+
+          const snippet = `\n\n<div align="center">\n  <img src="${finalUrl}" alt="Imagem colada da aula" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />\n</div>\n\n`;
+          handleInsertSnippet(snippet);
+          toast({
+            title: 'Imagem inserida!',
+            description: 'A imagem colada foi adicionada com sucesso ao conteúdo.',
+          });
+        } catch (err) {
+          console.error('Erro ao processar imagem colada:', err);
+          toast({
+            title: 'Erro ao colar imagem',
+            description: 'Não foi possível carregar a imagem colada.',
+            variant: 'destructive',
+          });
+        }
+        break;
+      }
+    }
+  };
 
   useEffect(() => {
     if (lesson) {
@@ -681,6 +737,17 @@ export default function SubjectLessonEditor({
                     >
                       ───
                     </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsImageModalOpen(true)}
+                      title="Inserir Imagem na Aula (Upload ou URL)"
+                      className="h-7 px-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium gap-1"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Imagem</span>
+                    </Button>
 
                     {contentSection === 'plan' && (
                       <>
@@ -751,6 +818,7 @@ export default function SubjectLessonEditor({
                     placeholder="Cole ou digite aqui o conteúdo em Markdown da aula que será disponibilizado aos alunos..."
                     value={formData.content}
                     onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                    onPaste={handlePaste}
                     className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none"
                   />
                 ) : (
@@ -758,6 +826,7 @@ export default function SubjectLessonEditor({
                     placeholder="Cole ou digite aqui o Plano de Aula Docente (Objetivos pedagógicos, metodologia, recursos necessários, critérios de avaliação e orientações internas)..."
                     value={formData.lesson_plan || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, lesson_plan: e.target.value }))}
+                    onPaste={handlePaste}
                     className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none border-indigo-300 dark:border-indigo-800/60 focus-visible:ring-indigo-500"
                   />
                 )}
@@ -788,7 +857,6 @@ export default function SubjectLessonEditor({
                       }
                     }
                   }}
-                  dangerouslySetWarningContent={{ __html: contentSection === 'content' ? previewContentHtml : previewPlanHtml }}
                   dangerouslySetInnerHTML={{ __html: contentSection === 'content' ? previewContentHtml : previewPlanHtml }}
                 />
               </TabsContent>
@@ -816,6 +884,13 @@ export default function SubjectLessonEditor({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Modal de Inserção / Upload de Imagem */}
+      <SubjectLessonImageModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        onInsertImage={handleInsertSnippet}
+      />
     </Dialog>
   );
 }
