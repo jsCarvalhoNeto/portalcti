@@ -3,12 +3,14 @@ import { useTeacherDashboard, Activity } from '@/contexts/TeacherDashboardContex
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, CheckCircle, Edit3, Edit, Crown, UserCheck } from 'lucide-react';
+import { Plus, FileText, CheckCircle, Edit3, Edit, Crown, UserCheck, GraduationCap } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import NewActivityModal from './NewActivityModal';
 import EditActivityModal from './EditActivityModal';
 import ActivityGradesModal from './ActivityGradesModal';
 import CreateTeamModal from './CreateTeamModal';
 import ActivityTeamsModal from './ActivityTeamsModal';
+import TeacherConsolidatedGradesManager from './TeacherConsolidatedGradesManager';
 
 export default function TeacherGradesActivitiesTab() {
   const { activities, loading } = useTeacherDashboard();
@@ -52,17 +54,35 @@ export default function TeacherGradesActivitiesTab() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Atividades & Notas</h2>
-          <p className="text-muted-foreground">Gerencie atividades e notas dos alunos</p>
+          <p className="text-muted-foreground">Gerencie atividades, correções e notas consolidadas por período</p>
         </div>
         <Button className="flex items-center gap-2" onClick={() => setIsModalOpen(true)}>
           <Plus className="w-4 h-4" />
           Nova Atividade
         </Button>
       </div>
+
+      <Tabs defaultValue="activities" className="space-y-6">
+        <TabsList className="grid w-full sm:w-auto grid-cols-2 max-w-md">
+          <TabsTrigger value="activities" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Atividades & Entregas
+          </TabsTrigger>
+          <TabsTrigger value="consolidated" className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-primary" />
+            Quadro Geral de Notas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="consolidated" className="space-y-6">
+          <TeacherConsolidatedGradesManager />
+        </TabsContent>
+
+        <TabsContent value="activities" className="space-y-6">
       <NewActivityModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
       {selectedActivity && (
         <ActivityGradesModal 
@@ -195,6 +215,8 @@ export default function TeacherGradesActivitiesTab() {
           </div>
         </CardContent>
       </Card>
+    </TabsContent>
+  </Tabs>
 
       {/* Modais de Equipe */}
       {selectedActivityForTeams && (

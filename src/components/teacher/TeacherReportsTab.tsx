@@ -6,6 +6,7 @@ import { BarChart3, ListChecks, Calendar, Star, MoreHorizontal, FileText, Users 
 import EventReportsModal from '@/components/EventReportsModal';
 import DetailedReportModal from '@/components/DetailedReportModal';
 import TeamManagementModal from '@/components/TeamManagementModal';
+import TeacherConsolidatedGradesManager from '@/components/teacher/TeacherConsolidatedGradesManager';
 
 
 export default function TeacherReportsTab() {
@@ -74,8 +75,8 @@ export default function TeacherReportsTab() {
               onClose={() => setShowTeamManagementModal(false)}
             />
           </TabsContent>
-          <TabsContent value="notas">
-            <div className="text-muted-foreground text-center py-12">Visualize e exporte relatórios de notas dos alunos.</div>
+          <TabsContent value="notas" className="pt-2">
+            <TeacherConsolidatedGradesManager />
           </TabsContent>
           <TabsContent value="gamificacao">
             <div className="text-muted-foreground text-center py-12">Relatórios de gamificação e conquistas dos alunos.</div>
