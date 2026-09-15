@@ -95,12 +95,19 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       // Validação de tipo de arquivo
-      const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.ms-powerpoint', 
-                           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                           'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                           'application/zip', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = [
+        'application/pdf', 'text/plain', 'application/vnd.ms-powerpoint', 
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/zip', 'application/x-zip-compressed', 'application/x-zip', 'multipart/x-zip',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp'
+      ];
+      const allowedExtensions = ['.pdf', '.txt', '.ppt', '.pptx', '.doc', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
+      const hasValidType = allowedTypes.includes(selectedFile.type);
+      const hasValidExt = allowedExtensions.some(ext => selectedFile.name.toLowerCase().endsWith(ext));
       
-      if (!allowedTypes.includes(selectedFile.type)) {
+      if (!hasValidType && !hasValidExt) {
         toast({
           title: "Tipo de arquivo não suportado",
           description: "Formatos permitidos: PDF, TXT, PPT, PPTX, DOC, DOCX, ZIP, JPG, PNG, GIF, WEBP",

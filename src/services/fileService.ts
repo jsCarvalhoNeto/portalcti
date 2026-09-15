@@ -173,7 +173,11 @@ export const fileService = {
       
       // Arquivos compactados
       'application/zip',
+      'application/x-zip-compressed',
+      'application/x-zip',
+      'multipart/x-zip',
       'application/x-rar-compressed',
+      'application/vnd.rar',
       'application/x-7z-compressed',
       
       // Imagens
@@ -197,7 +201,13 @@ export const fileService = {
       'text/xml'
     ];
 
-    return supportedTypes.includes(file.type);
+    const supportedExtensions = [
+      '.pdf', '.txt', '.html', '.css', '.js', '.ppt', '.pptx', '.doc', '.docx',
+      '.xls', '.xlsx', '.zip', '.rar', '.7z', '.jpg', '.jpeg', '.png', '.gif',
+      '.webp', '.svg', '.mp3', '.wav', '.mp4', '.avi', '.mov', '.json', '.xml'
+    ];
+
+    return supportedTypes.includes(file.type) || supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
   },
 
   /**

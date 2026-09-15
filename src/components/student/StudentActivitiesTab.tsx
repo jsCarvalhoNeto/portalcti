@@ -119,25 +119,30 @@ export default function StudentActivitiesTab() {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
       
-      // Validação de tipo de arquivo expandida
+      // Validação de tipo de arquivo expandida (MIME types e extensões)
       const allowedTypes = [
         'application/pdf', 'text/plain', 'text/html', 'text/css', 'text/javascript', 'application/javascript',
         'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+        'application/zip', 'application/x-zip-compressed', 'application/x-zip', 'multipart/x-zip',
+        'application/x-rar-compressed', 'application/vnd.rar', 'application/x-7z-compressed',
         'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
         'text/x-python', 'text/x-java-source', 'text/markdown', 'application/json', 'application/xml'
       ];
+
+      const allowedExtensions = [
+        '.pdf', '.txt', '.html', '.css', '.js', '.py', '.sql', '.java', '.c', '.cpp', '.cs',
+        '.php', '.rb', '.go', '.ts', '.md', '.json', '.xml', '.ppt', '.pptx', '.doc', '.docx',
+        '.xls', '.xlsx', '.zip', '.rar', '.7z', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'
+      ];
       
-      // Verificar se todos os arquivos são válidos
-      const invalidFiles = selectedFiles.filter(file => !allowedTypes.includes(file.type) && 
-        !file.name.toLowerCase().endsWith('.py') && !file.name.toLowerCase().endsWith('.sql') &&
-        !file.name.toLowerCase().endsWith('.java') && !file.name.toLowerCase().endsWith('.c') &&
-        !file.name.toLowerCase().endsWith('.cpp') && !file.name.toLowerCase().endsWith('.cs') &&
-        !file.name.toLowerCase().endsWith('.php') && !file.name.toLowerCase().endsWith('.rb') &&
-        !file.name.toLowerCase().endsWith('.go') && !file.name.toLowerCase().endsWith('.ts') &&
-        !file.name.toLowerCase().endsWith('.md'));
+      // Verificar se todos os arquivos são válidos (por MIME type ou por extensão)
+      const invalidFiles = selectedFiles.filter(file => {
+        const hasValidType = allowedTypes.includes(file.type);
+        const hasValidExt = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+        return !hasValidType && !hasValidExt;
+      });
       
       if (invalidFiles.length > 0) {
         toast({
