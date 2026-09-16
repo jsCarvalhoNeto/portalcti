@@ -285,10 +285,18 @@ export default function StudentActivitiesTab() {
   };
 
    const handleDownloadFile = (filePath: string, fileName: string) => {
-    // Construir a URL completa para download usando a URL base da API
-    const fullUrl = `${import.meta.env.VITE_API_URL.replace('/api', '')}${filePath}`;
+    if (!filePath) return;
+
+    let fullUrl = filePath.trim();
+    if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+      const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
+      fullUrl = `${baseUrl}${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
+    }
+
     const link = document.createElement('a');
     link.href = fullUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     link.download = fileName;
     document.body.appendChild(link);
     link.click();

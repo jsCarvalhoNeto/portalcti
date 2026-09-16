@@ -181,10 +181,25 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
     setSelectedStudentForManualGrade(null);
   };
 
-  const handleDownloadFile = (filePath: string) => {
-    const baseUrl = API_URL.replace('/api', '');
-    const fullUrl = `${baseUrl}${filePath}`;
-    window.open(fullUrl, '_blank');
+  const handleDownloadFile = (filePath: string, fileName?: string) => {
+    if (!filePath) return;
+
+    let fullUrl = filePath.trim();
+    if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+      const baseUrl = (API_URL || '').replace(/\/api\/?$/, '');
+      fullUrl = `${baseUrl}${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
+    }
+
+    const a = document.createElement('a');
+    a.href = fullUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    if (fileName) {
+      a.download = fileName;
+    }
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDownloadText = (textHtml: string | undefined, studentName: string) => {
@@ -378,7 +393,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDownloadFile(file.file_url)}
+                            onClick={() => handleDownloadFile(file.file_url, file.file_name)}
                             className="text-xs h-8 px-2 truncate flex items-center gap-1"
                             title={`Baixar: ${file.file_name}`}
                           >
@@ -392,7 +407,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDownloadFile(submission.file_path!)}
+                        onClick={() => handleDownloadFile(submission.file_path!, submission.file_name || undefined)}
                         className="text-xs h-8 px-2 flex items-center gap-1"
                         title={`Baixar: ${submission.file_name}`}
                       >
