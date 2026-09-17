@@ -37,12 +37,10 @@ import {
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { updateStudentProfile, changeStudentPassword } from '@/services/studentProfileService';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
+import StudentSettingsTab from '@/components/student/StudentSettingsTab';
 import { PersonalColorModal } from '@/components/ui/PersonalColorModal';
 import { useUserColors } from '@/hooks/useUserColors';
 import * as gamificationService from '@/services/gamificationService';
@@ -66,19 +64,7 @@ export default function StudentDashboard() {
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [unlockedBadges, setUnlockedBadges] = useState<any[]>([]);
   const [unlockedBySubject, setUnlockedBySubject] = useState<any[]>([]);
-  const [editingProfile, setEditingProfile] = useState(false);
   const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
-  const [profileData, setProfileData] = useState({
-    full_name: '',
-    email: '',
-    student_registration: '',
-    phone: ''
-  });
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
   const navigate = useNavigate();
   const { toast } = useToast();
   const { loadUserColors: loadUserColorsHook } = useUserColors();
@@ -213,7 +199,6 @@ export default function StudentDashboard() {
     if (user && isStudent) {
       fetchSubjects();
       fetchNotifications();
-      loadProfileData();
       fetchGamification();
       loadUserColors();
     }
@@ -302,17 +287,6 @@ export default function StudentDashboard() {
     }
   };
 
-  const loadProfileData = async () => {
-    if (user && profile) {
-      setProfileData({
-        full_name: profile.full_name || '',
-        email: profile.email || '',
-        student_registration: profile.student_registration || '',
-        phone: profile.phone || ''
-      });
-    }
-  };
-
   const fetchSubjects = async () => {
     if (!user) return;
     setLoadingSubjects(true);
@@ -361,60 +335,6 @@ export default function StudentDashboard() {
       setNotifications(mockNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-    }
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!user) return;
-
-    try {
-      await updateStudentProfile(user.id, profileData);
-      toast({
-        title: "Sucesso",
-        description: "Perfil atualizado com sucesso!",
-      });
-      setEditingProfile(false);
-      // Atualizar o perfil no contexto de autenticação
-      // Em produção, você pode querer chamar uma função para atualizar o perfil no contexto
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar perfil. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (!user || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem ou estão vazias.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await changeStudentPassword(user.id, passwordData.newPassword);
-      toast({
-        title: "Sucesso",
-        description: "Senha alterada com sucesso!",
-      });
-      // Limpar os campos de senha
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    } catch (error) {
-      console.error('Error changing password:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao alterar senha. Tente novamente.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -1052,23 +972,7 @@ export default function StudentDashboard() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold">Configurações</h2>
-              <p className="text-muted-foreground">Configure seu perfil e preferências</p>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações</CardTitle>
-                <CardDescription>Configure seu perfil e preferências</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configurações
-                </Button>
-              </CardContent>
-            </Card>
+            <StudentSettingsTab />
           </TabsContent>
         </Tabs>
       </main >
