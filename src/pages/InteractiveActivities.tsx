@@ -34,6 +34,7 @@ import { Subject } from '@/types/subject';
 import interactiveActivityService, { InteractiveActivity } from '@/services/interactiveActivityService';
 import InteractiveActivityEditor from '@/components/subject/InteractiveActivityEditor';
 import InteractiveActivityPlayer from '@/components/subject/InteractiveActivityPlayer';
+import { getCompletedInteractiveActivities } from '@/services/gamificationService';
 
 export default function InteractiveActivities() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,7 @@ export default function InteractiveActivities() {
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [activities, setActivities] = useState<InteractiveActivity[]>([]);
+  const [completedActivityIds, setCompletedActivityIds] = useState<string[]>([]);
   const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('all');
@@ -96,6 +98,16 @@ export default function InteractiveActivities() {
       // Buscar atividades interativas
       const activitiesData = await interactiveActivityService.getBySubject(id);
       setActivities(activitiesData);
+
+      // Se for aluno, buscar quais atividades já foram concluídas
+      if (user && isStudent) {
+        try {
+          const completed = await getCompletedInteractiveActivities(user.id, id);
+          setCompletedActivityIds(completed);
+        } catch (compErr) {
+          console.warn('Erro ao buscar status de conclusão das atividades interativas:', compErr);
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar disciplina e atividades:', error);
       toast({
@@ -479,13 +491,23 @@ export default function InteractiveActivities() {
                   {/* Topo do Card com o Nome em Destaque */}
                   <CardHeader className="pb-3 space-y-3 bg-gradient-to-b from-muted/50 to-transparent">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                           {getActivityIcon(activity.type)}
                         </div>
                         <Badge variant="outline" className={`text-xs font-semibold ${getTypeBadgeColor(activity.type)}`}>
                           {getTypeText(activity.type)}
                         </Badge>
+                        <Badge variant="outline" className="text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1">
+                          <Trophy className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          +{activity.points !== undefined ? activity.points : 10} pts
+                        </Badge>
+                        {isStudent && completedActivityIds.includes(String(activity.id)) && (
+                          <Badge variant="outline" className="text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            Concluída
+                          </Badge>
+                        )}
                       </div>
 
                       {/* Ações do Professor */}
@@ -542,10 +564,14 @@ export default function InteractiveActivities() {
                     <div className="space-y-2 pt-1">
                       <Button 
                         onClick={() => handleStartActivity(activity)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 flex items-center justify-center gap-2 h-10 font-semibold"
+                        className={`w-full text-white shadow-md flex items-center justify-center gap-2 h-10 font-semibold ${
+                          isStudent && completedActivityIds.includes(String(activity.id))
+                            ? 'bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:shadow-indigo-500/25'
+                        }`}
                       >
                         <Play className="w-4 h-4 fill-white" />
-                        Iniciar Atividade
+                        {isStudent && completedActivityIds.includes(String(activity.id)) ? 'Jogar Novamente' : 'Iniciar Atividade'}
                       </Button>
                     </div>
                   </CardContent>
@@ -594,6 +620,9 @@ export default function InteractiveActivities() {
           onClose={() => setIsPlayerOpen(false)}
           activity={selectedActivityForPlay}
           subjectName={subject.name}
+          onCompleted={(activityId) => {
+            setCompletedActivityIds(prev => [...prev, String(activityId)]);
+          }}
         />
       )}
     </MainLayout>

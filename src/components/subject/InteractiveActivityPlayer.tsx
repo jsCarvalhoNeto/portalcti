@@ -10,26 +10,121 @@ import {
   Gamepad2, 
   Clock, 
   Layers, 
-  CheckCircle2 
+  CheckCircle2,
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 import { InteractiveActivity } from '@/services/interactiveActivityService';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { awardInteractiveActivity, checkInteractiveActivityCompleted } from '@/services/gamificationService';
 
 interface InteractiveActivityPlayerProps {
   isOpen: boolean;
   onClose: () => void;
   activity: InteractiveActivity | null;
   subjectName?: string;
+  onCompleted?: (activityId: string | number) => void;
 }
 
 export default function InteractiveActivityPlayer({
   isOpen,
   onClose,
   activity,
-  subjectName
+  subjectName,
+  onCompleted
 }: InteractiveActivityPlayerProps) {
+  const { user, isStudent } = useAuth();
+  const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Verificar se o aluno já concluiu essa atividade previamente
+  useEffect(() => {
+    let isMounted = true;
+    if (activity && user && isStudent) {
+      checkInteractiveActivityCompleted(user.id, activity.id).then((completed) => {
+        if (isMounted) setIsCompleted(completed);
+      });
+    } else {
+      setIsCompleted(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activity?.id, user?.id, isStudent]);
+
+  // Função para registrar conclusão e resgatar pontos
+  const handleCompleteActivity = async () => {
+    if (!activity || !user || !isStudent || isSubmittingCompletion) return;
+
+    if (isCompleted) {
+      toast({
+        title: 'Atividade já concluída',
+        description: 'Você já concluiu esta atividade anteriormente! Os pontos só são atribuídos na primeira realização.',
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingCompletion(true);
+      const pointsToAward = activity.points !== undefined ? Number(activity.points) : 10;
+      const res = await awardInteractiveActivity(user.id, activity.id, activity.subject_id, pointsToAward);
+
+      if (res && res.ok) {
+        setIsCompleted(true);
+        if (onCompleted) {
+          onCompleted(activity.id);
+        }
+
+        if (res.awarded && res.awarded > 0) {
+          toast({
+            title: '🎉 Recompensa Conquistada!',
+            description: `Você concluiu a atividade e ganhou +${res.awarded} pontos de gamificação!`,
+          });
+        } else {
+          toast({
+            title: 'Atividade Concluída',
+            description: res.message || 'Atividade finalizada com sucesso!',
+          });
+        }
+      } else {
+        toast({
+          title: 'Aviso',
+          description: res?.message || 'Não foi possível registrar a pontuação.',
+          variant: 'destructive'
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao concluir atividade interativa:', err);
+    } finally {
+      setIsSubmittingCompletion(false);
+    }
+  };
+
+  // Escuta evento postMessage do iframe caso o jogo envie evento de conclusão
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      const type = event.data.type || event.data.action || '';
+      if (
+        type === 'ACTIVITY_COMPLETED' ||
+        type === 'GAME_OVER' ||
+        type === 'GAME_COMPLETED' ||
+        type === 'COMPLETE_ACTIVITY'
+      ) {
+        handleCompleteActivity();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [activity?.id, user?.id, isStudent, isCompleted, isSubmittingCompletion]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -101,6 +196,10 @@ export default function InteractiveActivityPlayer({
                     {activity.title}
                   </h2>
                   {getDifficultyBadge(activity.difficulty)}
+                  <Badge variant="outline" className="border-amber-400/40 text-amber-300 bg-amber-500/10 flex items-center gap-1 font-semibold text-xs">
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                    +{activity.points !== undefined ? activity.points : 10} pts
+                  </Badge>
                   {activity.duration && (
                     <span className="text-xs text-slate-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -118,6 +217,32 @@ export default function InteractiveActivityPlayer({
 
             {/* Controles de Ação */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* Botão de Conclusão para Estudante */}
+              {isStudent && (
+                isCompleted ? (
+                  <Badge variant="outline" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/30 flex items-center gap-1.5 py-1 px-2.5 text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="hidden sm:inline">Concluída</span> ✓
+                  </Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleCompleteActivity}
+                    disabled={isSubmittingCompletion}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 font-semibold"
+                    title="Concluir atividade e receber os pontos da primeira realização"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {isSubmittingCompletion ? 'Salvando...' : (
+                      <>
+                        <span>Concluir</span>
+                        <span className="hidden sm:inline"> (+{activity.points !== undefined ? activity.points : 10} pts)</span>
+                      </>
+                    )}
+                  </Button>
+                )
+              )}
+
               <Button
                 variant="outline"
                 size="sm"

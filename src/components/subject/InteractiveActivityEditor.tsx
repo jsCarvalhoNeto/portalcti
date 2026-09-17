@@ -115,7 +115,8 @@ export default function InteractiveActivityEditor({
     code_content: '',
     type: 'game' as 'game' | 'simulation' | 'quiz' | 'exercise',
     difficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
-    duration: '20 min'
+    duration: '20 min',
+    points: 10
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -129,7 +130,8 @@ export default function InteractiveActivityEditor({
         code_content: activity.code_content || '',
         type: activity.type || 'game',
         difficulty: activity.difficulty || 'beginner',
-        duration: activity.duration || '20 min'
+        duration: activity.duration || '20 min',
+        points: activity.points !== undefined ? Number(activity.points) : 10
       });
     } else {
       setFormData({
@@ -138,7 +140,8 @@ export default function InteractiveActivityEditor({
         code_content: '',
         type: 'game',
         difficulty: 'beginner',
-        duration: '20 min'
+        duration: '20 min',
+        points: 10
       });
     }
     setShowPreview(false);
@@ -161,6 +164,7 @@ export default function InteractiveActivityEditor({
     try {
       await onSave({
         ...formData,
+        points: Math.max(0, Number(formData.points) || 0),
         subject_id: subjectId
       });
       onClose();
@@ -233,52 +237,79 @@ export default function InteractiveActivityEditor({
             />
           </div>
 
-          {/* Metadados: Tipo, Dificuldade, Duração */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Tipo de Atividade</Label>
-              <Select 
-                value={formData.type} 
-                onValueChange={(val: any) => setFormData(prev => ({ ...prev, type: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="game">🎮 Jogo Educativo</SelectItem>
-                  <SelectItem value="simulation">⚡ Simulação Interativa</SelectItem>
-                  <SelectItem value="quiz">🏆 Quiz / Desafio</SelectItem>
-                  <SelectItem value="exercise">✏️ Exercício Prático</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Metadados: Tipo, Dificuldade, Duração e Pontos de Recompensa */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo de Atividade</Label>
+                <Select 
+                  value={formData.type} 
+                  onValueChange={(val: any) => setFormData(prev => ({ ...prev, type: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="game">🎮 Jogo Educativo</SelectItem>
+                    <SelectItem value="simulation">⚡ Simulação Interativa</SelectItem>
+                    <SelectItem value="quiz">🏆 Quiz / Desafio</SelectItem>
+                    <SelectItem value="exercise">✏️ Exercício Prático</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Dificuldade</Label>
+                <Select 
+                  value={formData.difficulty} 
+                  onValueChange={(val: any) => setFormData(prev => ({ ...prev, difficulty: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a dificuldade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">🟢 Iniciante</SelectItem>
+                    <SelectItem value="intermediate">🟡 Intermediário</SelectItem>
+                    <SelectItem value="advanced">🔴 Avançado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="duration" className="text-sm font-medium">Duração Estimada</Label>
+                <Input
+                  id="duration"
+                  value={formData.duration}
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+                  placeholder="Ex: 15 min, 30 min"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="points" className="text-sm font-medium flex items-center gap-1.5">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  Pontos ao Concluir
+                </Label>
+                <Input
+                  id="points"
+                  type="number"
+                  min={0}
+                  max={500}
+                  step={1}
+                  value={formData.points}
+                  onChange={(e) => setFormData(prev => ({ ...prev, points: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  placeholder="10"
+                  className="font-medium"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Dificuldade</Label>
-              <Select 
-                value={formData.difficulty} 
-                onValueChange={(val: any) => setFormData(prev => ({ ...prev, difficulty: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a dificuldade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">🟢 Iniciante</SelectItem>
-                  <SelectItem value="intermediate">🟡 Intermediário</SelectItem>
-                  <SelectItem value="advanced">🔴 Avançado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="duration" className="text-sm font-medium">Duração Estimada</Label>
-              <Input
-                id="duration"
-                value={formData.duration}
-                onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
-                placeholder="Ex: 15 min, 30 min"
-              />
-            </div>
+            <p className="text-[12px] text-muted-foreground flex items-center gap-1.5 pt-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>
+                Estes pontos serão creditados ao aluno <strong>exclusivamente na primeira vez</strong> em que a atividade for concluída.
+              </span>
+            </p>
           </div>
 
           {/* Código do Artefato */}

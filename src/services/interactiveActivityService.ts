@@ -10,6 +10,7 @@ export interface InteractiveActivity {
   type: 'game' | 'simulation' | 'quiz' | 'exercise';
   duration?: string;
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  points?: number;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -23,6 +24,7 @@ export type CreateInteractiveActivityData = {
   type?: 'game' | 'simulation' | 'quiz' | 'exercise';
   duration?: string;
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  points?: number;
   is_active?: boolean;
 };
 
@@ -97,6 +99,7 @@ export const interactiveActivityService = {
       type: data.type || 'game',
       duration: data.duration?.trim() || '20 min',
       difficulty: data.difficulty || 'beginner',
+      points: data.points !== undefined ? Number(data.points) : 10,
       is_active: data.is_active !== undefined ? data.is_active : true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

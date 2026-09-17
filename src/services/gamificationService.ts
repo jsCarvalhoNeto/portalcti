@@ -428,4 +428,147 @@ export async function getTopStudents(limit = 10) {
   }
 }
 
+/**
+ * Atribui pontos pela conclusão de uma atividade interativa (EXCLUSIVO na 1ª vez)
+ */
+export async function awardInteractiveActivity(
+  userId: string,
+  activityId: string | number,
+  subjectId?: string | number,
+  pointsToAward: number = 10
+): Promise<AwardResult | null> {
+  try {
+    const stringActivityId = activityId.toString();
 
+    // 1. Verificar se o aluno está matriculado na disciplina (se informada)
+    if (subjectId) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', userId)
+        .eq('subject_id', Number(subjectId))
+        .maybeSingle();
+
+      if (!enrollment) {
+        console.warn(`[Gamification] Aluno ${userId} não matriculado na disciplina ${subjectId}. Pontuação não permitida.`);
+        return { ok: false, awarded: 0, message: 'Pontos não atribuídos pois a disciplina não pertence à sua série.' };
+      }
+    }
+
+    // 2. Verificar se o aluno já concluiu e recebeu pontos por esta atividade anteriormente
+    const { data: existingPoints, error: checkError } = await supabase
+      .from('gamification_points')
+      .select('id, points, created_at')
+      .eq('user_id', userId)
+      .eq('source', 'interactive_activity')
+      .eq('source_id', stringActivityId)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.warn('Aviso ao consultar conclusão prévia de atividade interativa:', checkError);
+    }
+
+    if (existingPoints) {
+      console.log(`Aluno ${userId} já concluiu a atividade interativa ${stringActivityId} anteriormente.`);
+      return { 
+        ok: true, 
+        awarded: 0, 
+        message: 'Você já concluiu esta atividade anteriormente! Os pontos só são atribuídos na primeira realização.' 
+      };
+    }
+
+    // 3. Se não houver pontos configurados (ou 0), apenas registra com 0 pontos para marcar como concluída
+    const safePoints = Math.max(0, Number(pointsToAward) || 0);
+
+    const { error: insertError } = await supabase
+      .from('gamification_points')
+      .insert({
+        user_id: userId,
+        source: 'interactive_activity',
+        source_id: stringActivityId,
+        subject_id: subjectId ? Number(subjectId) : null,
+        points: safePoints
+      });
+
+    if (insertError) throw insertError;
+
+    const result = { 
+      ok: true, 
+      awarded: safePoints, 
+      message: safePoints > 0 
+        ? `🎉 Parabéns! Você concluiu a atividade e conquistou +${safePoints} pontos!` 
+        : 'Atividade concluída com sucesso!' 
+    };
+
+    try {
+      (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: result }));
+    } catch (e) {
+      /* noop */
+    }
+
+    return result;
+  } catch (err: any) {
+    console.error('Erro ao premiar atividade interativa no Supabase:', err);
+    return { ok: false, awarded: 0, message: err?.message || 'Erro ao registrar conclusão da atividade.' };
+  }
+}
+
+/**
+ * Verifica se um estudante já concluiu uma atividade interativa específica
+ */
+export async function checkInteractiveActivityCompleted(
+  userId: string,
+  activityId: string | number
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('gamification_points')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source', 'interactive_activity')
+      .eq('source_id', activityId.toString())
+      .limit(1);
+
+    if (error) {
+      console.warn('Erro ao verificar conclusão da atividade interativa:', error);
+      return false;
+    }
+
+    return Boolean(data && data.length > 0);
+  } catch (err) {
+    console.error('Erro ao verificar conclusão:', err);
+    return false;
+  }
+}
+
+/**
+ * Retorna os IDs das atividades interativas que o estudante já concluiu
+ */
+export async function getCompletedInteractiveActivities(
+  userId: string,
+  subjectId?: string | number
+): Promise<string[]> {
+  try {
+    let query = supabase
+      .from('gamification_points')
+      .select('source_id')
+      .eq('user_id', userId)
+      .eq('source', 'interactive_activity');
+
+    if (subjectId) {
+      query = query.eq('subject_id', Number(subjectId));
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.warn('Erro ao buscar lista de atividades concluídas:', error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => String(row.source_id)).filter(Boolean);
+  } catch (err) {
+    console.error('Erro ao buscar atividades concluídas:', err);
+    return [];
+  }
+}
