@@ -22,12 +22,16 @@ import {
   Award,
   Layers,
   Info,
-  Save
+  Save,
+  Calculator,
+  TableProperties,
+  Check
 } from 'lucide-react';
 import {
   ConsolidatedSubject,
   ConsolidatedPeriodReport,
   StudentConsolidatedRow,
+  GradeCalculationMode,
   getConsolidatedTeacherSubjects,
   getConsolidatedPeriodGrades,
   saveStudentExtraPoints
@@ -56,6 +60,15 @@ export default function TeacherConsolidatedGradesManager() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('3º Período');
   const [selectedGradeSeries, setSelectedGradeSeries] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Modo de cálculo das notas (Somatória de Pontos ou Média Aritmética)
+  const [calculationMode, setCalculationMode] = useState<GradeCalculationMode>(() => {
+    const saved = localStorage.getItem('portalcti_grade_calc_mode');
+    return (saved === 'average' || saved === 'sum') ? saved : 'sum';
+  });
+
+  // Modo de visualização da tabela (Consolidada ou Detalhada por Atividade)
+  const [viewMode, setViewMode] = useState<'consolidated' | 'detailed'>('detailed');
 
   const [reportData, setReportData] = useState<ConsolidatedPeriodReport | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -89,7 +102,7 @@ export default function TeacherConsolidatedGradesManager() {
     loadSubjects();
   }, [user?.id]);
 
-  // 2. Carregar notas consolidadas quando disciplina, período ou série mudarem
+  // 2. Carregar notas consolidadas quando disciplina, período, série ou modo de cálculo mudarem
   const loadGradesData = async () => {
     if (!selectedSubjectId || !selectedPeriod) return;
     setLoading(true);
@@ -97,7 +110,8 @@ export default function TeacherConsolidatedGradesManager() {
       const data = await getConsolidatedPeriodGrades(
         selectedSubjectId,
         selectedPeriod,
-        selectedGradeSeries
+        selectedGradeSeries,
+        calculationMode
       );
       setReportData(data);
 
@@ -123,7 +137,12 @@ export default function TeacherConsolidatedGradesManager() {
 
   useEffect(() => {
     loadGradesData();
-  }, [selectedSubjectId, selectedPeriod, selectedGradeSeries]);
+  }, [selectedSubjectId, selectedPeriod, selectedGradeSeries, calculationMode]);
+
+  const handleCalculationModeChange = (mode: GradeCalculationMode) => {
+    setCalculationMode(mode);
+    localStorage.setItem('portalcti_grade_calc_mode', mode);
+  };
 
   // 3. Salvar pontos extras de um aluno
   const handleSaveExtraPoints = async (student: StudentConsolidatedRow) => {
@@ -156,7 +175,7 @@ export default function TeacherConsolidatedGradesManager() {
         });
       }
 
-      // Recarregar dados para recalcular médias
+      // Recarregar dados para recalcular médias/totais
       await loadGradesData();
     } catch (err) {
       console.error('Erro ao salvar pontos extras:', err);
@@ -191,27 +210,51 @@ export default function TeacherConsolidatedGradesManager() {
   const handleExportCSV = () => {
     if (!reportData || filteredStudents.length === 0) return;
 
-    const headers = [
+    let headers = [
       'Matrícula',
       'Nome do Aluno',
-      'Série/Turma',
-      'Avaliação Parcial (AV1)',
-      'Avaliação Global (AV2)',
-      'Pontos Extras',
-      'Média Final',
-      'Situação'
+      'Série/Turma'
     ];
 
-    const rows = filteredStudents.map(s => [
-      `"${s.student_registration || '-'}"`,
-      `"${s.student_name}"`,
-      `"${s.student_grade || '-'}"`,
-      s.parcial_grade !== null ? s.parcial_grade.toFixed(1) : '-',
-      s.global_grade !== null ? s.global_grade.toFixed(1) : '-',
-      s.extra_points > 0 ? s.extra_points.toFixed(1) : '0',
-      s.final_grade !== null ? s.final_grade.toFixed(1) : '-',
-      s.status === 'approved' ? 'Aprovado' : s.status === 'recovery' ? 'Recuperação' : 'Em Andamento'
-    ]);
+    // Se no modo detalhado, adiciona as colunas de cada atividade
+    if (viewMode === 'detailed' && reportData.activities.length > 0) {
+      reportData.activities.forEach(act => {
+        headers.push(`Ativ: ${act.name} (${act.evaluation_type || 'Geral'})`);
+      });
+    }
+
+    headers.push(
+      calculationMode === 'sum' ? 'Soma Parcial (AV1)' : 'Média Parcial (AV1)',
+      calculationMode === 'sum' ? 'Soma Global (AV2)' : 'Média Global (AV2)',
+      'Pontos Extras',
+      'Nota Final',
+      'Situação'
+    );
+
+    const rows = filteredStudents.map(s => {
+      const row = [
+        `"${s.student_registration || '-'}"`,
+        `"${s.student_name}"`,
+        `"${s.student_grade || '-'}"`
+      ];
+
+      if (viewMode === 'detailed' && reportData.activities.length > 0) {
+        reportData.activities.forEach(act => {
+          const detail = s.activities_details.find(a => a.activity_id === act.id);
+          row.push(detail && detail.grade !== null ? detail.grade.toFixed(1) : '-');
+        });
+      }
+
+      row.push(
+        s.parcial_grade !== null ? s.parcial_grade.toFixed(1) : '-',
+        s.global_grade !== null ? s.global_grade.toFixed(1) : '-',
+        s.extra_points > 0 ? s.extra_points.toFixed(1) : '0',
+        s.final_grade !== null ? s.final_grade.toFixed(1) : '-',
+        s.status === 'approved' ? 'Aprovado' : s.status === 'recovery' ? 'Recuperação' : 'Em Andamento'
+      );
+
+      return row;
+    });
 
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [
       headers.join(';'),
@@ -221,7 +264,7 @@ export default function TeacherConsolidatedGradesManager() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Notas_${reportData.subject.name}_${selectedPeriod}.csv`);
+    link.setAttribute('download', `Notas_${reportData.subject.name}_${selectedPeriod}_${calculationMode}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -359,7 +402,77 @@ export default function TeacherConsolidatedGradesManager() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-8"
                 />
-                <Search className="w-4 h-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Opções Avançadas: Modo de Cálculo e Modo de Visualização */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 mt-4 border-t border-border/50 text-xs">
+            {/* Modo de Cálculo */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Calculator className="w-3.5 h-3.5 text-primary" />
+                Cálculo das Atividades:
+              </span>
+              <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleCalculationModeChange('sum')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    calculationMode === 'sum'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Soma a pontuação de todas as atividades realizadas"
+                >
+                  Somatória de Pontos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCalculationModeChange('average')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    calculationMode === 'average'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Calcula a média aritmética simples das notas das atividades"
+                >
+                  Média das Atividades
+                </button>
+              </div>
+            </div>
+
+            {/* Modo de Visualização da Planilha */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                <TableProperties className="w-3.5 h-3.5 text-primary" />
+                Formato da Tabela:
+              </span>
+              <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('detailed')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    viewMode === 'detailed'
+                      ? 'bg-background text-foreground shadow-sm border border-border/60'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Exibe uma coluna para cada atividade do período"
+                >
+                  Colunas por Atividade
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('consolidated')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    viewMode === 'consolidated'
+                      ? 'bg-background text-foreground shadow-sm border border-border/60'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Exibe apenas os totais consolidados"
+                >
+                  Visão Resumida
+                </button>
               </div>
             </div>
           </div>
@@ -387,7 +500,9 @@ export default function TeacherConsolidatedGradesManager() {
                 <Award className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Média da Turma</p>
+                <p className="text-xs text-muted-foreground font-medium">
+                  {calculationMode === 'sum' ? 'Média Geral (Pontos)' : 'Média da Turma'}
+                </p>
                 <p className="text-2xl font-bold">{reportData.average_class_grade.toFixed(1)}</p>
               </div>
             </CardContent>
@@ -468,18 +583,41 @@ export default function TeacherConsolidatedGradesManager() {
                 <thead>
                   <tr className="bg-muted/60 border-b border-border text-muted-foreground font-semibold">
                     <th className="text-center py-3.5 px-3 w-12">#</th>
-                    <th className="text-left py-3.5 px-4">Aluno</th>
-                    <th className="text-left py-3.5 px-3">Série / Turma</th>
-                    <th className="text-center py-3.5 px-3">
+                    <th className="text-left py-3.5 px-4 min-w-[180px]">Aluno</th>
+                    <th className="text-left py-3.5 px-3 min-w-[90px]">Série / Turma</th>
+
+                    {/* Colunas individuais de cada atividade quando no modo detalhado */}
+                    {viewMode === 'detailed' && reportData.activities.map((act) => (
+                      <th key={act.id} className="text-center py-3 px-2 min-w-[100px] max-w-[140px] bg-muted/20" title={act.name}>
+                        <div className="flex flex-col items-center">
+                          <span className="truncate max-w-[130px] text-xs font-semibold text-foreground">{act.name}</span>
+                          <span className={`text-[10px] font-normal ${
+                            (act.evaluation_type || '').includes('Parcial')
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : (act.evaluation_type || '').includes('Global')
+                              ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-muted-foreground'
+                          }`}>
+                            {act.evaluation_type || 'Geral'}
+                          </span>
+                        </div>
+                      </th>
+                    ))}
+
+                    <th className="text-center py-3.5 px-3 min-w-[110px]">
                       <div className="flex flex-col items-center">
                         <span>Avaliação Parcial</span>
-                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">(AV1)</span>
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">
+                          (AV1) • {calculationMode === 'sum' ? 'Soma' : 'Média'}
+                        </span>
                       </div>
                     </th>
-                    <th className="text-center py-3.5 px-3">
+                    <th className="text-center py-3.5 px-3 min-w-[110px]">
                       <div className="flex flex-col items-center">
                         <span>Avaliação Global</span>
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">(AV2)</span>
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">
+                          (AV2) • {calculationMode === 'sum' ? 'Soma' : 'Média'}
+                        </span>
                       </div>
                     </th>
                     <th className="text-center py-3.5 px-3 print:hidden">
@@ -493,7 +631,7 @@ export default function TeacherConsolidatedGradesManager() {
                     <th className="text-center py-3.5 px-3 hidden print:table-cell">
                       Pontos Extras
                     </th>
-                    <th className="text-center py-3.5 px-4 font-bold">
+                    <th className="text-center py-3.5 px-4 font-bold min-w-[90px]">
                       <div className="flex flex-col items-center">
                         <span>Nota Final</span>
                         <span className="text-[10px] text-muted-foreground font-normal">Período</span>
@@ -534,20 +672,55 @@ export default function TeacherConsolidatedGradesManager() {
                         <td className="py-3 px-3 text-muted-foreground text-xs">
                           {student.student_grade || '-'}
                         </td>
+
+                        {/* Notas por Atividade individual quando no modo detalhado */}
+                        {viewMode === 'detailed' && reportData.activities.map((act) => {
+                          const detail = student.activities_details.find(a => a.activity_id === act.id);
+                          const score = detail?.grade;
+                          return (
+                            <td key={act.id} className="py-3 px-2 text-center bg-muted/5 font-mono text-xs">
+                              {score !== null && score !== undefined ? (
+                                <span className="inline-block px-1.5 py-0.5 rounded font-semibold text-foreground bg-muted/60">
+                                  {Number(score).toFixed(1)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/40 text-xs">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+
+                        {/* Avaliação Parcial (AV1) */}
                         <td className="py-3 px-3 text-center">
                           {student.parcial_grade !== null ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-medium text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300">
-                              {student.parcial_grade.toFixed(1)}
-                            </span>
+                            <div className="inline-flex flex-col items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-bold text-xs bg-blue-500/15 text-blue-700 dark:text-blue-300">
+                                {student.parcial_grade.toFixed(1)}
+                              </span>
+                              {calculationMode === 'sum' && student.parcial_activities_count > 1 && (
+                                <span className="text-[10px] text-muted-foreground/70 mt-0.5">
+                                  ({student.parcial_activities_count} ativ.)
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground/60 text-xs">-</span>
                           )}
                         </td>
+
+                        {/* Avaliação Global (AV2) */}
                         <td className="py-3 px-3 text-center">
                           {student.global_grade !== null ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-medium text-xs bg-purple-500/10 text-purple-700 dark:text-purple-300">
-                              {student.global_grade.toFixed(1)}
-                            </span>
+                            <div className="inline-flex flex-col items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-bold text-xs bg-purple-500/15 text-purple-700 dark:text-purple-300">
+                                {student.global_grade.toFixed(1)}
+                              </span>
+                              {calculationMode === 'sum' && student.global_activities_count > 1 && (
+                                <span className="text-[10px] text-muted-foreground/70 mt-0.5">
+                                  ({student.global_activities_count} ativ.)
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground/60 text-xs">-</span>
                           )}
@@ -665,22 +838,31 @@ export default function TeacherConsolidatedGradesManager() {
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg text-center">
                 <div>
-                  <span className="text-[11px] text-muted-foreground block">Parcial (AV1)</span>
-                  <span className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">
+                  <span className="text-[11px] text-muted-foreground block font-medium">Parcial (AV1)</span>
+                  <span className="text-base font-bold font-mono text-blue-600 dark:text-blue-400">
                     {detailsStudent.parcial_grade !== null ? detailsStudent.parcial_grade.toFixed(1) : '-'}
                   </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Soma: {detailsStudent.parcial_sum.toFixed(1)} pts
+                    {detailsStudent.parcial_activities_count > 0 && ` • Média: ${detailsStudent.parcial_avg.toFixed(1)}`}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted-foreground block">Global (AV2)</span>
-                  <span className="text-sm font-bold font-mono text-purple-600 dark:text-purple-400">
+                  <span className="text-[11px] text-muted-foreground block font-medium">Global (AV2)</span>
+                  <span className="text-base font-bold font-mono text-purple-600 dark:text-purple-400">
                     {detailsStudent.global_grade !== null ? detailsStudent.global_grade.toFixed(1) : '-'}
                   </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Soma: {detailsStudent.global_sum.toFixed(1)} pts
+                    {detailsStudent.global_activities_count > 0 && ` • Média: ${detailsStudent.global_avg.toFixed(1)}`}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted-foreground block">Pontos Extras</span>
-                  <span className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
+                  <span className="text-[11px] text-muted-foreground block font-medium">Pontos Extras</span>
+                  <span className="text-base font-bold font-mono text-amber-600 dark:text-amber-400">
                     +{detailsStudent.extra_points.toFixed(1)}
                   </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Bônus atribuído</span>
                 </div>
               </div>
 
@@ -718,11 +900,24 @@ export default function TeacherConsolidatedGradesManager() {
                 )}
               </div>
 
-              <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <span className="font-semibold text-sm">Nota Final Consolidada:</span>
-                <span className="text-lg font-bold font-mono text-primary">
-                  {detailsStudent.final_grade !== null ? detailsStudent.final_grade.toFixed(1) : '-'}
-                </span>
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">Nota Final Consolidada:</span>
+                  <span className="text-xl font-bold font-mono text-primary">
+                    {detailsStudent.final_grade !== null ? detailsStudent.final_grade.toFixed(1) : '-'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {calculationMode === 'sum' ? (
+                    <span>
+                      Modo Somatória: Parcial ({detailsStudent.parcial_grade?.toFixed(1) || '0.0'}) + Global ({detailsStudent.global_grade?.toFixed(1) || '0.0'}) + Extras ({detailsStudent.extra_points.toFixed(1)}) = {detailsStudent.final_grade?.toFixed(1) || '-'}
+                    </span>
+                  ) : (
+                    <span>
+                      Modo Média: Média das avaliações ({detailsStudent.parcial_avg.toFixed(1)} Parcial) + Extras ({detailsStudent.extra_points.toFixed(1)}) = {detailsStudent.final_grade?.toFixed(1) || '-'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

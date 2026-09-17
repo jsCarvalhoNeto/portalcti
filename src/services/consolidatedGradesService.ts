@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 
+export type GradeCalculationMode = 'sum' | 'average';
+
 export interface ConsolidatedSubject {
   id: number;
   name: string;
@@ -17,8 +19,12 @@ export interface StudentConsolidatedRow {
   student_registration?: string;
   student_grade?: string; // Turma/Série do aluno
   parcial_grade: number | null;
+  parcial_sum: number;
+  parcial_avg: number;
   parcial_activities_count: number;
   global_grade: number | null;
+  global_sum: number;
+  global_avg: number;
   global_activities_count: number;
   other_activities_grade: number | null;
   other_activities_count: number;
@@ -38,6 +44,7 @@ export interface ConsolidatedPeriodReport {
   subject: ConsolidatedSubject;
   period: string;
   grade_filter: string;
+  calculation_mode: GradeCalculationMode;
   total_students: number;
   average_class_grade: number;
   approved_count: number;
@@ -49,6 +56,7 @@ export interface ConsolidatedPeriodReport {
     evaluation_type: string | null;
     type: string;
     deadline?: string;
+    grade?: string;
   }>;
 }
 
@@ -132,7 +140,8 @@ export async function getConsolidatedTeacherSubjects(teacherId: string): Promise
 export async function getConsolidatedPeriodGrades(
   subjectId: number,
   period: string,
-  gradeFilter?: string
+  gradeFilter?: string,
+  calculationMode: GradeCalculationMode = 'sum'
 ): Promise<ConsolidatedPeriodReport | null> {
   try {
     if (!subjectId) return null;
@@ -161,8 +170,7 @@ export async function getConsolidatedPeriodGrades(
       .select(`
         id,
         student_id,
-        profiles!inner (
-          id,
+        profiles:student_id (
           full_name,
           email,
           student_registration,
@@ -176,7 +184,7 @@ export async function getConsolidatedPeriodGrades(
     let enrollments = (enrollmentsData || []).map((e: any) => ({
       enrollment_id: Number(e.id),
       student_id: e.student_id,
-      full_name: e.profiles?.full_name || 'Aluno sem nome',
+      full_name: e.profiles?.full_name || 'Aluno',
       email: e.profiles?.email || '',
       student_registration: e.profiles?.student_registration || '',
       grade: e.profiles?.grade || subject.grade || ''
@@ -299,43 +307,63 @@ export async function getConsolidatedPeriodGrades(
         }
       });
 
-      // Cálculo de Parcial (AV1)
-      const parcialGrade = parcialScores.length > 0
+      // Cálculos de Parcial (AV1)
+      const parcialSum = Number(parcialScores.reduce((acc, v) => acc + v, 0).toFixed(1));
+      const parcialAvg = parcialScores.length > 0
         ? Number((parcialScores.reduce((acc, v) => acc + v, 0) / parcialScores.length).toFixed(1))
+        : 0;
+      const parcialGrade = parcialScores.length > 0
+        ? (calculationMode === 'sum' ? parcialSum : parcialAvg)
         : null;
 
-      // Cálculo de Global (AV2)
-      const globalGrade = globalScores.length > 0
+      // Cálculos de Global (AV2)
+      const globalSum = Number(globalScores.reduce((acc, v) => acc + v, 0).toFixed(1));
+      const globalAvg = globalScores.length > 0
         ? Number((globalScores.reduce((acc, v) => acc + v, 0) / globalScores.length).toFixed(1))
+        : 0;
+      const globalGrade = globalScores.length > 0
+        ? (calculationMode === 'sum' ? globalSum : globalAvg)
         : null;
 
-      // Cálculo de Outras Atividades
-      const otherGrade = otherScores.length > 0
+      // Cálculos de Outras Atividades
+      const otherSum = Number(otherScores.reduce((acc, v) => acc + v, 0).toFixed(1));
+      const otherAvg = otherScores.length > 0
         ? Number((otherScores.reduce((acc, v) => acc + v, 0) / otherScores.length).toFixed(1))
+        : 0;
+      const otherGrade = otherScores.length > 0
+        ? (calculationMode === 'sum' ? otherSum : otherAvg)
         : null;
 
       // Cálculo da Nota Final do Período
-      // Regra comum: Se tiver AV1 e AV2 -> média ou soma.
-      // Caso as notas estejam na escala 0 a 10:
       let finalGrade: number | null = null;
 
-      if (parcialGrade !== null || globalGrade !== null || otherGrade !== null) {
-        // Coleta as notas avaliadas
-        const validGrades: number[] = [];
-        if (parcialGrade !== null) validGrades.push(parcialGrade);
-        if (globalGrade !== null) validGrades.push(globalGrade);
-        if (otherGrade !== null && parcialGrade === null && globalGrade === null) {
-          validGrades.push(otherGrade);
+      if (calculationMode === 'sum') {
+        // No modo Somatória de Pontos:
+        // Soma as parciais + globais + outras + pontos extras
+        if (parcialGrade !== null || globalGrade !== null || otherGrade !== null) {
+          const totalPoints = (parcialGrade || 0) + (globalGrade || 0) + (otherGrade || 0) + extraPoints;
+          // Respeita o teto padrão escolar de 10.0
+          finalGrade = Math.min(10, Number(totalPoints.toFixed(1)));
+        } else if (extraPoints > 0) {
+          finalGrade = Math.min(10, extraPoints);
         }
+      } else {
+        // No modo Média Aritmética:
+        if (parcialGrade !== null || globalGrade !== null || otherGrade !== null) {
+          const validGrades: number[] = [];
+          if (parcialGrade !== null) validGrades.push(parcialGrade);
+          if (globalGrade !== null) validGrades.push(globalGrade);
+          if (otherGrade !== null && parcialGrade === null && globalGrade === null) {
+            validGrades.push(otherGrade);
+          }
 
-        if (validGrades.length > 0) {
-          const baseAverage = validGrades.reduce((a, b) => a + b, 0) / validGrades.length;
-          // Soma com os pontos extras, respeitando limite de 10.0
-          const computed = Math.min(10, Number((baseAverage + extraPoints).toFixed(1)));
-          finalGrade = computed;
+          if (validGrades.length > 0) {
+            const baseAverage = validGrades.reduce((a, b) => a + b, 0) / validGrades.length;
+            finalGrade = Math.min(10, Number((baseAverage + extraPoints).toFixed(1)));
+          }
+        } else if (extraPoints > 0) {
+          finalGrade = Math.min(10, extraPoints);
         }
-      } else if (extraPoints > 0) {
-        finalGrade = Math.min(10, extraPoints);
       }
 
       // Status
@@ -358,8 +386,12 @@ export async function getConsolidatedPeriodGrades(
         student_registration: enrollment.student_registration,
         student_grade: enrollment.grade,
         parcial_grade: parcialGrade,
+        parcial_sum: parcialSum,
+        parcial_avg: parcialAvg,
         parcial_activities_count: parcialScores.length,
         global_grade: globalGrade,
+        global_sum: globalSum,
+        global_avg: globalAvg,
         global_activities_count: globalScores.length,
         other_activities_grade: otherGrade,
         other_activities_count: otherScores.length,
@@ -383,6 +415,7 @@ export async function getConsolidatedPeriodGrades(
       subject,
       period,
       grade_filter: gradeFilter || 'all',
+      calculation_mode: calculationMode,
       total_students: studentsRows.length,
       average_class_grade: averageClassGrade,
       approved_count: approvedCount,
