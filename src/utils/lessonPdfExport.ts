@@ -49,6 +49,17 @@ function getEvaluationLabel(evalType?: string | null): string {
 }
 
 /**
+ * Remove caracteres inválidos para nomes de arquivo e formata um título seguro
+ */
+function sanitizeFileName(title: string): string {
+  return title
+    .replace(/[/\\?%*:|"<>]/g, '-') // substitui caracteres inválidos por '-'
+    .replace(/\s+/g, ' ')           // remove múltiplos espaços
+    .replace(/-+/g, '-')            // remove múltiplos traços
+    .trim();
+}
+
+/**
  * Exporta e aciona a impressão / salvamento em PDF de uma aula
  */
 export function exportLessonToPdf(
@@ -65,6 +76,14 @@ export function exportLessonToPdf(
     const schoolName = lesson.school_name || 'EEEP Balbina Viana Arrais';
     const courseName = lesson.course_name || 'Curso Técnico em Informática Integrado ao Ensino Médio';
     const currentYear = new Date().getFullYear();
+
+    // Determina o nome seguro e limpo para salvar o arquivo PDF
+    const rawTitle = title.trim();
+    let docTitle = rawTitle;
+    if (!/^aula\s*\d+/i.test(rawTitle)) {
+      docTitle = `Aula ${orderIndex} - ${rawTitle}`;
+    }
+    const safeFileName = sanitizeFileName(docTitle);
 
     // Renderiza o markdown para HTML (ou aproveita o HTML customizado/destacado)
     let renderedContent = '';
@@ -105,7 +124,7 @@ export function exportLessonToPdf(
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Aula ${orderIndex} - ${title} | ${subjectName || 'Disciplina'}</title>
+  <title>${safeFileName}</title>
   <style>
     @page {
       size: A4 portrait;
@@ -603,13 +622,35 @@ export function exportLessonToPdf(
   <script>
     window.addEventListener('load', function() {
       setTimeout(function() {
-        window.print();
+        try {
+          window.focus();
+          window.print();
+        } catch (e) {
+          console.error('Erro ao acionar impressão:', e);
+        }
       }, 350);
     });
   </script>
 </body>
 </html>
     `;
+
+    // Atualiza temporariamente o título da janela principal para que navegadores
+    // baseados em Chromium (Chrome/Edge) usem o nome da aula ao "Salvar como PDF"
+    const originalDocumentTitle = document.title;
+    document.title = safeFileName;
+
+    let isTitleRestored = false;
+    const restoreDocumentTitle = () => {
+      if (!isTitleRestored) {
+        isTitleRestored = true;
+        document.title = originalDocumentTitle;
+      }
+    };
+
+    window.addEventListener('afterprint', restoreDocumentTitle, { once: true });
+    // Timeout de segurança para restaurar o título caso afterprint não seja capturado
+    setTimeout(restoreDocumentTitle, 20000);
 
     // Utiliza um iframe oculto para impressão limpa sem criar popup em branco
     const iframe = document.createElement('iframe');
@@ -627,8 +668,20 @@ export function exportLessonToPdf(
       doc.write(printHtml);
       doc.close();
 
-      // Remove o iframe do DOM após a impressão
+      try {
+        iframe.contentWindow?.addEventListener('afterprint', () => {
+          restoreDocumentTitle();
+          if (iframe && iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, { once: true });
+      } catch {
+        // Ignora restrições se houver
+      }
+
+      // Remove o iframe do DOM após a impressão como fallback
       setTimeout(() => {
+        restoreDocumentTitle();
         if (iframe && iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
@@ -646,3 +699,4 @@ export function exportLessonToPdf(
     throw error;
   }
 }
+
