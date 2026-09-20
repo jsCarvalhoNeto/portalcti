@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -192,8 +192,45 @@ export default function SubjectLessonEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
+  // Referências para os textareas de Conteúdo e Plano de Aula
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const planRef = useRef<HTMLTextAreaElement>(null);
+  const contentCursorRef = useRef<{ start: number; end: number }>({ start: -1, end: -1 });
+  const planCursorRef = useRef<{ start: number; end: number }>({ start: -1, end: -1 });
+
+  const updateCursorPosition = (field: 'content' | 'plan', el: HTMLTextAreaElement) => {
+    if (field === 'content') {
+      contentCursorRef.current = { start: el.selectionStart, end: el.selectionEnd };
+    } else {
+      planCursorRef.current = { start: el.selectionStart, end: el.selectionEnd };
+    }
+  };
+
+  const handleOpenImageModal = () => {
+    const isContent = contentSection === 'content';
+    const textarea = isContent ? contentRef.current : planRef.current;
+    if (textarea) {
+      if (isContent) {
+        contentCursorRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+      } else {
+        planCursorRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+      }
+    }
+    setIsImageModalOpen(true);
+  };
+
   // Captura imagem colada diretamente via Ctrl+V no editor de texto
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    const pasteStart = target.selectionStart;
+    const pasteEnd = target.selectionEnd;
+
+    if (contentSection === 'content') {
+      contentCursorRef.current = { start: pasteStart, end: pasteEnd };
+    } else {
+      planCursorRef.current = { start: pasteStart, end: pasteEnd };
+    }
+
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -224,7 +261,7 @@ export default function SubjectLessonEditor({
           }
 
           const snippet = `\n\n<div align="center">\n  <img src="${finalUrl}" alt="Imagem colada da aula" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />\n</div>\n\n`;
-          handleInsertSnippet(snippet);
+          handleInsertSnippet(snippet, pasteStart, pasteEnd);
           toast({
             title: 'Imagem inserida!',
             description: 'A imagem colada foi adicionada com sucesso ao conteúdo.',
@@ -274,6 +311,8 @@ export default function SubjectLessonEditor({
         order_index: nextOrderIndex
       });
     }
+    contentCursorRef.current = { start: -1, end: -1 };
+    planCursorRef.current = { start: -1, end: -1 };
     setActiveTab('editor');
     setContentSection('content');
   }, [lesson, subjectId, nextOrderIndex, isOpen]);
@@ -292,23 +331,78 @@ export default function SubjectLessonEditor({
     return sanitizeHtml(markdownToHtml(formData.lesson_plan));
   }, [formData.lesson_plan]);
 
-  const handleInsertSnippet = (snippet: string) => {
-    if (contentSection === 'plan') {
-      setFormData(prev => ({
-        ...prev,
-        lesson_plan: prev.lesson_plan ? `${prev.lesson_plan}\n\n${snippet}` : snippet
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        content: prev.content ? `${prev.content}\n\n${snippet}` : snippet
-      }));
+  const handleInsertSnippet = (
+    snippet: string,
+    customStart?: number,
+    customEnd?: number
+  ) => {
+    const isContent = contentSection === 'content';
+    const currentText = isContent ? (formData.content || '') : (formData.lesson_plan || '');
+    const cursorRef = isContent ? contentCursorRef : planCursorRef;
+    const textareaRef = isContent ? contentRef : planRef;
+
+    let start = customStart !== undefined ? customStart : cursorRef.current.start;
+    let end = customEnd !== undefined ? customEnd : cursorRef.current.end;
+
+    // Se a posição não foi gravada ou for além dos limites, insere no fim do texto atual
+    if (start < 0 || start > currentText.length) {
+      start = currentText.length;
+      end = currentText.length;
     }
+    if (end < start || end > currentText.length) {
+      end = start;
+    }
+
+    const before = currentText.slice(0, start);
+    const after = currentText.slice(end);
+    const newText = before + snippet + after;
+    const nextCursorPos = start + snippet.length;
+
+    if (isContent) {
+      setFormData(prev => ({ ...prev, content: newText }));
+      contentCursorRef.current = { start: nextCursorPos, end: nextCursorPos };
+    } else {
+      setFormData(prev => ({ ...prev, lesson_plan: newText }));
+      planCursorRef.current = { start: nextCursorPos, end: nextCursorPos };
+    }
+
+    // Foca novamente no textarea e posiciona o cursor logo após o snippet inserido
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(nextCursorPos, nextCursorPos);
+      }
+    }, 50);
+  };
+
+  const handleFormatWrap = (prefix: string, suffix: string, defaultText: string) => {
+    const isContent = contentSection === 'content';
+    const textarea = isContent ? contentRef.current : planRef.current;
+    const cursorRef = isContent ? contentCursorRef : planCursorRef;
+    const currentText = isContent ? (formData.content || '') : (formData.lesson_plan || '');
+
+    let start = textarea?.selectionStart ?? cursorRef.current.start;
+    let end = textarea?.selectionEnd ?? cursorRef.current.end;
+
+    if (start < 0 || start > currentText.length) {
+      start = currentText.length;
+      end = currentText.length;
+    }
+    if (end < start || end > currentText.length) {
+      end = start;
+    }
+
+    const selected = currentText.slice(start, end);
+    const textToWrap = selected || defaultText;
+    const snippet = `${prefix}${textToWrap}${suffix}`;
+
+    handleInsertSnippet(snippet, start, end);
   };
 
   const handleInsertCodeBlock = () => {
     const lang = selectedLanguage || 'html';
-    const snippet = `\`\`\`${lang}\n// Digite ou cole seu código ${lang.toUpperCase()} aqui\n\`\`\``;
+    const snippet = `\n\`\`\`${lang}\n// Digite ou cole seu código ${lang.toUpperCase()} aqui\n\`\`\`\n`;
     handleInsertSnippet(snippet);
   };
 
@@ -671,7 +765,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('## Novo Tópico\nDescrição do tópico aqui...')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleFormatWrap('\n## ', '\n', 'Novo Tópico')}
                       title="Título H2"
                       className="h-7 px-2 text-xs font-bold"
                     >
@@ -681,7 +776,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('**Texto em Negrito**')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleFormatWrap('**', '**', 'Texto em Negrito')}
                       title="Negrito"
                       className="h-7 px-2 text-xs"
                     >
@@ -691,7 +787,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('*Texto em Itálico*')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleFormatWrap('*', '*', 'Texto em Itálico')}
                       title="Itálico"
                       className="h-7 px-2 text-xs"
                     >
@@ -701,7 +798,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('- Item 1\n- Item 2\n- Item 3')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleInsertSnippet('\n- Item 1\n- Item 2\n- Item 3\n')}
                       title="Lista"
                       className="h-7 px-2 text-xs"
                     >
@@ -711,7 +809,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('| Item / Tópico | Duração / Detalhe |\n| --- | --- |\n| Acolhimento | 15 minutos |')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleInsertSnippet('\n| Item / Tópico | Duração / Detalhe |\n| --- | --- |\n| Acolhimento | 15 minutos |\n')}
                       title="Tabela"
                       className="h-7 px-2 text-xs"
                     >
@@ -721,7 +820,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('> **Nota Importante:** Digite aqui sua observação ou aviso.')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleInsertSnippet('\n> **Nota Importante:** Digite aqui sua observação ou aviso.\n')}
                       title="Citação / Dica"
                       className="h-7 px-2 text-xs"
                     >
@@ -731,7 +831,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleInsertSnippet('---\n')}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleInsertSnippet('\n---\n')}
                       title="Linha Divisória"
                       className="h-7 px-2 text-xs font-mono"
                     >
@@ -741,7 +842,8 @@ export default function SubjectLessonEditor({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsImageModalOpen(true)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={handleOpenImageModal}
                       title="Inserir Imagem na Aula (Upload ou URL)"
                       className="h-7 px-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium gap-1"
                     >
@@ -756,7 +858,8 @@ export default function SubjectLessonEditor({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleInsertSnippet('### 🎯 Objetivos Específicos\n- Objetivo 1...\n- Objetivo 2...')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleInsertSnippet('\n### 🎯 Objetivos Específicos\n- Objetivo 1...\n- Objetivo 2...\n')}
                           title="Inserir Bloco de Objetivos"
                           className="h-7 px-2 text-xs text-indigo-600 font-semibold gap-1"
                         >
@@ -767,7 +870,8 @@ export default function SubjectLessonEditor({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleInsertSnippet('### 🛠️ Estratégia Metodológica\n1. Passo 1...\n2. Passo 2...')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleInsertSnippet('\n### 🛠️ Estratégia Metodológica\n1. Passo 1...\n2. Passo 2...\n')}
                           title="Inserir Bloco de Metodologia"
                           className="h-7 px-2 text-xs text-indigo-600 font-semibold gap-1"
                         >
@@ -800,6 +904,7 @@ export default function SubjectLessonEditor({
                       <Button
                         type="button"
                         size="sm"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={handleInsertCodeBlock}
                         className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1 px-2.5 shadow-sm"
                       >
@@ -815,17 +920,33 @@ export default function SubjectLessonEditor({
               <TabsContent value="editor" className="mt-0 space-y-2">
                 {contentSection === 'content' ? (
                   <Textarea
+                    ref={contentRef}
                     placeholder="Cole ou digite aqui o conteúdo em Markdown da aula que será disponibilizado aos alunos..."
                     value={formData.content}
-                    onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, content: e.target.value }));
+                      updateCursorPosition('content', e.currentTarget);
+                    }}
+                    onSelect={(e) => updateCursorPosition('content', e.currentTarget)}
+                    onClick={(e) => updateCursorPosition('content', e.currentTarget)}
+                    onKeyUp={(e) => updateCursorPosition('content', e.currentTarget)}
+                    onBlur={(e) => updateCursorPosition('content', e.currentTarget)}
                     onPaste={handlePaste}
                     className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none"
                   />
                 ) : (
                   <Textarea
+                    ref={planRef}
                     placeholder="Cole ou digite aqui o Plano de Aula Docente (Objetivos pedagógicos, metodologia, recursos necessários, critérios de avaliação e orientações internas)..."
                     value={formData.lesson_plan || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lesson_plan: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, lesson_plan: e.target.value }));
+                      updateCursorPosition('plan', e.currentTarget);
+                    }}
+                    onSelect={(e) => updateCursorPosition('plan', e.currentTarget)}
+                    onClick={(e) => updateCursorPosition('plan', e.currentTarget)}
+                    onKeyUp={(e) => updateCursorPosition('plan', e.currentTarget)}
+                    onBlur={(e) => updateCursorPosition('plan', e.currentTarget)}
                     onPaste={handlePaste}
                     className="font-mono text-sm min-h-[300px] max-h-[440px] leading-relaxed resize-y bg-background rounded-t-none border-indigo-300 dark:border-indigo-800/60 focus-visible:ring-indigo-500"
                   />
