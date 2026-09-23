@@ -32,12 +32,16 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/lib/supabaseClient';
 import { getStudentsByGrade } from '@/services/studentService';
+import * as gamificationService from '@/services/gamificationService';
 import { toast } from 'sonner';
 
 type GradeType = '1º Ano' | '2º Ano' | '3º Ano' | 'custom';
 
 export default function LiveStudentPickerUtility() {
   const [selectedGrade, setSelectedGrade] = useState<GradeType>('2º Ano');
+  const [studentsDbMap, setStudentsDbMap] = useState<Record<string, { id: string; full_name: string }>>({});
+  const [awardedStudents, setAwardedStudents] = useState<Record<string, number>>({});
+  const [isAwarding, setIsAwarding] = useState(false);
   const [students, setStudents] = useState<string[]>([
     'Ana Beatriz',
     'Bruno Santos',
@@ -140,6 +144,16 @@ export default function LiveStudentPickerUtility() {
         setStudents(names);
         setPickedHistory([]);
         setSelectedStudent(null);
+
+        // Mapear dados dos alunos com seus IDs para atribuição de pontos de gamificação
+        const newMap: Record<string, { id: string; full_name: string }> = {};
+        data.forEach(s => {
+          if (s.full_name) {
+            newMap[s.full_name.trim().toLowerCase()] = { id: s.id, full_name: s.full_name };
+          }
+        });
+        setStudentsDbMap(prev => ({ ...prev, ...newMap }));
+
         toast.success(`${names.length} alunos do ${grade} importados do banco de dados!`);
       } else {
         toast.info(`Nenhum aluno cadastrado no banco para o ${grade}. Você pode adicionar nomes manualmente.`);
@@ -262,6 +276,79 @@ export default function LiveStudentPickerUtility() {
         });
       }
     }, 75);
+  };
+
+  // Atribuir pontos de gamificação ao aluno sorteado
+  const handleAwardPoints = async (studentName: string, points = 10) => {
+    if (!studentName || isAwarding) return;
+
+    const normalizedName = studentName.trim().toLowerCase();
+    let studentId = studentsDbMap[normalizedName]?.id;
+
+    setIsAwarding(true);
+    try {
+      // Se não estiver no mapa local da turma, busca no banco pelo nome
+      if (!studentId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .ilike('full_name', studentName.trim())
+          .limit(1)
+          .maybeSingle();
+
+        if (profile?.id) {
+          studentId = profile.id;
+          setStudentsDbMap(prev => ({
+            ...prev,
+            [normalizedName]: { id: profile.id, full_name: profile.full_name }
+          }));
+        }
+      }
+
+      if (!studentId) {
+        toast.error(`Aluno "${studentName}" não possui cadastro vinculado no banco para receber pontos.`);
+        return;
+      }
+
+      const res = await gamificationService.teacherAdjust({
+        user_id: studentId,
+        points: points,
+        reason: 'Sorteio em Sala de Aula'
+      });
+
+      if ((res as any)?.error) {
+        toast.error('Não foi possível registrar os pontos na gamificação.');
+        return;
+      }
+
+      // Marcar aluno como bonificado
+      setAwardedStudents(prev => ({
+        ...prev,
+        [studentName]: (prev[studentName] || 0) + points
+      }));
+
+      // Notificar em tempo real para os celulares conectados via QR Code
+      if (channelRef.current && isConnected) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'points_awarded',
+          payload: {
+            studentName: studentName,
+            points: points
+          }
+        }).catch(() => {});
+      }
+
+      playWinnerFanfare();
+      toast.success(`🎉 +${points} pontos de gamificação atribuídos para ${studentName}!`, {
+        duration: 5000
+      });
+    } catch (err) {
+      console.error('Erro ao premiar aluno:', err);
+      toast.error('Erro ao conectar com o serviço de gamificação.');
+    } finally {
+      setIsAwarding(false);
+    }
   };
 
   const handleResetHistory = () => {
@@ -458,13 +545,48 @@ export default function LiveStudentPickerUtility() {
                 isFullscreen ? 'min-h-[260px]' : 'min-h-[170px]'
               }`}>
                 {selectedStudent ? (
-                  <div className={`space-y-2 ${isRolling ? 'opacity-80 scale-95' : 'scale-100 animate-in zoom-in-95'}`}>
+                  <div className={`space-y-3 ${isRolling ? 'opacity-80 scale-95' : 'scale-100 animate-in zoom-in-95'}`}>
                     <Badge className="bg-amber-500 text-slate-950 font-bold mb-1">
                       {isRolling ? 'Sorteando...' : '🎉 ALUNO SELECIONADO!'}
                     </Badge>
                     <div className={`${isFullscreen ? 'text-4xl sm:text-6xl' : 'text-3xl sm:text-4xl'} font-black text-foreground tracking-tight leading-tight`}>
                       {selectedStudent}
                     </div>
+
+                    {/* Botão de Bonificação no Sistema de Gamificação (+10 Pontos) */}
+                    {!isRolling && (
+                      <div className="pt-2 animate-in fade-in zoom-in-90 duration-300 flex flex-col items-center gap-2">
+                        {awardedStudents[selectedStudent] ? (
+                          <div className="inline-flex items-center gap-2 bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-sm animate-in fade-in">
+                            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>+{awardedStudents[selectedStudent]} Pontos de Gamificação Atribuídos!</span>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size={isFullscreen ? "lg" : "default"}
+                            onClick={() => handleAwardPoints(selectedStudent, 10)}
+                            disabled={isAwarding}
+                            className={`bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black shadow-xl shadow-amber-500/25 border-2 border-amber-300/50 rounded-xl gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                              isFullscreen ? 'text-lg py-4 px-8' : 'text-xs sm:text-sm py-2.5 px-5'
+                            }`}
+                          >
+                            {isAwarding ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                                <span>Atribuindo +10 Pontos...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trophy className="w-4 h-4 text-slate-950 fill-amber-950/20" />
+                                <span>Bonificar com +10 Pontos</span>
+                                <Sparkles className="w-4 h-4 text-slate-950" />
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-muted-foreground text-sm flex flex-col items-center gap-2">
@@ -517,13 +639,34 @@ export default function LiveStudentPickerUtility() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-1.5">
-                  {pickedHistory.map((name, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20 gap-1 py-1 px-2.5">
-                      <span className="font-bold font-mono text-[10px]">{i + 1}º</span>
-                      {name}
-                    </Badge>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  {pickedHistory.map((name, i) => {
+                    const isAwarded = !!awardedStudents[name];
+                    return (
+                      <div
+                        key={i}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 dark:bg-amber-500/15 py-1 px-2.5 text-xs text-amber-900 dark:text-amber-200"
+                      >
+                        <span className="font-bold font-mono text-[10px] text-amber-600 dark:text-amber-400">{i + 1}º</span>
+                        <span className="font-medium">{name}</span>
+                        {isAwarded ? (
+                          <Badge variant="outline" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 gap-1 font-bold">
+                            <Check className="w-2.5 h-2.5" /> +{awardedStudents[name]} pts
+                          </Badge>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAwardPoints(name, 10)}
+                            disabled={isAwarding}
+                            title={`Bonificar ${name} com +10 pontos`}
+                            className="inline-flex items-center gap-0.5 ml-1 bg-amber-500 hover:bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-xs transition-colors"
+                          >
+                            <Trophy className="w-2.5 h-2.5" /> +10
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

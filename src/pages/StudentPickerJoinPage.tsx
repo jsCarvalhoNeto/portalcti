@@ -31,6 +31,7 @@ export default function StudentPickerJoinPage() {
     return saved === 'true';
   });
   const [winnerName, setWinnerName] = useState<string | null>(null);
+  const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   const [voterId] = useState(() => {
@@ -60,6 +61,7 @@ export default function StudentPickerJoinPage() {
         const picked = event?.payload?.studentName;
         if (picked) {
           setWinnerName(picked);
+          setPointsAwarded(null);
           if (picked.toLowerCase() === studentName.trim().toLowerCase()) {
             toast.success('🎉 VOCÊ FOI SORTEADO(A) PELO PROFESSOR!', {
               duration: 8000
@@ -67,9 +69,20 @@ export default function StudentPickerJoinPage() {
           }
         }
       })
+      .on('broadcast', { event: 'points_awarded' }, (event) => {
+        const payload = event?.payload;
+        if (payload?.studentName && payload.studentName.toLowerCase() === studentName.trim().toLowerCase()) {
+          const pts = payload.points || 10;
+          setPointsAwarded(pts);
+          toast.success(`⭐ PARABÉNS! O professor te bonificou com +${pts} pontos de gamificação!`, {
+            duration: 9000
+          });
+        }
+      })
       .on('broadcast', { event: 'session_reset' }, () => {
         setHasJoined(false);
         setWinnerName(null);
+        setPointsAwarded(null);
         localStorage.removeItem(`picker_joined_${activePin}`);
         toast.info('O professor iniciou uma nova rodada de sorteio!');
       })
@@ -236,6 +249,14 @@ export default function StudentPickerJoinPage() {
               <h2 className="text-2xl font-black text-white pt-2">
                 Parabéns, {studentName}!
               </h2>
+              {pointsAwarded && (
+                <div className="pt-2 animate-in zoom-in-95 duration-300">
+                  <Badge className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs sm:text-sm py-1.5 px-4 shadow-lg shadow-emerald-500/30 gap-1.5 inline-flex items-center">
+                    <Sparkles className="w-4 h-4 text-slate-950" />
+                    +{pointsAwarded} PONTOS DE GAMIFICAÇÃO RECEBIDOS!
+                  </Badge>
+                </div>
+              )}
               <p className="text-xs text-amber-200">
                 Seu nome foi sorteado no telão da aula. Prepare-se para responder ou apresentar!
               </p>
