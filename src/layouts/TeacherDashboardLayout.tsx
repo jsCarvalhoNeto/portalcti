@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu } from 'lucide-react';
+import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherReportsTab from '@/components/teacher/TeacherReportsTab';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
+import TeacherNotificationsModal from '@/components/teacher/TeacherNotificationsModal';
+import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
+import { getTeacherNotifications } from '@/services/notificationService';
 
 interface TeacherDashboardLayoutProps {
   children: React.ReactNode;
@@ -32,6 +35,26 @@ export default function TeacherDashboardLayout({
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [teacherNotifsCount, setTeacherNotifsCount] = useState(0);
+
+  const { subjects: contextSubjects } = useTeacherDashboard();
+
+  const loadNotifsCount = async () => {
+    try {
+      const notifs = await getTeacherNotifications(user?.id);
+      const activeCount = notifs.filter(n => n.is_active && new Date(n.expires_at).getTime() > Date.now()).length;
+      setTeacherNotifsCount(activeCount);
+    } catch {
+      // Ignorar erros secundários
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      loadNotifsCount();
+    }
+  }, [user?.id]);
 
   const getTabLabel = (tabValue: string) => {
     const labels: Record<string, string> = {
@@ -65,6 +88,23 @@ export default function TeacherDashboardLayout({
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              {/* Botão de Notificações com Sino e Contador no Header */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="relative flex items-center gap-1.5 border-primary/40 text-primary hover:bg-primary/10 transition-all font-semibold"
+                onClick={() => setIsNotificationsModalOpen(true)}
+                title="Gerenciar e Disparar Notificações para Alunos"
+              >
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Notificações</span>
+                {teacherNotifsCount > 0 && (
+                  <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center rounded-full">
+                    {teacherNotifsCount}
+                  </Badge>
+                )}
+              </Button>
+
               <Badge variant="secondary" className="hidden md:flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
                 Professor
@@ -232,6 +272,22 @@ export default function TeacherDashboardLayout({
                           <Settings className="w-4 h-4 mr-2" />
                           Configurações
                         </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start min-h-12 text-primary font-medium"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            setIsNotificationsModalOpen(true);
+                          }}
+                        >
+                          <Bell className="w-4 h-4 mr-2" />
+                          Notificações para Alunos
+                          {teacherNotifsCount > 0 && (
+                            <Badge className="ml-auto text-[10px] px-1.5 py-0 h-4">
+                              {teacherNotifsCount}
+                            </Badge>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </SwipeableSheetContent>
@@ -244,21 +300,42 @@ export default function TeacherDashboardLayout({
             <div className="space-y-8">
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
-                  <Card key={index} className="hover:shadow-glow transition-all duration-300">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-2xl font-bold">{stat.value}</p>
-                          <p className="text-sm text-muted-foreground">{stat.title}</p>
+                {stats.map((stat, index) => {
+                  const isNotifCard = stat.title === 'Notificações';
+                  const displayValue = isNotifCard && stat.value === '0' && teacherNotifsCount > 0 
+                    ? teacherNotifsCount.toString() 
+                    : stat.value;
+
+                  return (
+                    <Card 
+                      key={index} 
+                      className={`hover:shadow-glow transition-all duration-300 ${
+                        isNotifCard ? 'cursor-pointer hover:border-primary/60 hover:scale-[1.01]' : ''
+                      }`}
+                      onClick={isNotifCard ? () => setIsNotificationsModalOpen(true) : undefined}
+                      title={isNotifCard ? "Clique para gerenciar notificações para alunos" : undefined}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-bold">{displayValue}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                              {stat.title}
+                              {isNotifCard && (
+                                <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.2 rounded">
+                                  Gerenciar
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                            <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                          </div>
                         </div>
-                        <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
 
               {/* Quick Actions */}
@@ -369,6 +446,15 @@ export default function TeacherDashboardLayout({
           </TabsContent>
         </Tabs>
       </main>
+
+      <TeacherNotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        teacherId={user?.id}
+        teacherName={profile?.full_name || user?.email || 'Professor'}
+        subjects={(contextSubjects || []).map((s: any) => ({ id: s.id, name: s.name }))}
+        onNotificationsChanged={loadNotifsCount}
+      />
     </div>
   );
 }

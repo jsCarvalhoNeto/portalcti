@@ -47,6 +47,8 @@ import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { enrollmentService } from '@/services/enrollmentService';
 import { getStudentActivities } from '@/services/activityService';
+import StudentNotificationBanner from '@/components/notifications/StudentNotificationBanner';
+import { getActiveNotificationsForStudent, NotificationItem } from '@/services/notificationService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
 import BadgeGrid from '@/components/badges/BadgeGrid';
 import TopStudentsCard from '@/components/student/TopStudentsCard';
@@ -58,7 +60,7 @@ export default function StudentDashboard() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [subjectNamesMap, setSubjectNamesMap] = useState<Record<string, string>>({});
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [pendingActivities, setPendingActivities] = useState(0);
   const [totalPoints, setTotalPoints] = useState<number>(0);
   const [progressPercent, setProgressPercent] = useState<number>(0);
@@ -304,6 +306,9 @@ export default function StudentDashboard() {
 
       // Buscar atividades para atualizar o contador de pendentes
       await fetchPendingActivities();
+
+      // Buscar notificações ativas considerando disciplinas matriculadas
+      await fetchNotifications(enrolledSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
@@ -328,11 +333,16 @@ export default function StudentDashboard() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (enrolledList?: any[]) => {
     try {
-      // Simulando busca de notificações - em produção, buscaria da API
-      const mockNotifications: any[] = [];
-      setNotifications(mockNotifications);
+      const currentSubjects = enrolledList || subjects;
+      const enrolledIds = currentSubjects.map((s: any) => String(s.id));
+      const activeNotifs = await getActiveNotificationsForStudent({
+        studentId: user?.id,
+        grade: profile?.grade || undefined,
+        enrolledSubjectIds: enrolledIds
+      });
+      setNotifications(activeNotifs);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -536,34 +546,16 @@ export default function StudentDashboard() {
           </div>
 
           <TabsContent value="overview" className="space-y-8">
-            {/* Banner Oficial: Censo de Camisas do Curso */}
-            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 dark:from-emerald-950 dark:via-teal-900 dark:to-cyan-950 rounded-2xl p-4 sm:p-6 text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden border border-emerald-500/20">
-              <div className="space-y-1.5 z-10">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-none text-[11px] font-semibold">
-                    <Sparkles className="w-3 h-3 text-amber-300 mr-1" />
-                    Censo Oficial
-                  </Badge>
-                  <span className="text-xs text-emerald-100 font-medium">Camisa Oficial do Curso Técnico</span>
-                </div>
-                <h2 className="text-lg sm:text-xl font-black">
-                  Já informou o tamanho da sua camisa do curso?
-                </h2>
-                <p className="text-xs text-emerald-100/90 max-w-xl">
-                  Informe se prefere o modelo <strong>Masculino</strong> ou <strong>Feminina</strong> e seu tamanho (<strong>P, M, G, GG ou XGG</strong>) para garantirmos a produção da sua camisa.
-                </p>
-              </div>
-
-              <Button 
-                asChild
-                className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold shrink-0 shadow-md gap-2 z-10"
-              >
-                <Link to="/camisas">
-                  <Shirt className="w-4 h-4 text-emerald-600" />
-                  Informar Meu Tamanho
-                </Link>
-              </Button>
-            </div>
+            {/* Banner Dinâmico de Notificações / Avisos / Censo */}
+            {notifications.length > 0 && (
+              <StudentNotificationBanner
+                notifications={notifications}
+                studentId={user?.id}
+                onNotificationDismissed={(dismissedId) => {
+                  setNotifications(prev => prev.filter(n => n.id !== dismissedId));
+                }}
+              />
+            )}
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -729,14 +721,20 @@ export default function StudentDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {notifications.length > 0 ? (
-                    notifications.map((activity, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <div className="w-8 h-8 bg-background rounded-full flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-blue-600" />
+                    notifications.map((notif, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                          <BookOpen className="w-4 h-4 text-primary" />
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{activity.title}</p>
-                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-primary">{notif.badge_text || 'Aviso'}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(notif.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium truncate">{notif.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{notif.message}</p>
                         </div>
                       </div>
                     ))

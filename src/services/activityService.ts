@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { dispatchActivityNotification } from './notificationService';
 
 export interface ActivityFileItem {
   file_name: string;
@@ -147,7 +148,7 @@ export async function getActivityById(activityId: number) {
       .eq('id', activityId)
       .maybeSingle();
 
-    if (query.error && query.error.code === '42703') {
+    if (query.error && (query.error.code === '42703' || query.error.code === 'PGRST204' || query.error.message?.includes('auto_grade'))) {
       query = await supabase
         .from('activities')
         .select('id, name, subject_id, grade, type, teacher_id, description, deadline, period, evaluation_type, file_path, file_name, files, created_at, updated_at')
@@ -192,9 +193,9 @@ export async function updateActivityAutoGrade(
       .single();
 
     if (!error) return data;
-    if (error.code !== '42703') throw error;
+    if (error.code !== '42703' && error.code !== 'PGRST204' && !error.message?.includes('auto_grade')) throw error;
   } catch (err: any) {
-    if (err?.code !== '42703') {
+    if (err?.code !== '42703' && err?.code !== 'PGRST204' && !err?.message?.includes('auto_grade')) {
       console.warn('Tentando fallback no description para auto_grade:', err);
     }
   }
@@ -345,7 +346,7 @@ export async function createActivity(activityData: ActivityData) {
       .select()
       .single();
 
-    if (result.error && result.error.code === '42703') {
+    if (result.error && (result.error.code === '42703' || result.error.code === 'PGRST204' || result.error.message?.includes('auto_grade'))) {
       result = await supabase
         .from('activities')
         .insert({
@@ -357,6 +358,34 @@ export async function createActivity(activityData: ActivityData) {
     }
 
     if (result.error) throw result.error;
+
+    // Disparar notificação automática para os alunos com o prazo limite de entrega
+    if (result.data) {
+      try {
+        const dueDate = activityData.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        let subName = '';
+        if (activityData.subject_id) {
+          const { data: subObj } = await supabase
+            .from('subjects')
+            .select('name')
+            .eq('id', activityData.subject_id)
+            .maybeSingle();
+          subName = subObj?.name || '';
+        }
+
+        await dispatchActivityNotification({
+          activityName: activityData.name,
+          subjectId: activityData.subject_id ? String(activityData.subject_id) : undefined,
+          subjectName: subName,
+          dueDate: dueDate,
+          teacherId: user.id,
+          actionUrl: '/student?tab=grades'
+        });
+      } catch (notifErr) {
+        console.warn('Erro ao disparar notificação automática de atividade:', notifErr);
+      }
+    }
+
     return result.data;
   } catch (error: any) {
     console.error('Erro ao criar atividade no Supabase:', error);
@@ -648,7 +677,7 @@ export async function updateActivity(activityId: number, activityData: ActivityD
       .select()
       .single();
 
-    if (result.error && result.error.code === '42703') {
+    if (result.error && (result.error.code === '42703' || result.error.code === 'PGRST204' || result.error.message?.includes('auto_grade'))) {
       delete updatePayload.auto_grade_enabled;
       delete updatePayload.auto_grade_value;
 
@@ -949,7 +978,7 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       .eq('id', Number(activityId))
       .maybeSingle();
 
-    if (actQuery.error && actQuery.error.code === '42703') {
+    if (actQuery.error && (actQuery.error.code === '42703' || actQuery.error.code === 'PGRST204' || actQuery.error.message?.includes('auto_grade'))) {
       actQuery = await supabase
         .from('activities')
         .select('id, subject_id, description')

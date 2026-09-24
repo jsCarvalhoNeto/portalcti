@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { dispatchActivityNotification } from './notificationService';
 
 export interface InteractiveActivity {
   id: string | number;
@@ -116,6 +117,26 @@ export const interactiveActivityService = {
       
       // Atualizar cache local
       interactiveActivityService.saveToLocalStorage(data.subject_id, inserted);
+
+      // Disparar notificação automática para os alunos
+      try {
+        let subName = '';
+        if (data.subject_id) {
+          const { data: subObj } = await supabase.from('subjects').select('name').eq('id', data.subject_id).maybeSingle();
+          subName = subObj?.name || '';
+        }
+        await dispatchActivityNotification({
+          activityName: data.title,
+          subjectId: String(data.subject_id),
+          subjectName: subName,
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          teacherId: user?.id,
+          actionUrl: `/interactive-activities?subject=${data.subject_id}`
+        });
+      } catch (notifErr) {
+        console.warn('Erro ao disparar notificação de atividade interativa:', notifErr);
+      }
+
       return inserted;
     } catch (err: any) {
       console.warn('Falha ao salvar no Supabase, salvando localmente:', err);

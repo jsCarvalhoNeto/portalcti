@@ -179,7 +179,7 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
       .order('created_at', { ascending: false });
 
     // Fallback caso a coluna ainda não exista no schema do banco
-    if (query.error && query.error.code === '42703') {
+    if (query.error && (query.error.code === '42703' || query.error.code === 'PGRST204' || query.error.message?.includes('auto_grade'))) {
       query = await supabase
         .from('activities')
         .select(`

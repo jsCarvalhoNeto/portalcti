@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap, Bell } from 'lucide-react';
+import TeacherNotificationsModal from '@/components/teacher/TeacherNotificationsModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -1589,9 +1591,13 @@ export default function AdminDashboard() {
                   <CardDescription>Configurações básicas do sistema</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configurar Notificações
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start text-primary font-semibold hover:bg-primary/10 border-primary/40"
+                    onClick={() => setShowNotificationsModal(true)}
+                  >
+                    <Bell className="w-4 h-4 mr-2 text-primary" />
+                    Configurar e Disparar Notificações
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <Users className="w-4 h-4 mr-2" />
@@ -1775,6 +1781,16 @@ export default function AdminDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Gestão de Notificações Unificado (Admin) */}
+      <TeacherNotificationsModal
+        isOpen={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        teacherId={user?.id}
+        teacherName={profile?.full_name || 'Coordenação Geral'}
+        isAdmin={true}
+        subjects={subjects.map(s => ({ id: s.id, name: s.name }))}
+      />
     </div>
   );
 }
