@@ -27,11 +27,14 @@ import {
   Calendar,
   Layers,
   BarChart3,
-  RotateCcw
+  RotateCcw,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
+import { isShirtNotificationActive, setShirtNotificationActive } from '@/services/notificationService';
 import { 
   getShirtOrders, 
   saveShirtOrder, 
@@ -62,6 +65,22 @@ export default function ShirtOrdersUtility() {
   const [isResetting, setIsResetting] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
+  const [isNotificationActive, setIsNotificationActive] = useState(() => isShirtNotificationActive());
+
+  useEffect(() => {
+    setIsNotificationActive(isShirtNotificationActive());
+  }, []);
+
+  const handleToggleStudentNotification = async () => {
+    const nextState = !isNotificationActive;
+    await setShirtNotificationActive(nextState);
+    setIsNotificationActive(nextState);
+    if (nextState) {
+      toast.success('🔔 Notificação de camisa ATIVADA no módulo dos alunos!');
+    } else {
+      toast.info('🔕 Notificação de camisa DESATIVADA no módulo dos alunos!');
+    }
+  };
 
   // Form Manual
   const [manualName, setManualName] = useState('');
@@ -376,6 +395,29 @@ _Gerado pelo Módulo de Utilitários em ${new Date().toLocaleDateString('pt-BR')
           >
             <QrCode className="w-4 h-4 text-emerald-600" />
             <span className="hidden sm:inline">Projetar</span> QR Code Alunos
+          </Button>
+
+          <Button 
+            onClick={handleToggleStudentNotification}
+            variant="secondary"
+            className={`${
+              isNotificationActive 
+                ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold border border-amber-300 shadow-md' 
+                : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-400/30'
+            } gap-1.5`}
+            title={isNotificationActive ? "Clique para desativar este aviso no módulo dos alunos" : "Clique para reativar o aviso no módulo dos alunos"}
+          >
+            {isNotificationActive ? (
+              <>
+                <Bell className="w-4 h-4 text-slate-950" />
+                <span>Aviso no Aluno: Ativo</span>
+              </>
+            ) : (
+              <>
+                <BellOff className="w-4 h-4 text-emerald-300" />
+                <span>Aviso no Aluno: Desativado</span>
+              </>
+            )}
           </Button>
 
           <Button 

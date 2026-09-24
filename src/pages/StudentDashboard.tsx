@@ -271,6 +271,15 @@ export default function StudentDashboard() {
     return () => { (window as any).removeEventListener && (window as any).removeEventListener('gamification:update', handler); };
   }, [user]);
 
+  // Escuta evento global de atualização de notificações para recarregar o banner e contador
+  useEffect(() => {
+    const handler = () => {
+      try { fetchNotifications(); } catch (e) { console.error('Erro ao atualizar notificações via evento:', e); }
+    };
+    window.addEventListener('notifications:update', handler);
+    return () => { window.removeEventListener('notifications:update', handler); };
+  }, [user, subjects]);
+
   const fetchGamification = async () => {
     if (!user) return;
     try {

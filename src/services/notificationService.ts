@@ -56,40 +56,128 @@ export interface CreateNotificationInput {
 
 const LOCAL_STORAGE_NOTIFS_KEY = 'cti_notifications_cache';
 const LOCAL_STORAGE_DISMISSED_KEY = 'cti_notifications_dismissed';
+const LOCAL_STORAGE_SHIRT_DISABLED_KEY = 'cti_shirt_notification_disabled';
+export const SHIRT_NOTIFICATION_ID = 'shirt-order-census-notif';
 
-// Mock inicial inteligente caso o banco ainda esteja vazio ou em migração
-const INITIAL_MOCK_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'mock-shirt-notif',
-    sender_name: 'Coordenação do Curso',
-    sender_role: 'admin',
-    target_audience: 'students',
-    title: 'Já informou o tamanho da sua camisa do curso?',
-    message: 'Informe se prefere o modelo Masculino ou Feminina e seu tamanho (P, M, G, GG ou XGG) para garantirmos a produção da sua camisa.',
-    badge_text: 'Censo Oficial',
-    action_url: '/camisas',
-    action_label: 'Informar Meu Tamanho',
-    banner_style: 'emerald',
-    priority: 'high',
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
+// Notificação padrão do censo de camisas
+const SHIRT_DEFAULT_NOTIFICATION: NotificationItem = {
+  id: SHIRT_NOTIFICATION_ID,
+  sender_name: 'Coordenação do Curso',
+  sender_role: 'admin',
+  target_audience: 'students',
+  title: 'Já informou o tamanho da sua camisa do curso?',
+  message: 'Informe se prefere o modelo Masculino ou Feminina e seu tamanho (P, M, G, GG ou XGG) para garantirmos a produção da sua camisa.',
+  badge_text: 'Censo Oficial',
+  action_url: '/camisas',
+  action_label: 'Informar Meu Tamanho',
+  banner_style: 'emerald',
+  priority: 'high',
+  expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  is_active: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
 
 function getLocalNotifications(): NotificationItem[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_NOTIFS_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    // Salva o mock inicial se vazio
-    localStorage.setItem(LOCAL_STORAGE_NOTIFS_KEY, JSON.stringify(INITIAL_MOCK_NOTIFICATIONS));
-    return INITIAL_MOCK_NOTIFICATIONS;
+    // Se ainda não existia cache local e a camisa não foi explicitamente desativada:
+    const isShirtDisabled = localStorage.getItem(LOCAL_STORAGE_SHIRT_DISABLED_KEY) === 'true';
+    const initialList = isShirtDisabled ? [] : [SHIRT_DEFAULT_NOTIFICATION];
+    localStorage.setItem(LOCAL_STORAGE_NOTIFS_KEY, JSON.stringify(initialList));
+    return initialList;
   } catch {
-    return INITIAL_MOCK_NOTIFICATIONS;
+    return [];
+  }
+}
+
+/**
+ * Verifica se a notificação da camisa está atualmente ativa para os alunos
+ */
+export function isShirtNotificationActive(): boolean {
+  try {
+    if (localStorage.getItem(LOCAL_STORAGE_SHIRT_DISABLED_KEY) === 'true') {
+      return false;
+    }
+    const local = getLocalNotifications();
+    const shirtNotif = local.find(n => n.id === SHIRT_NOTIFICATION_ID || n.action_url === '/camisas');
+    if (!shirtNotif) return false;
+    const isNotExpired = new Date(shirtNotif.expires_at).getTime() > Date.now();
+    return shirtNotif.is_active && isNotExpired;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ativa ou desativa a notificação do censo de camisas no módulo dos alunos
+ */
+export async function setShirtNotificationActive(active: boolean): Promise<void> {
+  try {
+    if (!active) {
+      // Marcar flag de desativação
+      localStorage.setItem(LOCAL_STORAGE_SHIRT_DISABLED_KEY, 'true');
+      
+      // Desativar ou remover do cache local
+      const local = getLocalNotifications();
+      const updated = local.map(n => {
+        if (n.id === SHIRT_NOTIFICATION_ID || n.action_url === '/camisas') {
+          return { ...n, is_active: false };
+        }
+        return n;
+      }).filter(n => n.id !== SHIRT_NOTIFICATION_ID && n.action_url !== '/camisas');
+      saveLocalNotifications(updated);
+
+      // Desativar no Supabase se existir
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_active: false })
+          .or(`id.eq.${SHIRT_NOTIFICATION_ID},action_url.eq./camisas`);
+      } catch (e) {
+        // Ignorar se tabela não existir
+      }
+    } else {
+      // Reativar
+      localStorage.removeItem(LOCAL_STORAGE_SHIRT_DISABLED_KEY);
+      clearDismissedNotificationId(SHIRT_NOTIFICATION_ID);
+
+      const local = getLocalNotifications();
+      const existing = local.find(n => n.id === SHIRT_NOTIFICATION_ID || n.action_url === '/camisas');
+      
+      const newShirtNotif: NotificationItem = {
+        ...SHIRT_DEFAULT_NOTIFICATION,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const updated = existing 
+        ? local.map(n => (n.id === SHIRT_NOTIFICATION_ID || n.action_url === '/camisas') ? newShirtNotif : n)
+        : [newShirtNotif, ...local];
+
+      saveLocalNotifications(updated);
+
+      try {
+        await supabase
+          .from('notifications')
+          .upsert([newShirtNotif]);
+      } catch (e) {
+        // Ignorar se offline
+      }
+    }
+
+    // Notificar dashboards em tempo real
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notifications:update'));
+    }
+  } catch (err) {
+    console.error('Erro ao alternar notificação de camisa:', err);
   }
 }
 
@@ -382,6 +470,13 @@ export async function resendNotification(id: string, newExpiresAt?: string): Pro
  * Exclui uma notificação
  */
 export async function deleteNotification(id: string): Promise<boolean> {
+  const local = getLocalNotifications();
+  const target = local.find(n => n.id === id);
+
+  if (id === SHIRT_NOTIFICATION_ID || target?.action_url === '/camisas') {
+    localStorage.setItem(LOCAL_STORAGE_SHIRT_DISABLED_KEY, 'true');
+  }
+
   try {
     const { error } = await supabase
       .from('notifications')
@@ -390,14 +485,15 @@ export async function deleteNotification(id: string): Promise<boolean> {
 
     if (error) throw error;
 
-    const local = getLocalNotifications();
     saveLocalNotifications(local.filter(n => n.id !== id));
-    return true;
   } catch (err) {
-    const local = getLocalNotifications();
     saveLocalNotifications(local.filter(n => n.id !== id));
-    return true;
   }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('notifications:update'));
+  }
+  return true;
 }
 
 /**
