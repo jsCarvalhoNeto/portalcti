@@ -38,6 +38,8 @@ export interface Activity {
   period?: string;
   evaluation_type?: string;
   files?: any[];
+  auto_grade_enabled?: boolean;
+  auto_grade_value?: number | null;
 }
 
 export interface CalendarEvent {

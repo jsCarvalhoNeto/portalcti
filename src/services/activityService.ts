@@ -19,6 +19,8 @@ export interface ActivityData {
   deadline?: string;
   period?: string;
   evaluation_type?: string;
+  auto_grade_enabled?: boolean;
+  auto_grade_value?: number | null;
 }
 
 export interface ActivityGradeData {
@@ -117,6 +119,161 @@ export async function uploadActivityFile(file: File, folder: string = 'activitie
   };
 }
 
+export function parseActivityAutoGrade(activity: any): { auto_grade_enabled: boolean; auto_grade_value: number | null } {
+  let enabled = activity?.auto_grade_enabled === true;
+  let value = activity?.auto_grade_value != null ? Number(activity.auto_grade_value) : null;
+
+  if (!enabled && activity?.description) {
+    const match = activity.description.match(/<!--config:auto_grade:(\{.*?\})-->/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (parsed.enabled) {
+          enabled = true;
+          value = Number(parsed.value ?? 10);
+        }
+      } catch (e) {}
+    }
+  }
+
+  return { auto_grade_enabled: enabled, auto_grade_value: value };
+}
+
+export async function getActivityById(activityId: number) {
+  try {
+    let query = await supabase
+      .from('activities')
+      .select('id, name, subject_id, grade, type, teacher_id, description, deadline, period, evaluation_type, file_path, file_name, files, auto_grade_enabled, auto_grade_value, created_at, updated_at')
+      .eq('id', activityId)
+      .maybeSingle();
+
+    if (query.error && query.error.code === '42703') {
+      query = await supabase
+        .from('activities')
+        .select('id, name, subject_id, grade, type, teacher_id, description, deadline, period, evaluation_type, file_path, file_name, files, created_at, updated_at')
+        .eq('id', activityId)
+        .maybeSingle();
+    }
+
+    if (query.error) throw query.error;
+    if (!query.data) throw new Error('Atividade não encontrada.');
+
+    const data = query.data;
+    const { auto_grade_enabled, auto_grade_value } = parseActivityAutoGrade(data);
+
+    return {
+      ...data,
+      description: data.description ? data.description.replace(/<!--config:auto_grade:(\{.*?\})-->/g, '').trim() : '',
+      auto_grade_enabled,
+      auto_grade_value
+    };
+  } catch (error: any) {
+    console.error('Erro ao buscar atividade por ID no Supabase:', error);
+    throw new Error(error.message || 'Não foi possível carregar a atividade.');
+  }
+}
+
+export async function updateActivityAutoGrade(
+  activityId: number,
+  autoGradeEnabled: boolean,
+  autoGradeValue: number | null
+) {
+  try {
+    // 1. Tentar salvar nas colunas nativas do Postgres
+    const { data, error } = await supabase
+      .from('activities')
+      .update({
+        auto_grade_enabled: autoGradeEnabled,
+        auto_grade_value: autoGradeValue,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', activityId)
+      .select()
+      .single();
+
+    if (!error) return data;
+    if (error.code !== '42703') throw error;
+  } catch (err: any) {
+    if (err?.code !== '42703') {
+      console.warn('Tentando fallback no description para auto_grade:', err);
+    }
+  }
+
+  // 2. Fallback caso as colunas ainda não tenham sido criadas
+  const { data: act } = await supabase
+    .from('activities')
+    .select('description')
+    .eq('id', activityId)
+    .single();
+
+  const currentDesc = act?.description || '';
+  const cleanDesc = currentDesc.replace(/<!--config:auto_grade:(\{.*?\})-->/g, '').trim();
+  const configTag = autoGradeEnabled
+    ? `\n<!--config:auto_grade:${JSON.stringify({ enabled: true, value: autoGradeValue ?? 10 })}-->`
+    : '';
+  const newDesc = cleanDesc + configTag;
+
+  const { data, error } = await supabase
+    .from('activities')
+    .update({
+      description: newDesc,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', activityId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function assignBulkActivityGrades(
+  activityId: number,
+  grade: number,
+  options?: {
+    submissionIds?: number[];
+    unsubmittedEnrollmentIds?: number[];
+  }
+) {
+  try {
+    // 1. Atualizar notas das submissões que foram passadas
+    if (options?.submissionIds && options.submissionIds.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('activity_grades')
+        .update({
+          grade: grade,
+          status: 'graded',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', options.submissionIds);
+
+      if (updateErr) throw updateErr;
+    }
+
+    // 2. Criar notas para os alunos que ainda não enviaram submissão
+    if (options?.unsubmittedEnrollmentIds && options.unsubmittedEnrollmentIds.length > 0) {
+      const inserts = options.unsubmittedEnrollmentIds.map(enrollment_id => ({
+        activity_id: activityId,
+        enrollment_id: enrollment_id,
+        grade: grade,
+        status: 'graded',
+        submitted_at: new Date().toISOString()
+      }));
+
+      const { error: insErr } = await supabase
+        .from('activity_grades')
+        .insert(inserts);
+
+      if (insErr) throw insErr;
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro ao atribuir notas em lote:', error);
+    throw new Error(error.message || 'Não foi possível atribuir as notas a todos os alunos.');
+  }
+}
+
 export async function createActivity(activityData: ActivityData) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -157,27 +314,50 @@ export async function createActivity(activityData: ActivityData) {
       }
     }
 
-    const { data, error } = await supabase
+    let description = activityData.description || null;
+    let autoGradeTag = '';
+    if (activityData.auto_grade_enabled) {
+      autoGradeTag = `\n<!--config:auto_grade:${JSON.stringify({ enabled: true, value: activityData.auto_grade_value ?? 10 })}-->`;
+    }
+
+    const baseInsert = {
+      name: activityData.name,
+      subject_id: activityData.subject_id,
+      grade: grade,
+      type: activityData.type,
+      description: description,
+      deadline: activityData.deadline || null,
+      period: activityData.period || null,
+      evaluation_type: activityData.evaluation_type || null,
+      file_path: mainFilePath,
+      file_name: mainFileName,
+      files: filesList,
+      teacher_id: user.id
+    };
+
+    let result = await supabase
       .from('activities')
       .insert({
-        name: activityData.name,
-        subject_id: activityData.subject_id,
-        grade: grade,
-        type: activityData.type,
-        description: activityData.description || null,
-        deadline: activityData.deadline || null,
-        period: activityData.period || null,
-        evaluation_type: activityData.evaluation_type || null,
-        file_path: mainFilePath,
-        file_name: mainFileName,
-        files: filesList,
-        teacher_id: user.id
+        ...baseInsert,
+        auto_grade_enabled: activityData.auto_grade_enabled ?? false,
+        auto_grade_value: activityData.auto_grade_value ?? null
       })
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (result.error && result.error.code === '42703') {
+      result = await supabase
+        .from('activities')
+        .insert({
+          ...baseInsert,
+          description: description ? description + autoGradeTag : autoGradeTag || null
+        })
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+    return result.data;
   } catch (error: any) {
     console.error('Erro ao criar atividade no Supabase:', error);
     throw new Error(error.message || 'Não foi possível criar a atividade.');
@@ -456,15 +636,40 @@ export async function updateActivity(activityId: number, activityData: ActivityD
       updatePayload.files = filesList;
     }
 
-    const { data, error } = await supabase
+    if (activityData.auto_grade_enabled !== undefined) {
+      updatePayload.auto_grade_enabled = activityData.auto_grade_enabled;
+      updatePayload.auto_grade_value = activityData.auto_grade_value ?? null;
+    }
+
+    let result = await supabase
       .from('activities')
       .update(updatePayload)
       .eq('id', activityId)
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (result.error && result.error.code === '42703') {
+      delete updatePayload.auto_grade_enabled;
+      delete updatePayload.auto_grade_value;
+
+      if (activityData.auto_grade_enabled !== undefined) {
+        const cleanDesc = (updatePayload.description || '').replace(/<!--config:auto_grade:(\{.*?\})-->/g, '').trim();
+        const tag = activityData.auto_grade_enabled
+          ? `\n<!--config:auto_grade:${JSON.stringify({ enabled: true, value: activityData.auto_grade_value ?? 10 })}-->`
+          : '';
+        updatePayload.description = cleanDesc + tag;
+      }
+
+      result = await supabase
+        .from('activities')
+        .update(updatePayload)
+        .eq('id', activityId)
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+    return result.data;
   } catch (error: any) {
     console.error('Erro ao atualizar atividade no Supabase:', error);
     throw new Error(error.message || 'Não foi possível atualizar a atividade.');
@@ -737,14 +942,29 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       });
     }
 
-    // 2. Obter disciplina da atividade
-    const { data: activity, error: actErr } = await supabase
+    // 2. Obter disciplina e configuração de nota da atividade
+    let actQuery = await supabase
       .from('activities')
-      .select('subject_id')
+      .select('id, subject_id, description, auto_grade_enabled, auto_grade_value')
       .eq('id', Number(activityId))
-      .single();
+      .maybeSingle();
 
-    if (actErr || !activity) throw actErr || new Error('Atividade não encontrada');
+    if (actQuery.error && actQuery.error.code === '42703') {
+      actQuery = await supabase
+        .from('activities')
+        .select('id, subject_id, description')
+        .eq('id', Number(activityId))
+        .maybeSingle();
+    }
+
+    if (actQuery.error || !actQuery.data) throw actQuery.error || new Error('Atividade não encontrada');
+
+    const activity = actQuery.data;
+    const { auto_grade_enabled, auto_grade_value } = parseActivityAutoGrade(activity);
+
+    const shouldAutoGrade = auto_grade_enabled && auto_grade_value !== null && auto_grade_value !== undefined;
+    const autoGradeNumber = shouldAutoGrade ? Number(auto_grade_value) : null;
+    const initialStatus = shouldAutoGrade ? 'graded' : 'submitted';
 
     // 3. Obter ou criar matrícula do aluno para essa disciplina
     let { data: enrollment } = await supabase
@@ -780,7 +1000,7 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       .eq('enrollment_id', Number(enrollment.id))
       .maybeSingle();
 
-    const submissionPayload = {
+    const submissionPayload: any = {
       activity_id: Number(activityId),
       enrollment_id: Number(enrollment.id),
       student_name: studentName || null,
@@ -789,12 +1009,18 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       file_path: filesList.length > 0 ? filesList[0].file_url : null,
       file_name: filesList.length > 0 ? filesList[0].file_name : null,
       files: filesList,
-      status: 'submitted',
+      status: initialStatus,
       submitted_at: new Date().toISOString()
     };
 
     let resultData;
     if (existingSubmission) {
+      // Se a submissão não tinha nota e auto-grade está ativado, atribui a nota automática
+      if (shouldAutoGrade && (existingSubmission.grade === null || existingSubmission.grade === undefined)) {
+        submissionPayload.grade = autoGradeNumber;
+        submissionPayload.status = 'graded';
+      }
+
       const { data, error } = await supabase
         .from('activity_grades')
         .update(submissionPayload)
@@ -809,7 +1035,7 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
         .from('activity_grades')
         .insert({
           ...submissionPayload,
-          grade: null
+          grade: autoGradeNumber
         })
         .select()
         .single();

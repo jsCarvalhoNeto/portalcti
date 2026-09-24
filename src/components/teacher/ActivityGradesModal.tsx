@@ -7,12 +7,40 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye, FileText as FileTextIcon, FileCode, Trash2, MessageSquare, Download, UserPlus } from 'lucide-react';
+import { 
+  Eye, 
+  FileText as FileTextIcon, 
+  FileCode, 
+  Trash2, 
+  MessageSquare, 
+  Download, 
+  UserPlus,
+  Zap,
+  Sparkles,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useState, useEffect } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { getActivityGrades, assignActivityGrade, updateActivityGrade, deleteActivityGrade, ActivityGrade, setActivityTeacherObservation, assignManualGradeToTeamMember } from '@/services/activityService';
+import { 
+  getActivityGrades, 
+  assignActivityGrade, 
+  updateActivityGrade, 
+  deleteActivityGrade, 
+  ActivityGrade, 
+  setActivityTeacherObservation, 
+  assignManualGradeToTeamMember,
+  getActivityById,
+  updateActivityAutoGrade,
+  assignBulkActivityGrades,
+  getAvailableStudentsForActivity
+} from '@/services/activityService';
 import ManualGradeModal from './ManualGradeModal';
 import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 
@@ -39,9 +67,24 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
   const [manualGradeModalOpen, setManualGradeModalOpen] = useState(false);
   const [selectedStudentForManualGrade, setSelectedStudentForManualGrade] = useState<any>(null);
   const [activityType, setActivityType] = useState<string>('');
+
+  // ⚡ Estados para Atribuição Automática no Envio
+  const [autoGradeEnabled, setAutoGradeEnabled] = useState(false);
+  const [autoGradeValue, setAutoGradeValue] = useState('10');
+  const [isSavingAutoGrade, setIsSavingAutoGrade] = useState(false);
+
+  // 🪄 Estados para Atribuição Manual em Massa a Alunos Sem Nota
+  const [bulkManualGradeValue, setBulkManualGradeValue] = useState('10');
+  const [includeUnsubmittedInBulk, setIncludeUnsubmittedInBulk] = useState(false);
+  const [isApplyingBulk, setIsApplyingBulk] = useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Contagem de submissões na lista que estão atualmente sem nota
+  const submissionsWithoutGradeCount = useMemo(() => {
+    return submissions.filter(s => s.grade === null || s.grade === undefined || isNaN(Number(s.grade))).length;
+  }, [submissions]);
 
   useEffect(() => {
     if (isOpen && activityId) {
@@ -52,17 +95,28 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
   const fetchActivityGrades = async () => {
     setLoading(true);
     try {
-      // Buscar apenas as submissões para esta atividade (alunos que realmente enviaram)
+      // 1. Carregar submissões recebidas
       const existingSubmissions = await getActivityGrades(activityId);
       setSubmissions(existingSubmissions);
 
-      // Identificar o tipo de atividade a partir das submissões ou buscar da API
+      // Identificar o tipo de atividade a partir das submissões
       if (existingSubmissions.length > 0) {
         const hasTeamActivity = existingSubmissions.some(s => s.team_members || s.auto_applied);
         setActivityType(hasTeamActivity ? 'team' : 'individual');
       }
 
-      // Buscar alunos que ainda não têm nota (apenas para atividades em equipe)
+      // 2. Buscar configurações de auto-atribuição da atividade
+      try {
+        const actData = await getActivityById(activityId);
+        if (actData) {
+          setAutoGradeEnabled(Boolean(actData.auto_grade_enabled));
+          setAutoGradeValue(actData.auto_grade_value != null ? String(actData.auto_grade_value) : '10');
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar configurações de auto_grade da atividade:', err);
+      }
+
+      // 3. Buscar alunos da disciplina que ainda não têm nota
       await fetchStudentsWithoutGrades();
     } catch (error) {
       console.error('Error fetching activity grades:', error);
@@ -86,10 +140,109 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
     }
   };
 
+  // Salvar a configuração de atribuição automática ao enviar
+  const handleSaveAutoGradeConfig = async () => {
+    const val = parseFloat(autoGradeValue);
+    if (autoGradeEnabled && (isNaN(val) || val < 0 || val > 10)) {
+      toast({
+        title: "Nota Inválida",
+        description: "Informe uma nota automática válida entre 0 e 10.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSavingAutoGrade(true);
+    try {
+      await updateActivityAutoGrade(activityId, autoGradeEnabled, autoGradeEnabled ? val : null);
+      toast({
+        title: "Configuração Atualizada!",
+        description: autoGradeEnabled 
+          ? `Atribuição automática ativada: envios de alunos receberão nota ${val} imediatamente.`
+          : "Atribuição automática desativada.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao salvar auto_grade:', err);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar a configuração de nota automática.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingAutoGrade(false);
+    }
+  };
+
+  // Atribuição manual coletiva para todos os alunos sem nota
+  const handleApplyBulkManualGrade = async () => {
+    const val = parseFloat(bulkManualGradeValue);
+    if (isNaN(val) || val < 0 || val > 10) {
+      toast({
+        title: "Nota Inválida",
+        description: "Informe uma nota válida entre 0 e 10 para aplicar a todos sem nota.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsApplyingBulk(true);
+    try {
+      let appliedCount = 0;
+
+      // 1. Atualizar localmente todas as submissões da lista que estão sem nota
+      setSubmissions(prev => prev.map(s => {
+        const isWithoutGrade = s.grade === null || s.grade === undefined || isNaN(Number(s.grade));
+        if (isWithoutGrade) {
+          appliedCount++;
+          return {
+            ...s,
+            grade: val,
+            status: 'graded'
+          };
+        }
+        return s;
+      }));
+
+      // 2. Se marcado para incluir alunos matriculados sem envio, persistir diretamente para eles
+      if (includeUnsubmittedInBulk && studentsWithoutGrades.length > 0) {
+        const unsubmittedEnrollmentIds = studentsWithoutGrades
+          .map(s => s.enrollment_id)
+          .filter(Boolean);
+
+        if (unsubmittedEnrollmentIds.length > 0) {
+          await assignBulkActivityGrades(activityId, val, {
+            unsubmittedEnrollmentIds
+          });
+          appliedCount += unsubmittedEnrollmentIds.length;
+          // Recarregar para sincronizar a lista
+          await fetchActivityGrades();
+        }
+      }
+
+      toast({
+        title: "Notas Atribuídas!",
+        description: `Nota ${val} aplicada com sucesso a ${appliedCount} aluno(s) sem nota. Você pode ajustar individualmente ou clicar em Salvar Notas para confirmar.`,
+      });
+    } catch (err: any) {
+      console.error('Erro na atribuição em lote:', err);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao aplicar notas coletivas.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsApplyingBulk(false);
+    }
+  };
+
   const handleGradeChange = (submissionId: number | null, newGrade: string) => {
     const gradeValue = newGrade === '' ? null : parseFloat(newGrade);
     setSubmissions(prev => prev.map(submission => 
-      submission.id === submissionId ? { ...submission, grade: gradeValue } : submission
+      submission.id === submissionId ? { 
+        ...submission, 
+        grade: gradeValue,
+        status: gradeValue !== null ? 'graded' : 'submitted'
+      } : submission
     ));
   };
 
@@ -105,21 +258,19 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
 
     try {
       for (const submission of submissions) {
-        if (submission.grade !== null) {
-          if (submission.grade !== undefined) {
-            // Verificar se já existe nota para esta submissão
-            if (submission.id) {
-              // Atualizar nota existente
-              await updateActivityGrade(submission.id, submission.grade);
-            } else {
-              // Criar nova nota (isso não deve acontecer normalmente, pois as submissões já existem)
-              await assignActivityGrade({
-                activity_id: activityId,
-                enrollment_id: submission.enrollment_id,
-                grade: submission.grade,
-                graded_by: user.id
-              });
-            }
+        if (submission.grade !== null && submission.grade !== undefined && !isNaN(Number(submission.grade))) {
+          // Verificar se já existe nota para esta submissão
+          if (submission.id) {
+            // Atualizar nota existente
+            await updateActivityGrade(submission.id, Number(submission.grade));
+          } else {
+            // Criar nova nota caso não tenha submissão gravada
+            await assignActivityGrade({
+              activity_id: activityId,
+              enrollment_id: submission.enrollment_id,
+              grade: Number(submission.grade),
+              graded_by: user.id
+            });
           }
         }
       }
@@ -128,6 +279,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
         title: "Sucesso!",
         description: "Notas salvas com sucesso.",
       });
+      await fetchActivityGrades();
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving grades:', error);
@@ -277,6 +429,129 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
             </div>
           </div>
 
+          {/* 🚀 PAINEL DE ATRIBUIÇÃO AUTOMÁTICA E MANUAL EM MASSA */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 rounded-xl border border-primary/20 bg-gradient-to-br from-card via-background to-muted/20 shadow-sm">
+            {/* Bloco 1: Atribuição Automática no Envio da Atividade */}
+            <div className="flex flex-col justify-between p-3.5 rounded-lg border bg-card/60 shadow-xs space-y-3">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <Zap className="w-4 h-4 fill-amber-500/20" />
+                    </div>
+                    <span className="font-semibold text-sm">Nota Automática no Envio</span>
+                  </div>
+                  <Badge 
+                    variant={autoGradeEnabled ? "default" : "outline"} 
+                    className={`text-xs ${autoGradeEnabled ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-muted-foreground'}`}
+                  >
+                    {autoGradeEnabled ? `Ativo: Nota ${autoGradeValue}` : 'Desativado'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Ao ativar, o aluno receberá esta nota automaticamente no exato momento em que submeter a atividade.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="auto-grade-switch"
+                    checked={autoGradeEnabled}
+                    onCheckedChange={setAutoGradeEnabled}
+                  />
+                  <label htmlFor="auto-grade-switch" className="text-xs font-medium cursor-pointer">
+                    {autoGradeEnabled ? 'Ativado' : 'Desativado'}
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-xs text-muted-foreground">Nota:</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    disabled={!autoGradeEnabled}
+                    value={autoGradeValue}
+                    onChange={(e) => setAutoGradeValue(e.target.value)}
+                    className="w-16 h-8 text-xs text-center"
+                    placeholder="10"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSaveAutoGradeConfig}
+                    disabled={isSavingAutoGrade}
+                    className="h-8 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+                    title="Salvar configuração de nota automática"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloco 2: Atribuição Manual a Todos os Alunos Sem Nota */}
+            <div className="flex flex-col justify-between p-3.5 rounded-lg border bg-card/60 shadow-xs space-y-3">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                      <Sparkles className="w-4 h-4 fill-purple-500/20" />
+                    </div>
+                    <span className="font-semibold text-sm">Atribuir a Todos Sem Nota</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs font-normal">
+                    {submissionsWithoutGradeCount} sem nota na lista
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Preenche a nota de todos os alunos que estão sem nota. A atribuição individual continua disponível normalmente para você fazer ajustes.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Nota:</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={bulkManualGradeValue}
+                    onChange={(e) => setBulkManualGradeValue(e.target.value)}
+                    className="w-16 h-8 text-xs text-center"
+                    placeholder="10"
+                  />
+                </div>
+
+                {studentsWithoutGrades.length > 0 && (
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includeUnsubmittedInBulk}
+                      onChange={(e) => setIncludeUnsubmittedInBulk(e.target.checked)}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                    />
+                    <span>+ {studentsWithoutGrades.length} sem envio</span>
+                  </label>
+                )}
+
+                <Button
+                  size="sm"
+                  onClick={handleApplyBulkManualGrade}
+                  disabled={isApplyingBulk || (submissionsWithoutGradeCount === 0 && (!includeUnsubmittedInBulk || studentsWithoutGrades.length === 0))}
+                  className="h-8 text-xs gap-1 ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Atribuir aos Sem Nota
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -297,7 +572,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                         <p>• <strong className="text-blue-700">🤖 Membros da Equipe:</strong> Recebem automaticamente a mesma nota do líder (fundo azul)</p>
                         <p>• <strong className="text-purple-700">✋ Notas Manuais:</strong> Atribuídas manualmente pelo professor (fundo roxo)</p>
                         <p className="text-xs text-gray-600 mt-2">
-                          ℹ️ Notas automáticas e manuais não podem ser editadas diretamente nesta tela
+                          ℹ️ Notas normais e manuais podem ser alteradas individualmente a qualquer momento.
                         </p>
                       </div>
                     </div>
@@ -358,7 +633,7 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                     <div className="truncate">{submission.student_email}</div>
                     {isTeamLeader && (
                       <div className="text-xs text-yellow-700 mt-1 truncate" title={submission.team_members || ''}>
-                        � Líder da Equipe
+                         Líder da Equipe
                       </div>
                     )}
                     {isAutoApplied && (
@@ -432,10 +707,11 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
                         isManualGrade ? 'bg-purple-100 border-purple-300' : 
                         isTeamLeader ? 'bg-yellow-100 border-yellow-300' : ''
                       }`}
-                      disabled={submission.status === 'pending' || isAutoApplied || isManualGrade}
+                      disabled={submission.status === 'pending' || isAutoApplied}
                       title={
-                        isAutoApplied ? 'Nota aplicada automaticamente - edite a nota do líder da equipe' : 
-                        isManualGrade ? 'Nota atribuída manualmente - não pode ser editada aqui' : ''
+                        isAutoApplied 
+                          ? 'Nota aplicada automaticamente - edite a nota do líder da equipe' 
+                          : 'Edite a nota individualmente'
                       }
                     />
                     {isAutoApplied && (
@@ -575,18 +851,18 @@ export default function ActivityGradesModal({ isOpen, onOpenChange, activityId, 
         </Dialog>
 
         {/* 🎯 SEÇÃO DE ALUNOS SEM NOTAS PARA ATRIBUIÇÃO MANUAL */}
-        {activityType === 'team' && studentsWithoutGrades.length > 0 && (
+        {studentsWithoutGrades.length > 0 && (
           <div className="mt-8 pt-6 border-t">
             <div className="mb-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Alunos Sem Nota - Atribuição Manual
+                Alunos Matriculados Sem Nota Registrada ({studentsWithoutGrades.length})
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Estes alunos da disciplina não possuem nota para esta atividade. 
-                Como é uma atividade em equipe, você pode atribuir notas manuais se necessário.
+                Estes alunos da disciplina não possuem nota enviada ou registrada para esta atividade. 
+                Você pode atribuir notas manuais individualmente abaixo ou utilizar a atribuição em massa no painel acima.
               </p>
             </div>
 

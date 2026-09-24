@@ -18,6 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Zap } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
@@ -74,6 +77,8 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
  const [period, setPeriod] = useState('');
   const [evaluationType, setEvaluationType] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [autoGradeEnabled, setAutoGradeEnabled] = useState(false);
+  const [autoGradeValue, setAutoGradeValue] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +166,8 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
     setPeriod('');
     setEvaluationType('');
     setFiles([]);
+    setAutoGradeEnabled(false);
+    setAutoGradeValue('10');
   };
 
   // Limpar o formulário apenas quando o modal for fechado
@@ -181,6 +188,16 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
       return;
     }
 
+    const autoGradeNum = parseFloat(autoGradeValue);
+    if (autoGradeEnabled && (isNaN(autoGradeNum) || autoGradeNum < 0 || autoGradeNum > 10)) {
+      toast({
+        title: "Nota Inválida",
+        description: "Por favor, informe uma nota automática válida entre 0 e 10.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await createActivity({
@@ -192,6 +209,8 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
         deadline: deadline ? convertToISO(deadline) : undefined,
         period: period || undefined,
         evaluation_type: evaluationType || undefined,
+        auto_grade_enabled: autoGradeEnabled,
+        auto_grade_value: autoGradeEnabled ? autoGradeNum : null,
         rawFiles: files.length > 0 ? files : undefined
       });
 
@@ -343,6 +362,51 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
               onChange={(e) => setDeadline(e.target.value)}
               className="col-span-3"
             />
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4 p-3 rounded-lg border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/10">
+            <div className="text-right flex items-center justify-end gap-1.5 pt-1">
+              <Zap className="w-4 h-4 text-amber-500" />
+              <Label htmlFor="auto_grade" className="font-semibold text-xs text-amber-900 dark:text-amber-300">
+                Nota Automática
+              </Label>
+            </div>
+            <div className="col-span-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="auto_grade"
+                    checked={autoGradeEnabled}
+                    onCheckedChange={setAutoGradeEnabled}
+                  />
+                  <Label htmlFor="auto_grade" className="text-xs cursor-pointer font-medium">
+                    Atribuir nota automaticamente ao aluno enviar
+                  </Label>
+                </div>
+                {autoGradeEnabled && (
+                  <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
+                    Ativo: {autoGradeValue}
+                  </Badge>
+                )}
+              </div>
+              {autoGradeEnabled && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground">Nota padrão atribuída no envio:</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={autoGradeValue}
+                    onChange={(e) => setAutoGradeValue(e.target.value)}
+                    className="w-20 h-8 text-xs text-center"
+                    placeholder="10"
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Quando ativado, os alunos que submeterem esta atividade receberão esta nota automaticamente no momento do envio.
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="files" className="text-right">

@@ -48,6 +48,8 @@ export interface Activity {
   period?: string;
   evaluation_type?: string;
   files?: any[];
+  auto_grade_enabled?: boolean;
+  auto_grade_value?: number | null;
 }
 
 export interface ActivityGrade {
@@ -151,7 +153,7 @@ export async function getTeacherSubjects(teacherId: string): Promise<Subject[]> 
  */
 export async function getTeacherActivities(teacherId: string): Promise<Activity[]> {
   try {
-    const { data, error } = await supabase
+    let query = await supabase
       .from('activities')
       .select(`
         id,
@@ -167,6 +169,8 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
         file_path,
         file_name,
         files,
+        auto_grade_enabled,
+        auto_grade_value,
         created_at,
         updated_at,
         subjects(name)
@@ -174,29 +178,78 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
       .eq('teacher_id', teacherId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Erro ao buscar atividades no Supabase:', error);
-      throw error;
+    // Fallback caso a coluna ainda não exista no schema do banco
+    if (query.error && query.error.code === '42703') {
+      query = await supabase
+        .from('activities')
+        .select(`
+          id,
+          name,
+          subject_id,
+          grade,
+          type,
+          teacher_id,
+          description,
+          deadline,
+          period,
+          evaluation_type,
+          file_path,
+          file_name,
+          files,
+          created_at,
+          updated_at,
+          subjects(name)
+        `)
+        .eq('teacher_id', teacherId)
+        .order('created_at', { ascending: false });
     }
 
-    return (data || []).map((activity: any) => ({
-      id: activity.id.toString(),
-      name: activity.name,
-      subject_id: Number(activity.subject_id),
-      subject_name: activity.subjects?.name || 'Disciplina',
-      grade: activity.grade || '',
-      type: activity.type || 'individual',
-      teacher_id: activity.teacher_id,
-      description: activity.description || '',
-      deadline: activity.deadline || undefined,
-      period: activity.period || '',
-      evaluation_type: activity.evaluation_type || '',
-      file_path: activity.file_path || '',
-      file_name: activity.file_name || '',
-      files: activity.files || [],
-      created_at: activity.created_at,
-      updated_at: activity.updated_at
-    }));
+    if (query.error) {
+      console.error('Erro ao buscar atividades no Supabase:', query.error);
+      throw query.error;
+    }
+
+    const data = query.data;
+
+    return (data || []).map((activity: any) => {
+      let isAuto = activity.auto_grade_enabled === true;
+      let autoVal = activity.auto_grade_value != null ? Number(activity.auto_grade_value) : null;
+
+      // Suporte a tag oculta em description como fallback
+      if (!isAuto && activity.description) {
+        const match = activity.description.match(/<!--config:auto_grade:(\{.*?\})-->/);
+        if (match) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            if (parsed.enabled) {
+              isAuto = true;
+              autoVal = Number(parsed.value ?? 10);
+            }
+          } catch (e) {}
+        }
+      }
+
+      return {
+        id: activity.id.toString(),
+        name: activity.name,
+        subject_id: Number(activity.subject_id),
+        subject_name: activity.subjects?.name || 'Disciplina',
+        grade: activity.grade || '',
+        type: activity.type || 'individual',
+        teacher_id: activity.teacher_id,
+        description: activity.description ? activity.description.replace(/<!--config:auto_grade:(\{.*?\})-->/g, '').trim() : '',
+        deadline: activity.deadline || undefined,
+        period: activity.period || '',
+        evaluation_type: activity.evaluation_type || '',
+        file_path: activity.file_path || '',
+        file_name: activity.file_name || '',
+        files: activity.files || [],
+        auto_grade_enabled: isAuto,
+        auto_grade_value: autoVal,
+        created_at: activity.created_at,
+        updated_at: activity.updated_at
+      };
+    });
   } catch (error) {
     console.error('Erro ao buscar atividades do professor:', error);
     return [];
