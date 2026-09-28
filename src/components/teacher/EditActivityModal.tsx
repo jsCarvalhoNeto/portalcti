@@ -191,7 +191,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
         grade: selectedGrade,
         type: activityType,
         description: description || undefined,
-        deadline: deadline ? convertToISO(deadline) : undefined,
+        deadline: deadline ? convertToISO(deadline) : null,
         period: period || undefined,
         evaluation_type: evaluationType || undefined,
         file_path: activity.file_path || undefined,

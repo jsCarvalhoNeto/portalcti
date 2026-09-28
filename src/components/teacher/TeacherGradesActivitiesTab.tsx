@@ -472,9 +472,16 @@ export default function TeacherGradesActivitiesTab() {
                           <div className="text-left md:text-right text-xs">
                             <p className="font-medium text-foreground">Criada em: {new Date(activity.created_at).toLocaleDateString()}</p>
                             {activity.deadline && (
-                              <p className="text-muted-foreground">
-                                Prazo: {new Date(activity.deadline).toLocaleDateString()} {new Date(activity.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
+                              <div className="flex items-center gap-1.5 justify-start md:justify-end">
+                                <p className="text-muted-foreground">
+                                  Prazo: {new Date(activity.deadline).toLocaleDateString('pt-BR')} {new Date(activity.deadline).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                                {new Date(activity.deadline).getTime() < Date.now() && (
+                                  <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-4">
+                                    Expirado
+                                  </Badge>
+                                )}
+                              </div>
                             )}
                           </div>
                           <Badge variant={activity.type === 'team' ? 'default' : 'secondary'} className="text-xs">

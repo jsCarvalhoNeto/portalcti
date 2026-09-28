@@ -17,7 +17,7 @@ export interface ActivityData {
   file_name?: string;
   files?: File[] | ActivityFileItem[];
   rawFiles?: File[];
-  deadline?: string;
+  deadline?: string | null;
   period?: string;
   evaluation_type?: string;
   auto_grade_enabled?: boolean;
@@ -971,17 +971,17 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
       });
     }
 
-    // 2. Obter disciplina e configuração de nota da atividade
+    // 2. Obter disciplina, deadline e configuração de nota da atividade
     let actQuery = await supabase
       .from('activities')
-      .select('id, subject_id, description, auto_grade_enabled, auto_grade_value')
+      .select('id, subject_id, description, deadline, auto_grade_enabled, auto_grade_value')
       .eq('id', Number(activityId))
       .maybeSingle();
 
-    if (actQuery.error && (actQuery.error.code === '42703' || actQuery.error.code === 'PGRST204' || actQuery.error.message?.includes('auto_grade'))) {
+    if (actQuery.error && (actQuery.error.code === '42703' || actQuery.error.code === 'PGRST204' || actQuery.error.message?.includes('auto_grade') || actQuery.error.message?.includes('deadline'))) {
       actQuery = await supabase
         .from('activities')
-        .select('id, subject_id, description')
+        .select('id, subject_id, description, deadline')
         .eq('id', Number(activityId))
         .maybeSingle();
     }
@@ -989,6 +989,15 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
     if (actQuery.error || !actQuery.data) throw actQuery.error || new Error('Atividade não encontrada');
 
     const activity = actQuery.data;
+
+    // Verificar se a data limite para envio foi ultrapassada
+    if (activity.deadline) {
+      const deadlineDate = new Date(activity.deadline);
+      if (!isNaN(deadlineDate.getTime()) && Date.now() > deadlineDate.getTime()) {
+        const formattedDeadline = `${deadlineDate.toLocaleDateString('pt-BR')} às ${deadlineDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        throw new Error(`Envio bloqueado: a data limite para envio desta atividade expirou em ${formattedDeadline}. O professor pode definir uma nova data de envio se for necessário.`);
+      }
+    }
     const { auto_grade_enabled, auto_grade_value } = parseActivityAutoGrade(activity);
 
     const shouldAutoGrade = auto_grade_enabled && auto_grade_value !== null && auto_grade_value !== undefined;

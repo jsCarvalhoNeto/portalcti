@@ -7,11 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Download, FileText, Search } from 'lucide-react';
+import { Download, FileText, Search, Clock, Lock, AlertTriangle } from 'lucide-react';
 import { StudentActivity, getStudentActivities, submitStudentActivity } from '@/services/activityService';
 import * as gamificationService from '@/services/gamificationService';
 import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import MarkdownEditor from '@/components/MarkdownEditor';
+
+const isDeadlinePassed = (deadline?: string | null): boolean => {
+  if (!deadline) return false;
+  const deadlineDate = new Date(deadline);
+  return !isNaN(deadlineDate.getTime()) && Date.now() > deadlineDate.getTime();
+};
+
+const formatDeadline = (deadline?: string | null): string => {
+  if (!deadline) return '';
+  const d = new Date(deadline);
+  if (isNaN(d.getTime())) return '';
+  return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+};
 
 interface SubmissionData {
   activity_id: number;
@@ -195,6 +208,15 @@ export default function StudentActivitiesTab() {
 
   const handleSubmitActivity = async () => {
     if (!selectedActivity) return;
+
+    if (isDeadlinePassed(selectedActivity.deadline)) {
+      toast({
+        title: "Envio Bloqueado",
+        description: `O prazo limite para envio desta atividade expirou em ${formatDeadline(selectedActivity.deadline)}. O envio está bloqueado. O professor pode definir uma nova data de envio se for necessário.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (selectedActivity.type === 'individual' && !submissionData.student_name.trim()) {
       toast({
@@ -399,7 +421,12 @@ export default function StudentActivitiesTab() {
       {/* Bloco de notas removido - todas as funcionalidades de notas estão no painel Notas & Desempenho */}
 
       {/* Bloco condicional removido - simplificando para mostrar apenas as atividades */}
-      {selectedActivity ? (
+      {selectedActivity ? (() => {
+        const isExpired = isDeadlinePassed(selectedActivity.deadline);
+        const isPending = selectedActivity.status === 'pending';
+        const isBlocked = isExpired && isPending;
+
+        return (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -412,6 +439,45 @@ export default function StudentActivitiesTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Informação sobre Prazo / Bloqueio por Prazo Expirado */}
+              {selectedActivity.deadline && (
+                <>
+                  {isBlocked ? (
+                    <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border-2 border-red-300 dark:border-red-800 text-red-950 dark:text-red-200 flex flex-col sm:flex-row items-start sm:items-center gap-3.5 shadow-sm">
+                      <div className="p-2.5 bg-red-100 dark:bg-red-900/60 rounded-full flex-shrink-0 text-red-600 dark:text-red-400">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <p className="font-bold text-base text-red-700 dark:text-red-300 flex items-center gap-2">
+                          Envio Bloqueado: Prazo Limite Expirado
+                        </p>
+                        <p className="text-sm text-red-900/90 dark:text-red-200/90 leading-relaxed">
+                          O envio desta atividade está bloqueado porque a data limite para envio expirou em{' '}
+                          <strong className="underline font-semibold">{formatDeadline(selectedActivity.deadline)}</strong>.
+                        </p>
+                        <p className="text-xs text-red-700 dark:text-red-300 pt-1">
+                          ℹ️ O professor pode definir uma nova data de envio se for necessário. Caso precise de uma prorrogação, solicite ao seu professor (<strong>{selectedActivity.teacher_name}</strong>).
+                        </p>
+                      </div>
+                    </div>
+                  ) : isExpired ? (
+                    <div className="p-3 rounded-lg bg-muted border flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-4 h-4 flex-shrink-0" />
+                      <span>
+                        O prazo desta atividade encerrou em <strong>{formatDeadline(selectedActivity.deadline)}</strong> (Sua atividade já foi entregue).
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 flex items-center gap-2 text-xs font-medium">
+                      <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <span>
+                        Data limite para envio: <strong>{formatDeadline(selectedActivity.deadline)}</strong>
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div>
                 <Label>Tipo de Atividade</Label>
                 <div className="mt-1">
@@ -475,6 +541,7 @@ export default function StudentActivitiesTab() {
                   <Label htmlFor="student_name">Seu Nome</Label>
                   <Input
                     id="student_name"
+                    disabled={isBlocked}
                     value={submissionData.student_name}
                     onChange={(e) => setSubmissionData({
                       ...submissionData,
@@ -488,6 +555,7 @@ export default function StudentActivitiesTab() {
                   <Label htmlFor="team_members">Membros da Equipe</Label>
                   <Textarea
                     id="team_members"
+                    disabled={isBlocked}
                     value={submissionData.team_members}
                     onChange={(e) => setSubmissionData({
                       ...submissionData,
@@ -504,13 +572,15 @@ export default function StudentActivitiesTab() {
                 <Label htmlFor="text_submission" className="font-semibold text-foreground text-sm">
                   Texto de Submissão (Markdown)
                 </Label>
-                <MarkdownEditor
-                  value={submissionData.text_submission || ''}
-                  onChange={(value) => setSubmissionData(prev => ({ ...prev, text_submission: value }))}
-                  placeholder="Digite a resposta ou submissão do trabalho em Markdown ou use os atalhos..."
-                  minHeight="min-h-[180px]"
-                  maxHeight="max-h-[320px]"
-                />
+                <div className={isBlocked ? "opacity-60 pointer-events-none" : ""}>
+                  <MarkdownEditor
+                    value={submissionData.text_submission || ''}
+                    onChange={(value) => setSubmissionData(prev => ({ ...prev, text_submission: value }))}
+                    placeholder="Digite a resposta ou submissão do trabalho em Markdown ou use os atalhos..."
+                    minHeight="min-h-[180px]"
+                    maxHeight="max-h-[320px]"
+                  />
+                </div>
               </div>
 
               <div>
@@ -519,6 +589,7 @@ export default function StudentActivitiesTab() {
                   <Input
                     id="submission_file"
                     type="file"
+                    disabled={isBlocked}
                     onChange={handleFileChange}
                     multiple
                     accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
@@ -547,6 +618,7 @@ export default function StudentActivitiesTab() {
                               type="button"
                               variant="ghost"
                               size="sm"
+                              disabled={isBlocked}
                               onClick={() => removeFile(index)}
                               className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                             >
@@ -577,15 +649,27 @@ export default function StudentActivitiesTab() {
                 </Button>
                 <Button
                   onClick={handleSubmitActivity}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isBlocked}
+                  variant={isBlocked ? "destructive" : "default"}
+                  className={isBlocked ? "cursor-not-allowed opacity-90" : ""}
                 >
-                  {isSubmitting ? 'Enviando...' : 'Enviar Atividade'}
+                  {isSubmitting ? (
+                    'Enviando...'
+                  ) : isBlocked ? (
+                    <span className="flex items-center gap-1.5">
+                      <Lock className="w-4 h-4" />
+                      Envio Bloqueado (Prazo Expirado)
+                    </span>
+                  ) : (
+                    'Enviar Atividade'
+                  )}
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-      ) : (
+        );
+      })() : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredActivities.length > 0 ? (
             filteredActivities.map((activity) => (
@@ -638,20 +722,56 @@ export default function StudentActivitiesTab() {
                       </div>
                     )}
 
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedActivity(activity);
-                        setSubmissionData({
-                          ...submissionData,
-                          activity_id: activity.id
-                        });
-                      }}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Fazer Atividade
-                    </Button>
+                    {activity.deadline && (
+                      <div className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2.5 py-1.5 ${
+                        isDeadlinePassed(activity.deadline)
+                          ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-800'
+                          : 'bg-muted/70 text-muted-foreground border border-border/50'
+                      }`}>
+                        {isDeadlinePassed(activity.deadline) ? (
+                          <Lock className="w-3.5 h-3.5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {isDeadlinePassed(activity.deadline) ? 'Prazo expirou: ' : 'Prazo: '}
+                          {formatDeadline(activity.deadline)}
+                        </span>
+                      </div>
+                    )}
+
+                    {isDeadlinePassed(activity.deadline) && activity.status === 'pending' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setSubmissionData({
+                            ...submissionData,
+                            activity_id: activity.id
+                          });
+                        }}
+                      >
+                        <Lock className="w-4 h-4 mr-2 text-red-500" />
+                        Ver Atividade (Prazo Expirado)
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setSubmissionData({
+                            ...submissionData,
+                            activity_id: activity.id
+                          });
+                        }}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        {activity.status === 'pending' ? 'Fazer Atividade' : 'Ver Atividade'}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
