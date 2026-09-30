@@ -70,7 +70,7 @@ ${cleanContent || 'Digite o conteúdo aqui...'}
 
 /**
  * Protege e escapa tags HTML soltas no texto que não estão em blocos de código,
- * garantindo que explicações de tags (ex: <hr>, <img>, <a>) apareçam como texto/código e não como HTML executado.
+ * garantindo que explicações de tags (ex: <header>, <nav>, <img>, <a>) apareçam como texto/código destacado e não como HTML executado ou invisível.
  */
 export function escapeHtmlTagsInMarkdown(markdown: string): string {
   if (!markdown) return '';
@@ -92,24 +92,33 @@ export function escapeHtmlTagsInMarkdown(markdown: string): string {
     return key;
   });
 
-  // 3. Proteger sintaxe colapsável personalizada (??? "...")
+  // 3. Proteger comentários HTML do sistema (ex: <!--config:auto_grade:...-->)
+  text = text.replace(/(<!--[\s\S]*?-->)/g, (match) => {
+    const key = `___HTML_COMMENT_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  // 4. Proteger sintaxe colapsável personalizada (??? "...")
   text = text.replace(/^(\?\?\?\s*"[^"]+"\s*)/gm, (match) => {
     const key = `___COLLAPSIBLE_${counter++}___`;
     placeholders.push({ key, value: match });
     return key;
   });
 
-  // 4. Escapar tags HTML soltas no texto para que sejam exibidas como código/texto visível
-  text = text.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (match, slash, tagName, rest) => {
-    const lowerTag = tagName.toLowerCase();
-    // Preservar tags estruturais internas do sistema
-    if (['details', 'summary'].includes(lowerTag)) {
-      return match;
-    }
-    return `&lt;${slash}${tagName}${rest}&gt;`;
+  // 5. Proteger tags estruturais de details e summary do sistema
+  text = text.replace(/(<\/?(?:details|summary)[^>]*>)/gi, (match) => {
+    const key = `___DETAILS_TAG_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
   });
 
-  // 5. Restaurar os blocos protegidos
+  // 6. Escapar tags HTML soltas no texto para que sejam exibidas como tags de código destacadas
+  text = text.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (_, slash, tagName, rest) => {
+    return `<code>&lt;${slash}${tagName}${rest}&gt;</code>`;
+  });
+
+  // 7. Restaurar os blocos protegidos
   placeholders.forEach(({ key, value }) => {
     text = text.replace(key, value);
   });
@@ -124,22 +133,25 @@ export function markdownToHtml(markdown: string): string {
   if (!markdown) return '';
   try {
     // 1. Processar elementos colapsáveis antes do marked
-    const processedMarkdown = processCollapsibleElements(markdown);
+    const collapsibleProcessed = processCollapsibleElements(markdown);
+
+    // 2. Proteger e escapar tags HTML soltas para não sumirem no DOM
+    const safeMarkdown = escapeHtmlTagsInMarkdown(collapsibleProcessed);
     
-    // 2. Parser do Markdown
-    let html = marked.parse(processedMarkdown, { 
+    // 3. Parser do Markdown
+    let html = marked.parse(safeMarkdown, { 
       gfm: true,
       breaks: true,
       async: false
     }) as string;
     
-    // 3. Garantir que links externos abram em nova aba com segurança
+    // 4. Garantir que links externos abram em nova aba com segurança
     html = html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>/gi, (match, href, rest) => {
       if (rest.includes('target=')) return match;
       return `<a href="${href}" target="_blank" rel="noopener noreferrer"${rest}>`;
     });
 
-    // 4. Aplicar syntax highlighting aos blocos de código
+    // 5. Aplicar syntax highlighting aos blocos de código
     return processCodeBlocks(html);
   } catch (error) {
     console.error('Erro ao converter markdown:', error);
@@ -202,24 +214,54 @@ export function autoFormatToMarkdown(rawText: string): string {
     return `\n- **${label}:** `;
   });
 
-  // Garantir que a primeira instrução após Passo a passo comece com '- ' se for verbo de ação
-  text = text.replace(/(## Passo a passo\s*\n\s*)((?:Acesse|Abra|Clique|Crie|No menu)\b)/gi, '$1- $2');
+  // Converter tags HTML soltas citadas no texto (ex: <header>, <nav>, etc.) em código inline Markdown com crases
+  const looseTagsRegex = /(?<!`)(<(?:\/)?(?:header|nav|main|article|section|aside|footer|figure|figcaption|div|span|p|a|img|ul|ol|li|table|tr|td|th|form|input|button|select|option|textarea|label|details|summary|canvas|svg|audio|video|meta|link|style|head|body|html)[^>]*>)(?!`)/gi;
+  text = text.replace(looseTagsRegex, '`$1`');
 
   return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
- * Converte HTML básico para markdown (conversão simples)
+ * Converte HTML para markdown de forma limpa e segura,
+ * preservando blocos de código e mantendo tags HTML soltas como código inline Markdown (`<tag>`),
+ * evitando que menções a tags sumam ou virem vírgulas.
  */
 export function htmlToMarkdown(html: string): string {
-  // Remove tags HTML vazias e espacos desnecessários
+  if (!html) return '';
+
+  const placeholders: Array<{ key: string; value: string }> = [];
+  let counter = 0;
+
   let markdown = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
     .replace(/<p[^>]*>/gi, '')
     .replace(/<\/p>/gi, '\n\n');
 
-  // Cabeçalhos
+  // 1. Proteger blocos de código
+  markdown = markdown.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_, code) => {
+    const key = `___PRE_CODE_${counter++}___`;
+    placeholders.push({ key, value: `\`\`\`\n${code.trim()}\n\`\`\`\n\n` });
+    return key;
+  });
+  markdown = markdown.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (_, code) => {
+    const key = `___PRE_BLOCK_${counter++}___`;
+    placeholders.push({ key, value: `\`\`\`\n${code.trim()}\n\`\`\`\n\n` });
+    return key;
+  });
+
+  // 2. Proteger código inline
+  markdown = markdown.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_, code) => {
+    const key = `___INLINE_CODE_${counter++}___`;
+    const cleanCode = code
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+    placeholders.push({ key, value: `\`${cleanCode}\`` });
+    return key;
+  });
+
+  // 3. Cabeçalhos
   markdown = markdown
     .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
@@ -228,68 +270,51 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
     .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
 
-  // Elementos colapsáveis (processar antes das outras formatações)
+  // 4. Elementos colapsáveis
   markdown = markdown.replace(/<details[^>]*class="collapsible-section"[^>]*>(.*?)<\/details>/gis, (_, content) => {
-    // Extrair título do summary
     const summaryMatch = content.match(/<summary[^>]*>(.*?)<\/summary>/i);
     const title = summaryMatch ? summaryMatch[1].trim() : 'Clique para expandir';
-    
-    // Extrair conteúdo do div
     const contentMatch = content.match(/<div[^>]*class="collapsible-content"[^>]*>(.*?)<\/div>/is);
     let bodyContent = contentMatch ? contentMatch[1].trim() : '';
-    
-    // Remover tags p se existirem
     bodyContent = bodyContent.replace(/<\/?p[^>]*>/gi, '');
-    
-    // Indentar o conteúdo com 4 espaços
     const indentedContent = bodyContent
       .split('\n')
       .map((line: string) => line.trim() ? `    ${line}` : '')
       .join('\n');
-    
     return `??? "${title}"\n${indentedContent}\n\n`;
   });
 
-  // Formatação de texto
+  // 5. Formatação de texto
   markdown = markdown
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
     .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
     .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
     .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-    .replace(/<u[^>]*>(.*?)<\/u>/gi, '_$1_');
+    .replace(/<u[^>]*>(.*?)<\/u>/gi, '_$1_')
+    .replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~')
+    .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~');
 
-  // Links
+  // 6. Links e imagens
   markdown = markdown.replace(/<a[^>]*href=['"](.*?)['"][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-
-  // Imagens
   markdown = markdown.replace(/<img[^>]*src=['"](.*?)['"][^>]*alt=['"](.*?)['"][^>]*\/?>/gi, '![$2]($1)');
   markdown = markdown.replace(/<img[^>]*alt=['"](.*?)['"][^>]*src=['"](.*?)['"][^>]*\/?>/gi, '![$1]($2)');
   markdown = markdown.replace(/<img[^>]*src=['"](.*?)['"][^>]*\/?>/gi, '![]($1)');
 
-  // Listas não ordenadas
+  // 7. Listas não ordenadas e ordenadas
   markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (_, content) => {
     const items = content.replace(/<li[^>]*>(.*?)<\/li>/gis, '- $1\n');
     return items + '\n';
   });
-
-  // Listas ordenadas
   markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (_, content) => {
     let counter = 1;
     const items = content.replace(/<li[^>]*>(.*?)<\/li>/gis, () => `${counter++}. $1\n`);
     return items + '\n';
   });
 
-  // Citações
+  // 8. Citações
   markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '> $1\n\n');
 
-  // Código inline
-  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
-
-  // Blocos de código
-  markdown = markdown.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, '```\n$1\n```\n\n');
-  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, '```\n$1\n```\n\n');
-
-  // Tabelas (conversão básica)
+  // 9. Tabelas
   markdown = markdown.replace(/<table[^>]*>(.*?)<\/table>/gis, (_, content) => {
     let result = '';
     const rows = content.match(/<tr[^>]*>(.*?)<\/tr>/gis);
@@ -301,8 +326,6 @@ export function htmlToMarkdown(html: string): string {
             cell.replace(/<t[hd][^>]*>(.*?)<\/t[hd]>/gis, '$1').trim()
           );
           result += '| ' + cellContents.join(' | ') + ' |\n';
-          
-          // Adicionar linha separadora após o cabeçalho
           if (index === 0) {
             result += '| ' + cellContents.map(() => '---').join(' | ') + ' |\n';
           }
@@ -312,19 +335,35 @@ export function htmlToMarkdown(html: string): string {
     return result + '\n';
   });
 
-  // Linha horizontal
+  // 10. Linha horizontal
   markdown = markdown.replace(/<hr[^>]*\/?>/gi, '---\n\n');
 
-  // Remover tags HTML restantes
-  markdown = markdown.replace(/<[^>]*>/g, '');
+  // 11. Descascar tags de layout estrutural (div, span) mantendo seu conteúdo intacto
+  markdown = markdown.replace(/<\/?(?:div|span)[^>]*>/gi, '');
+
+  // 12. Decodificar entidades HTML comuns
+  markdown = markdown
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+
+  // 13. Preservar tags HTML soltas no texto transformando em código inline (`<tag>`)
+  // NUNCA apagar com regex vazio!
+  markdown = markdown.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (_, slash, tag, rest) => {
+    return `\`<${slash}${tag}${rest}>\``;
+  });
+
+  // 14. Restaurar os blocos de código protegidos
+  placeholders.forEach(({ key, value }) => {
+    markdown = markdown.replace(key, value);
+  });
 
   // Limpar espaços em branco excessivos
-  markdown = markdown
+  return markdown
     .replace(/\n{3,}/g, '\n\n')
     .replace(/^\s+|\s+$/g, '')
     .trim();
-
-  return markdown;
 }
 
 /**
