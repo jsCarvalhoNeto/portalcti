@@ -200,6 +200,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (user && isStudent) {
       fetchSubjects();
+      fetchPendingActivities();
       fetchNotifications();
       fetchGamification();
       loadUserColors();
@@ -280,6 +281,22 @@ export default function StudentDashboard() {
     return () => { window.removeEventListener('notifications:update', handler); };
   }, [user, subjects]);
 
+  // Escuta evento global de atualização de atividades para recarregar o contador de pendentes
+  useEffect(() => {
+    const handler = () => {
+      try { fetchPendingActivities(); } catch (e) { console.error('Erro ao atualizar atividades via evento:', e); }
+    };
+    window.addEventListener('activities:update', handler);
+    return () => { window.removeEventListener('activities:update', handler); };
+  }, [user]);
+
+  // Atualiza as atividades pendentes sempre que o aluno retornar para a aba de Visão Geral
+  useEffect(() => {
+    if (activeTab === 'overview' && user) {
+      fetchPendingActivities();
+    }
+  }, [activeTab, user]);
+
   const fetchGamification = async () => {
     if (!user) return;
     try {
@@ -336,7 +353,8 @@ export default function StudentDashboard() {
     try {
       // Usar o service para buscar atividades do aluno
       const activities = await getStudentActivities();
-      setPendingActivities(activities.length);
+      const pendingCount = (activities || []).filter((a: any) => a.status === 'pending').length;
+      setPendingActivities(pendingCount);
     } catch (error) {
       console.error('Error fetching pending activities:', error);
     }
@@ -603,8 +621,18 @@ export default function StudentDashboard() {
                   );
                 }
 
+                const isClickable = stat.title === 'Minhas Disciplinas' || stat.title === 'Atividades Pendentes';
+                const handleClick = () => {
+                  if (stat.title === 'Minhas Disciplinas') setActiveTab('subjects');
+                  if (stat.title === 'Atividades Pendentes') setActiveTab('activities');
+                };
+
                 return (
-                  <Card key={index} className="hover:shadow-glow transition-all duration-300">
+                  <Card 
+                    key={index} 
+                    className={`hover:shadow-glow transition-all duration-300 ${isClickable ? 'cursor-pointer hover:scale-[1.01]' : ''}`}
+                    onClick={handleClick}
+                  >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>

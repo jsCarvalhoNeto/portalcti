@@ -285,6 +285,11 @@ export default function StudentActivitiesTab() {
         )
       );
 
+      // Notificar outros componentes que atividades foram atualizadas
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('activities:update'));
+      }
+
       // Limpar seleção e dados
       setSelectedActivity(null);
       setSubmissionData({

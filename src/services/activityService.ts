@@ -877,6 +877,10 @@ export async function getStudentActivities(): Promise<StudentActivity[]> {
       if (subInfo) {
         if (subInfo.grade !== null && subInfo.grade !== undefined) {
           status = 'completed';
+        } else if (subInfo.status === 'completed' || subInfo.status === 'graded') {
+          status = 'completed';
+        } else if (subInfo.status === 'pending') {
+          status = 'pending';
         } else {
           status = 'submitted';
         }
@@ -1080,6 +1084,10 @@ export async function submitStudentActivity(activityData: FormData): Promise<any
 
       if (error) throw error;
       resultData = data;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('activities:update'));
     }
 
     return resultData;
