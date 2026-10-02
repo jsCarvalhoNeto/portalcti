@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     server: {
-      allowedHosts: ["all", "infobva.up.railway.app", "ctifrontend-production.up.railway.app", "ctibva.up.railway.app", "cursotecnicoinfobva-frontend-production.up.railway.app", "cursotecnicobva.up.railway.app", "cursotecnicoinfobva.up.railway.app"],
+      allowedHosts: true,
       host: "0.0.0.0",
       port: 8080,
       // Proxy APENAS em desenvolvimento local (não no Railway)
