@@ -35,6 +35,7 @@ import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
 import SubjectExercisesPanel from '@/components/subject/SubjectExercisesPanel';
+import SubjectProjectsPanel from '@/components/subject/SubjectProjectsPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -497,6 +498,13 @@ export default function TeacherSubjectEditor() {
                 />
               ) : item.value === 'exercicios' ? (
                 <SubjectExercisesPanel
+                  subjectId={id || ''}
+                  subjectName={subject.name}
+                  subjectGrade={subject.grade}
+                  canManage={true}
+                />
+              ) : item.value === 'projetos' ? (
+                <SubjectProjectsPanel
                   subjectId={id || ''}
                   subjectName={subject.name}
                   subjectGrade={subject.grade}
