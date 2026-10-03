@@ -34,6 +34,7 @@ import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUt
 import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
+import SubjectExercisesPanel from '@/components/subject/SubjectExercisesPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -529,7 +530,12 @@ export default function SubjectDetail() {
 
           {/* Exercícios tab */}
           <TabsContent value="exercises" className="mt-0">
-            {renderContentSection('exercises')}
+            <SubjectExercisesPanel
+              subjectId={id || ''}
+              subjectName={subject.name}
+              subjectGrade={subject.grade}
+              canManage={false}
+            />
           </TabsContent>
 
           {/* Projetos tab */}

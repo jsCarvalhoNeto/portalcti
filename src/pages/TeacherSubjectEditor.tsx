@@ -34,6 +34,7 @@ import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
+import SubjectExercisesPanel from '@/components/subject/SubjectExercisesPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -489,6 +490,13 @@ export default function TeacherSubjectEditor() {
                 />
               ) : item.value === 'avaliacoes' ? (
                 <SubjectEvaluationsPanel
+                  subjectId={id || ''}
+                  subjectName={subject.name}
+                  subjectGrade={subject.grade}
+                  canManage={true}
+                />
+              ) : item.value === 'exercicios' ? (
+                <SubjectExercisesPanel
                   subjectId={id || ''}
                   subjectName={subject.name}
                   subjectGrade={subject.grade}
