@@ -33,6 +33,7 @@ import {
 import { detectMarkdown, markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
 import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
+import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -538,7 +539,12 @@ export default function SubjectDetail() {
 
           {/* Avaliações tab */}
           <TabsContent value="evaluations" className="mt-0">
-            {renderContentSection('evaluations')}
+            <SubjectEvaluationsPanel
+              subjectId={id || ''}
+              subjectName={subject.name}
+              subjectGrade={subject.grade}
+              canManage={false}
+            />
           </TabsContent>
 
           {/* Recursos tab */}
