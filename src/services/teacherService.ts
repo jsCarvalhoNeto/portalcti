@@ -118,7 +118,7 @@ export const getAbsencesBySubject = async (subjectId: number): Promise<Absence[]
 
 export const getAllTeachers = async () => {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select(`
         id,
@@ -128,6 +128,33 @@ export const getAllTeachers = async () => {
       `)
       .eq('user_roles.role', 'teacher')
       .order('full_name', { ascending: true });
+
+    // Fallback sem join user_roles!inner caso a relação ainda não esteja no cache do PostgREST
+    if (error) {
+      const { data: teacherRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'teacher');
+
+      const teacherIds = (teacherRoles || []).map((r: any) => r.user_id);
+      if (teacherIds.length > 0) {
+        const { data: profs, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', teacherIds)
+          .order('full_name', { ascending: true });
+
+        if (pErr) throw pErr;
+        data = (profs || []).map((t: any) => ({
+          ...t,
+          user_roles: [{ role: 'teacher' }]
+        }));
+        error = null;
+      } else {
+        data = [];
+        error = null;
+      }
+    }
 
     if (error) throw error;
     return (data || []).map((t: any) => ({

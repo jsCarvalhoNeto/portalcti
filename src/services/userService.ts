@@ -27,7 +27,7 @@ export interface UpdateRoleRequest {
  */
 export async function getAllUsers(): Promise<User[]> {
   try {
-    const { data: profiles, error: profileError } = await supabase
+    let { data: profiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
         id,
@@ -39,6 +39,34 @@ export async function getAllUsers(): Promise<User[]> {
         user_roles(role)
       `)
       .order('created_at', { ascending: false });
+
+    // Fallback caso o relacionamento profiles <-> user_roles ainda não esteja no cache do PostgREST
+    if (profileError) {
+      const pRes = await supabase
+        .from('profiles')
+        .select('id, full_name, email, student_registration, grade, created_at')
+        .order('created_at', { ascending: false });
+
+      if (pRes.error) throw pRes.error;
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      const rolesByUserId = new Map<string, Array<{ role: string }>>();
+      (roles || []).forEach((r: any) => {
+        if (!rolesByUserId.has(r.user_id)) {
+          rolesByUserId.set(r.user_id, []);
+        }
+        rolesByUserId.get(r.user_id)!.push({ role: r.role });
+      });
+
+      profiles = (pRes.data || []).map((p: any) => ({
+        ...p,
+        user_roles: rolesByUserId.get(p.id) || []
+      }));
+      profileError = null;
+    }
 
     if (profileError) throw profileError;
 

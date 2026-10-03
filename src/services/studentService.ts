@@ -27,7 +27,7 @@ export interface Student {
  */
 export async function getStudentsByGrade(grade: string) {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select(`
         id,
@@ -42,9 +42,34 @@ export async function getStudentsByGrade(grade: string) {
       .eq('user_roles.role', 'student')
       .order('full_name', { ascending: true });
 
+    // Fallback sem join user_roles!inner caso a relação ainda não esteja no cache do PostgREST
+    if (error) {
+      const { data: studentRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student');
+
+      const studentIds = (studentRoles || []).map((r: any) => r.user_id);
+      if (studentIds.length > 0) {
+        const { data: profs, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, student_registration, grade, created_at')
+          .eq('grade', grade)
+          .in('id', studentIds)
+          .order('full_name', { ascending: true });
+
+        if (pErr) throw pErr;
+        data = profs || [];
+        error = null;
+      } else {
+        data = [];
+        error = null;
+      }
+    }
+
     if (error) throw error;
 
-    return data.map(profile => ({
+    return (data || []).map((profile: any) => ({
       id: profile.id,
       full_name: profile.full_name,
       student_registration: profile.student_registration,
@@ -204,7 +229,7 @@ export async function getStudentById(userId: string) {
  */
 export async function getAllStudents(): Promise<Student[]> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select(`
         id,
@@ -217,6 +242,30 @@ export async function getAllStudents(): Promise<Student[]> {
       `)
       .eq('user_roles.role', 'student')
       .order('created_at', { ascending: false });
+
+    // Fallback sem join user_roles!inner caso a relação ainda não esteja no cache do PostgREST
+    if (error) {
+      const { data: studentRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student');
+
+      const studentIds = (studentRoles || []).map((r: any) => r.user_id);
+      if (studentIds.length > 0) {
+        const { data: profs, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, student_registration, grade, created_at')
+          .in('id', studentIds)
+          .order('created_at', { ascending: false });
+
+        if (pErr) throw pErr;
+        data = profs || [];
+        error = null;
+      } else {
+        data = [];
+        error = null;
+      }
+    }
 
     if (error) throw error;
     return (data || []).map((profile: any) => ({

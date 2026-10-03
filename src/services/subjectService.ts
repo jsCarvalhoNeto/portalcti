@@ -143,12 +143,35 @@ export const subjectService = {
   // Buscar todas as disciplinas com seus professores
   getAll: async (): Promise<Subject[]> => {
     try {
-      const { data: subjectsData, error } = await supabase
+      let { data: subjectsData, error } = await supabase
         .from('subjects')
         .select('*, teacher:teacher_id(id, full_name, email)')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // Fallback sem join teacher:teacher_id caso o schema cache ainda não tenha recarregado a Foreign Key
+      if (error) {
+        const sRes = await supabase
+          .from('subjects')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (sRes.error) throw sRes.error;
+        subjectsData = sRes.data || [];
+
+        const tIds = Array.from(new Set(subjectsData.map((s: any) => s.teacher_id).filter(Boolean)));
+        if (tIds.length > 0) {
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', tIds);
+          const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
+          subjectsData = subjectsData.map((s: any) => ({
+            ...s,
+            teacher: profMap.get(s.teacher_id) || null
+          }));
+        }
+      }
+
       if (!subjectsData || subjectsData.length === 0) return [];
 
       const subjectIds = subjectsData.map((s: any) => Number(s.id));
@@ -187,13 +210,34 @@ export const subjectService = {
   // Buscar disciplina por ID
   getById: async (id: string): Promise<Subject> => {
     try {
-      const { data: subjectData, error } = await supabase
+      let { data: subjectData, error } = await supabase
         .from('subjects')
         .select('*, teacher:teacher_id(id, full_name, email)')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      // Fallback sem join teacher:teacher_id
+      if (error) {
+        const sRes = await supabase
+          .from('subjects')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (sRes.error) throw sRes.error;
+        subjectData = sRes.data;
+
+        if (subjectData && subjectData.teacher_id) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('id', subjectData.teacher_id)
+            .maybeSingle();
+          subjectData.teacher = prof || null;
+        }
+      }
+
+      if (!subjectData) throw new Error('Disciplina não encontrada');
 
       const sId = Number(subjectData.id);
       const teachersMap = await fetchTeachersForSubjects([sId]);
@@ -374,7 +418,7 @@ export const subjectService = {
   // Buscar alunos por série (usando profiles de alunos)
   getStudentsByGrade: async (grade: '1º Ano' | '2º Ano' | '3º Ano'): Promise<any[]> => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -385,6 +429,33 @@ export const subjectService = {
         `)
         .eq('grade', grade)
         .eq('user_roles.role', 'student');
+
+      // Fallback sem join user_roles!inner caso a relação ainda não esteja no cache do PostgREST
+      if (error) {
+        const { data: studentRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'student');
+
+        const studentIds = (studentRoles || []).map((r: any) => r.user_id);
+        if (studentIds.length > 0) {
+          const { data: profs, error: pErr } = await supabase
+            .from('profiles')
+            .select('id, full_name, student_registration, grade')
+            .eq('grade', grade)
+            .in('id', studentIds);
+
+          if (pErr) throw pErr;
+          data = (profs || []).map((p: any) => ({
+            ...p,
+            user_roles: [{ role: 'student' }]
+          }));
+          error = null;
+        } else {
+          data = [];
+          error = null;
+        }
+      }
 
       if (error) throw error;
       return data || [];
