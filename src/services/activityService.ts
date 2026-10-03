@@ -411,23 +411,27 @@ export async function getAvailableStudentsForActivity(activityId: number) {
     const studentIds = (studentRoles || []).map(r => r.user_id);
     if (studentIds.length === 0) return [];
 
-    const { data: enrollments, error: enrollErr } = await supabase
+    const { data: rawEnrollments, error: enrollErr } = await supabase
       .from('enrollments')
-      .select(`
-        id,
-        student_id,
-        profiles!inner(
-          id,
-          full_name,
-          email,
-          student_registration,
-          grade
-        )
-      `)
+      .select('id, student_id')
       .eq('subject_id', act.subject_id)
       .in('student_id', studentIds);
 
     if (enrollErr) throw enrollErr;
+
+    const enrolledStudentIds = Array.from(new Set((rawEnrollments || []).map((e: any) => e.student_id).filter(Boolean)));
+    const { data: profilesList } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, student_registration, grade')
+      .in('id', enrolledStudentIds);
+
+    const profMap = new Map<string, any>();
+    (profilesList || []).forEach((p: any) => profMap.set(p.id, p));
+
+    const enrollments = (rawEnrollments || []).map((e: any) => ({
+      ...e,
+      profiles: profMap.get(e.student_id) || null
+    })).filter((e: any) => e.profiles !== null);
 
     const { data: grades } = await supabase
       .from('activity_grades')
@@ -551,55 +555,72 @@ export async function assignActivityGrade(gradeData: ActivityGradeData) {
 
 export async function getActivityGrades(activityId: number): Promise<ActivityGrade[]> {
   try {
-    const { data, error } = await supabase
+    const { data: gradesData, error } = await supabase
       .from('activity_grades')
-      .select(`
-        id,
-        activity_id,
-        enrollment_id,
-        grade,
-        submitted_at,
-        student_name,
-        team_members,
-        text_submission,
-        file_path,
-        file_name,
-        files,
-        status,
-        teacher_observation,
-        enrollments!inner(
-          student_id,
-          profiles!inner(full_name, email)
-        )
-      `)
+      .select('*')
       .eq('activity_id', activityId);
 
     if (error) throw error;
 
-    return (data || []).map((grade: any) => ({
-      grade_id: Number(grade.id),
-      id: Number(grade.id),
-      activity_id: Number(grade.activity_id),
-      enrollment_id: Number(grade.enrollment_id),
-      student_id: grade.enrollments.student_id,
-      grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
-      graded_at: grade.submitted_at,
-      graded_by: null,
-      student_name: grade.student_name || grade.enrollments.profiles.full_name,
-      student_name_display: grade.student_name || grade.enrollments.profiles.full_name,
-      student_email: grade.enrollments.profiles.email || '',
-      subject_name: '',
-      activity_name: '',
-      team_members: grade.team_members || null,
-      file_path: grade.file_path || null,
-      file_name: grade.file_name || null,
-      files: grade.files || [],
-      text_submission: grade.text_submission || null,
-      submitted_at: grade.submitted_at,
-      status: grade.status || (grade.grade !== null ? 'graded' : 'submitted'),
-      teacher_observation: grade.teacher_observation || null,
-      has_teacher_observation: !!grade.teacher_observation
-    }));
+    const enrollmentIds = Array.from(new Set((gradesData || []).map((g: any) => Number(g.enrollment_id)).filter(Boolean)));
+    const enrollmentMap = new Map<number, string>();
+    let studentIds: string[] = [];
+
+    if (enrollmentIds.length > 0) {
+      const { data: enrollmentsData } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('id', enrollmentIds);
+
+      (enrollmentsData || []).forEach((e: any) => {
+        enrollmentMap.set(Number(e.id), e.student_id);
+      });
+      studentIds = Array.from(new Set((enrollmentsData || []).map((e: any) => e.student_id).filter(Boolean)));
+    }
+
+    const profileMap = new Map<string, { full_name: string; email: string }>();
+    if (studentIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', studentIds);
+
+      (profilesData || []).forEach((p: any) => {
+        profileMap.set(p.id, { full_name: p.full_name, email: p.email });
+      });
+    }
+
+    return (gradesData || []).map((grade: any) => {
+      const studentId = enrollmentMap.get(Number(grade.enrollment_id)) || '';
+      const prof = profileMap.get(studentId);
+      const studentName = grade.student_name || prof?.full_name || 'Estudante';
+      const studentEmail = prof?.email || '';
+
+      return {
+        grade_id: Number(grade.id),
+        id: Number(grade.id),
+        activity_id: Number(grade.activity_id),
+        enrollment_id: Number(grade.enrollment_id),
+        student_id: studentId,
+        grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
+        graded_at: grade.submitted_at,
+        graded_by: null,
+        student_name: studentName,
+        student_name_display: studentName,
+        student_email: studentEmail,
+        subject_name: '',
+        activity_name: '',
+        team_members: grade.team_members || null,
+        file_path: grade.file_path || null,
+        file_name: grade.file_name || null,
+        files: grade.files || [],
+        text_submission: grade.text_submission || null,
+        submitted_at: grade.submitted_at,
+        status: grade.status || (grade.grade !== null ? 'graded' : 'submitted'),
+        teacher_observation: grade.teacher_observation || null,
+        has_teacher_observation: !!grade.teacher_observation
+      };
+    });
   } catch (error: any) {
     console.error('Erro ao buscar notas no Supabase:', error);
     throw new Error(error.message || 'Não foi possível buscar as notas da atividade.');
@@ -834,33 +855,28 @@ export async function getStudentActivities(): Promise<StudentActivity[]> {
       });
     });
 
-    // 3. Buscar atividades associadas às matérias matriculadas
-    const { data, error } = await supabase
+    // 3. Buscar atividades associadas às matérias matriculadas (busca desacoplada, sem depender de FK no PostgREST)
+    const { data: rawActivities, error } = await supabase
       .from('activities')
-      .select(`
-        id,
-        name,
-        subject_id,
-        type,
-        description,
-        file_path,
-        file_name,
-        deadline,
-        period,
-        evaluation_type,
-        created_at,
-        subjects!inner(
-          name,
-          teacher_id
-        )
-      `)
+      .select('*')
       .in('subject_id', subjectIds)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    // 4. Buscar nomes dos professores
-    const teacherIds = Array.from(new Set((data || []).map((a: any) => a.subjects?.teacher_id).filter(Boolean)));
+    // 4. Buscar informações das disciplinas
+    const { data: subjectsData } = await supabase
+      .from('subjects')
+      .select('id, name, teacher_id')
+      .in('id', subjectIds);
+
+    const subjectMap = new Map<number, { name: string; teacher_id: string }>();
+    (subjectsData || []).forEach((s: any) => {
+      subjectMap.set(Number(s.id), { name: s.name, teacher_id: s.teacher_id });
+    });
+
+    // 5. Buscar nomes dos professores
+    const teacherIds = Array.from(new Set((subjectsData || []).map((s: any) => s.teacher_id).filter(Boolean)));
     const teacherMap = new Map<string, string>();
     if (teacherIds.length > 0) {
       const { data: teacherProfiles } = await supabase
@@ -870,9 +886,10 @@ export async function getStudentActivities(): Promise<StudentActivity[]> {
       (teacherProfiles || []).forEach((t: any) => teacherMap.set(t.id, t.full_name));
     }
 
-    return (data || []).map((activity: any) => {
+    return (rawActivities || []).map((activity: any) => {
       const actId = Number(activity.id);
       const subInfo = gradeMap.get(actId);
+      const subj = subjectMap.get(Number(activity.subject_id));
       let status: 'pending' | 'submitted' | 'completed' = 'pending';
       if (subInfo) {
         if (subInfo.grade !== null && subInfo.grade !== undefined) {
@@ -886,13 +903,13 @@ export async function getStudentActivities(): Promise<StudentActivity[]> {
         }
       }
 
-      const teacherName = (activity.subjects?.teacher_id && teacherMap.get(activity.subjects.teacher_id)) || 'Professor';
+      const teacherName = (subj?.teacher_id && teacherMap.get(subj.teacher_id)) || 'Professor';
 
       return {
         id: actId,
         subject_id: Number(activity.subject_id),
         name: activity.name,
-        subject_name: activity.subjects?.name || 'Disciplina',
+        subject_name: subj?.name || 'Disciplina',
         teacher_name: teacherName,
         type: activity.type || 'individual',
         description: activity.description || null,
@@ -1126,30 +1143,51 @@ export async function getStudentActivityGrades(): Promise<ActivityGrade[]> {
         file_name,
         files,
         status,
-        teacher_observation,
-        activities!inner(
-          name,
-          subjects!inner(name)
-        )
+        teacher_observation
       `)
       .in('enrollment_id', enrollmentIds);
 
     if (error) throw error;
 
-    return (data || []).map((grade: any) => ({
-      grade_id: Number(grade.id),
-      id: Number(grade.id),
-      activity_id: Number(grade.activity_id),
-      enrollment_id: Number(grade.enrollment_id),
-      student_id: user.id,
-      grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
-      graded_at: grade.submitted_at,
-      graded_by: null,
-      student_name: grade.student_name || '',
-      student_name_display: grade.student_name || '',
-      student_email: '',
-      subject_name: grade.activities?.subjects?.name || '',
-      activity_name: grade.activities?.name || '',
+    // Buscar nomes das atividades e disciplinas associadas de forma segura
+    const actIds = Array.from(new Set((data || []).map((g: any) => Number(g.activity_id)).filter(Boolean)));
+    const actMap = new Map<number, { name: string; subject_id: number }>();
+    const subjMap = new Map<number, string>();
+
+    if (actIds.length > 0) {
+      const { data: actRows } = await supabase
+        .from('activities')
+        .select('id, name, subject_id')
+        .in('id', actIds);
+      (actRows || []).forEach((a: any) => actMap.set(Number(a.id), { name: a.name, subject_id: Number(a.subject_id) }));
+
+      const subjIds = Array.from(new Set((actRows || []).map((a: any) => Number(a.subject_id)).filter(Boolean)));
+      if (subjIds.length > 0) {
+        const { data: subjRows } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', subjIds);
+        (subjRows || []).forEach((s: any) => subjMap.set(Number(s.id), s.name));
+      }
+    }
+
+    return (data || []).map((grade: any) => {
+      const act = actMap.get(Number(grade.activity_id));
+      const subjName = act ? (subjMap.get(act.subject_id) || '') : '';
+      return {
+        grade_id: Number(grade.id),
+        id: Number(grade.id),
+        activity_id: Number(grade.activity_id),
+        enrollment_id: Number(grade.enrollment_id),
+        student_id: user.id,
+        grade: grade.grade !== null && grade.grade !== undefined ? Number(grade.grade) : null,
+        graded_at: grade.submitted_at,
+        graded_by: null,
+        student_name: grade.student_name || '',
+        student_name_display: grade.student_name || '',
+        student_email: '',
+        subject_name: subjName,
+        activity_name: act?.name || '',
       team_members: grade.team_members || null,
       file_path: grade.file_path || null,
       file_name: grade.file_name || null,
@@ -1159,7 +1197,8 @@ export async function getStudentActivityGrades(): Promise<ActivityGrade[]> {
       status: grade.status || (grade.grade !== null ? 'graded' : 'submitted'),
       teacher_observation: grade.teacher_observation || null,
       has_teacher_observation: !!grade.teacher_observation
-    }));
+    };
+  });
   } catch (error: any) {
     console.error('Erro ao obter notas no Supabase:', error);
     throw new Error(error.message || 'Não foi possível buscar as notas das atividades.');
@@ -1189,38 +1228,52 @@ export async function getActivityTeams(activityId: number) {
 
     const { data: submissions } = await supabase
       .from('activity_grades')
-      .select(`
-        id,
-        activity_id,
-        grade,
-        submitted_at,
-        enrollments!inner(
-          profiles!inner(
-            full_name,
-            email,
-            student_registration
-          )
-        )
-      `)
+      .select('id, activity_id, enrollment_id, grade, submitted_at')
       .eq('activity_id', activityId);
 
-    const teams = (submissions || []).map((sub: any, index: number) => ({
-      team_id: sub.id,
-      team_name: `Equipe ${index + 1}`,
-      leader: {
-        id: sub.id,
-        name: sub.enrollments?.profiles?.full_name || 'Líder',
-        email: sub.enrollments?.profiles?.email || '',
-        student_registration: sub.enrollments?.profiles?.student_registration || '',
-        is_leader: true,
+    const enrollmentIds = Array.from(new Set((submissions || []).map((s: any) => Number(s.enrollment_id)).filter(Boolean)));
+    const enrollmentMap = new Map<number, string>();
+    let studentIds: string[] = [];
+
+    if (enrollmentIds.length > 0) {
+      const { data: enrollData } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .in('id', enrollmentIds);
+      (enrollData || []).forEach((e: any) => enrollmentMap.set(Number(e.id), e.student_id));
+      studentIds = Array.from(new Set((enrollData || []).map((e: any) => e.student_id).filter(Boolean)));
+    }
+
+    const profileMap = new Map<string, any>();
+    if (studentIds.length > 0) {
+      const { data: profData } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, student_registration')
+        .in('id', studentIds);
+      (profData || []).forEach((p: any) => profileMap.set(p.id, p));
+    }
+
+    const teams = (submissions || []).map((sub: any, index: number) => {
+      const studentId = enrollmentMap.get(Number(sub.enrollment_id)) || '';
+      const prof = profileMap.get(studentId);
+      return {
+        team_id: sub.id,
+        team_name: `Equipe ${index + 1}`,
+        leader: {
+          id: sub.id,
+          name: prof?.full_name || 'Líder',
+          email: prof?.email || '',
+          student_registration: prof?.student_registration || '',
+          is_leader: true,
+          grade: sub.grade,
+          status: 'graded'
+        },
+        members: [],
         grade: sub.grade,
-        status: 'graded'
-      },
-      members: [],
-      grade: sub.grade,
-      status: 'graded',
-      submitted_at: sub.submitted_at
-    }));
+        status: 'graded',
+        submitted_at: sub.submitted_at
+      };
+    });
 
     return {
       activity_id: activityId,

@@ -130,11 +130,11 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
       }
 
       // Verificar tamanho dos arquivos (máximo 50MB por arquivo)
-      const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
+      const oversizedFiles = selectedFiles.filter(file => file.size > 10 * 1024 * 1024);
       if (oversizedFiles.length > 0) {
         toast({
           title: "Arquivo muito grande",
-          description: `Arquivos muito grandes (máx. 50MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
+          description: `Arquivos muito grandes (máx. 10MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
           variant: "destructive",
         });
         return;
@@ -421,7 +421,7 @@ export default function NewActivityModal({ isOpen, onOpenChange }: NewActivityMo
                 accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
               />
               <p className="text-xs text-muted-foreground">
-                📁 Selecione até 10 arquivos (máx. 50MB cada). Suporta códigos, documentos, imagens e compactados.
+                📁 Selecione até 10 arquivos (máx. 10MB cada). Suporta códigos, documentos, imagens e compactados.
               </p>
               
               {files.length > 0 && (

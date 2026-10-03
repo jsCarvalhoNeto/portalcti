@@ -166,22 +166,22 @@ export default function StudentActivitiesTab() {
         return;
       }
 
-      // Verificar limite de arquivos (máximo 15 para alunos)
-      if (selectedFiles.length > 15) {
+      // Verificar limite de arquivos (máximo 10 para alunos)
+      if (selectedFiles.length > 10) {
         toast({
           title: "Muitos arquivos selecionados",
-          description: "Máximo de 15 arquivos permitidos por submissão.",
+          description: "Máximo de 10 arquivos permitidos por submissão.",
           variant: "destructive",
         });
         return;
       }
 
       // Verificar tamanho total (máximo 50MB por arquivo)
-      const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
+      const oversizedFiles = selectedFiles.filter(file => file.size > 10 * 1024 * 1024);
       if (oversizedFiles.length > 0) {
         toast({
           title: "Arquivo muito grande",
-          description: `Arquivos muito grandes (máx. 50MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
+          description: `Arquivos muito grandes (máx. 10MB): ${oversizedFiles.map(f => f.name).join(', ')}`,
           variant: "destructive",
         });
         return;
@@ -600,7 +600,7 @@ export default function StudentActivitiesTab() {
                     accept=".pdf,.txt,.html,.css,.js,.py,.sql,.java,.c,.cpp,.cs,.php,.rb,.go,.ts,.md,.json,.xml,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
                   />
                   <p className="text-xs text-muted-foreground">
-                    📁 Selecione até 15 arquivos (máx. 50MB cada). 
+                    📁 Selecione até 10 arquivos (máx. 10MB cada). 
                     Suporta: código (HTML, CSS, JS, Python, SQL, Java, etc.), documentos (PDF, DOC, PPT), imagens e compactados.
                   </p>
                   
