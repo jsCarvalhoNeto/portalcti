@@ -178,30 +178,58 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
       .eq('teacher_id', teacherId)
       .order('created_at', { ascending: false });
 
-    // Fallback caso a coluna ainda não exista no schema do banco
-    if (query.error && (query.error.code === '42703' || query.error.code === 'PGRST204' || query.error.message?.includes('auto_grade'))) {
-      query = await supabase
-        .from('activities')
-        .select(`
-          id,
-          name,
-          subject_id,
-          grade,
-          type,
-          teacher_id,
-          description,
-          deadline,
-          period,
-          evaluation_type,
-          file_path,
-          file_name,
-          files,
-          created_at,
-          updated_at,
-          subjects(name)
-        `)
-        .eq('teacher_id', teacherId)
-        .order('created_at', { ascending: false });
+    // Fallback caso a coluna auto_grade ainda não exista ou caso o relacionamento subjects(name) ainda não esteja no schema cache
+    if (query.error) {
+      // Tentar sem auto_grade primeiro
+      if (query.error.code === '42703' || query.error.code === 'PGRST204' || query.error.message?.includes('auto_grade')) {
+        query = await supabase
+          .from('activities')
+          .select(`
+            id,
+            name,
+            subject_id,
+            grade,
+            type,
+            teacher_id,
+            description,
+            deadline,
+            period,
+            evaluation_type,
+            file_path,
+            file_name,
+            files,
+            created_at,
+            updated_at,
+            subjects(name)
+          `)
+          .eq('teacher_id', teacherId)
+          .order('created_at', { ascending: false });
+      }
+
+      // Se ainda houver erro (ex: PGRST200 relação não encontrada no schema cache), busca sem join embutido
+      if (query.error) {
+        query = await supabase
+          .from('activities')
+          .select(`
+            id,
+            name,
+            subject_id,
+            grade,
+            type,
+            teacher_id,
+            description,
+            deadline,
+            period,
+            evaluation_type,
+            file_path,
+            file_name,
+            files,
+            created_at,
+            updated_at
+          `)
+          .eq('teacher_id', teacherId)
+          .order('created_at', { ascending: false });
+      }
     }
 
     if (query.error) {
@@ -210,6 +238,22 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
     }
 
     const data = query.data;
+
+    // Buscar nomes de disciplinas se vieram sem o join embutido
+    const missingSubjectNames = (data || []).some((a: any) => !a.subjects?.name && a.subject_id);
+    let subjectNamesMap: Record<number, string> = {};
+    if (missingSubjectNames) {
+      const sIds = Array.from(new Set((data || []).map((a: any) => Number(a.subject_id)).filter(Boolean)));
+      if (sIds.length > 0) {
+        const { data: sData } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', sIds);
+        (sData || []).forEach((s: any) => {
+          subjectNamesMap[Number(s.id)] = s.name;
+        });
+      }
+    }
 
     return (data || []).map((activity: any) => {
       let isAuto = activity.auto_grade_enabled === true;
@@ -233,7 +277,7 @@ export async function getTeacherActivities(teacherId: string): Promise<Activity[
         id: activity.id.toString(),
         name: activity.name,
         subject_id: Number(activity.subject_id),
-        subject_name: activity.subjects?.name || 'Disciplina',
+        subject_name: activity.subjects?.name || subjectNamesMap[Number(activity.subject_id)] || 'Disciplina',
         grade: activity.grade || '',
         type: activity.type || 'individual',
         teacher_id: activity.teacher_id,
@@ -304,7 +348,7 @@ export async function getTeacherActivityGrades(teacherId: string): Promise<Activ
  */
 export async function getStudentsBySubject(subjectId: number): Promise<any[]> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('enrollments')
       .select(`
         id,
@@ -318,6 +362,39 @@ export async function getStudentsBySubject(subjectId: number): Promise<any[]> {
         )
       `)
       .eq('subject_id', subjectId);
+
+    // Fallback caso o relacionamento no PostgREST ainda não esteja ativo
+    if (error) {
+      const enrollRes = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .eq('subject_id', subjectId);
+
+      if (!enrollRes.error && enrollRes.data && enrollRes.data.length > 0) {
+        const studentIds = enrollRes.data.map((e: any) => e.student_id).filter(Boolean);
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, student_registration, grade')
+          .in('id', studentIds);
+
+        const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
+        data = enrollRes.data.map((item: any) => ({
+          id: item.id,
+          student_id: item.student_id,
+          profiles: profMap.get(item.student_id) || {
+            id: item.student_id,
+            full_name: 'Aluno',
+            email: '',
+            student_registration: '',
+            grade: ''
+          }
+        }));
+        error = null;
+      } else if (!enrollRes.error) {
+        data = [];
+        error = null;
+      }
+    }
 
     if (error) throw error;
 
@@ -363,7 +440,7 @@ export async function getTeacherStudents(teacherId: string): Promise<Student[]> 
     if (subjectIds.length === 0) return [];
 
     // 2. Buscar matrículas em enrollments relacionadas a essas disciplinas
-    const { data: enrollments, error } = await supabase
+    let { data: enrollments, error } = await supabase
       .from('enrollments')
       .select(`
         subject_id,
@@ -377,6 +454,35 @@ export async function getTeacherStudents(teacherId: string): Promise<Student[]> 
         )
       `)
       .in('subject_id', subjectIds);
+
+    // Fallback caso o join profiles!inner ainda dê 400 por cache
+    if (error) {
+      const enrollRes = await supabase
+        .from('enrollments')
+        .select('subject_id, student_id')
+        .in('subject_id', subjectIds);
+
+      if (!enrollRes.error && enrollRes.data) {
+        const studentIds = Array.from(new Set(enrollRes.data.map((e: any) => e.student_id).filter(Boolean)));
+        if (studentIds.length > 0) {
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, student_registration, grade')
+            .in('id', studentIds);
+
+          const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
+          enrollments = enrollRes.data.map((e: any) => ({
+            subject_id: e.subject_id,
+            student_id: e.student_id,
+            profiles: profMap.get(e.student_id)
+          })).filter((e: any) => e.profiles);
+          error = null;
+        } else {
+          enrollments = [];
+          error = null;
+        }
+      }
+    }
 
     if (error) {
       console.error('Erro ao buscar matrículas do professor:', error);
@@ -478,7 +584,7 @@ export async function getPendingActivities(teacherId: string): Promise<Activity[
  */
 export async function getTeacherCalendarEvents(teacherId: string): Promise<CalendarEvent[]> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('calendar_events')
       .select(`
         id,
@@ -492,6 +598,27 @@ export async function getTeacherCalendarEvents(teacherId: string): Promise<Calen
         subjects(name)
       `)
       .order('date', { ascending: true });
+
+    // Fallback sem subjects(name) se o relacionamento ainda não estiver no cache do PostgREST
+    if (error) {
+      const fallback = await supabase
+        .from('calendar_events')
+        .select(`
+          id,
+          title,
+          date,
+          time,
+          type,
+          subject_id,
+          description,
+          created_by
+        `)
+        .order('date', { ascending: true });
+      if (!fallback.error) {
+        data = fallback.data;
+        error = null;
+      }
+    }
 
     if (error) {
       console.error('Erro ao buscar eventos do calendário no Supabase:', error);
@@ -519,7 +646,7 @@ export async function getTeacherCalendarEvents(teacherId: string): Promise<Calen
  */
 export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('calendar_events')
       .select(`
         id,
@@ -532,6 +659,25 @@ export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
         subjects(name)
       `)
       .order('date', { ascending: true });
+
+    if (error) {
+      const fallback = await supabase
+        .from('calendar_events')
+        .select(`
+          id,
+          title,
+          date,
+          time,
+          type,
+          subject_id,
+          description
+        `)
+        .order('date', { ascending: true });
+      if (!fallback.error) {
+        data = fallback.data;
+        error = null;
+      }
+    }
 
     if (error) throw error;
 
@@ -556,7 +702,7 @@ export async function getAllCalendarEvents(): Promise<CalendarEvent[]> {
  */
 export async function getCalendarEventsByDateRange(startDate: string, endDate: string): Promise<CalendarEvent[]> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('calendar_events')
       .select(`
         id,
@@ -571,6 +717,27 @@ export async function getCalendarEventsByDateRange(startDate: string, endDate: s
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true });
+
+    if (error) {
+      const fallback = await supabase
+        .from('calendar_events')
+        .select(`
+          id,
+          title,
+          date,
+          time,
+          type,
+          subject_id,
+          description
+        `)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
+      if (!fallback.error) {
+        data = fallback.data;
+        error = null;
+      }
+    }
 
     if (error) throw error;
 
