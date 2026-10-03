@@ -32,6 +32,7 @@ import {
 } from '@/services/subjectContentService';
 import MarkdownRichTextEditor from '@/components/MarkdownRichTextEditor';
 import SubjectSchedulePanel from '@/components/subject/SubjectSchedulePanel';
+import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -475,6 +476,12 @@ export default function TeacherSubjectEditor() {
             <TabsContent key={item.value} value={item.value} className="space-y-6 mt-0">
               {item.value === 'material' ? (
                 <SubjectSchedulePanel
+                  subjectId={id || ''}
+                  subjectName={subject.name}
+                  canManage={true}
+                />
+              ) : item.value === 'recursos' ? (
+                <SubjectResourcesPanel
                   subjectId={id || ''}
                   subjectName={subject.name}
                   canManage={true}
