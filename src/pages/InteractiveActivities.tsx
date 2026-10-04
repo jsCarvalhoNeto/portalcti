@@ -24,7 +24,8 @@ import {
   Code,
   Lock,
   ShieldAlert,
-  GraduationCap
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
@@ -34,6 +35,7 @@ import { Subject } from '@/types/subject';
 import interactiveActivityService, { InteractiveActivity } from '@/services/interactiveActivityService';
 import InteractiveActivityEditor from '@/components/subject/InteractiveActivityEditor';
 import InteractiveActivityPlayer from '@/components/subject/InteractiveActivityPlayer';
+import InteractiveActivityDescription, { InteractiveActivityGuideModal } from '@/components/subject/InteractiveActivityDescription';
 import { getCompletedInteractiveActivities } from '@/services/gamificationService';
 
 export default function InteractiveActivities() {
@@ -54,6 +56,7 @@ export default function InteractiveActivities() {
   const [selectedActivityForEdit, setSelectedActivityForEdit] = useState<InteractiveActivity | null>(null);
   const [selectedActivityForPlay, setSelectedActivityForPlay] = useState<InteractiveActivity | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [activityForGuide, setActivityForGuide] = useState<InteractiveActivity | null>(null);
 
   const canManage = Boolean(isTeacher || isAdmin);
 
@@ -541,9 +544,13 @@ export default function InteractiveActivities() {
                         {activity.title}
                       </h3>
                       {activity.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {activity.description}
-                        </p>
+                        <div className="mt-2 pt-2 border-t border-border/50">
+                          <InteractiveActivityDescription 
+                            content={activity.description} 
+                            variant="card" 
+                            onOpenDetails={() => setActivityForGuide(activity)}
+                          />
+                        </div>
                       )}
                     </div>
                   </CardHeader>
@@ -562,17 +569,32 @@ export default function InteractiveActivities() {
 
                     {/* Botões de Ação */}
                     <div className="space-y-2 pt-1">
-                      <Button 
-                        onClick={() => handleStartActivity(activity)}
-                        className={`w-full text-white shadow-md flex items-center justify-center gap-2 h-10 font-semibold ${
-                          isStudent && completedActivityIds.includes(String(activity.id))
-                            ? 'bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600'
-                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:shadow-indigo-500/25'
-                        }`}
-                      >
-                        <Play className="w-4 h-4 fill-white" />
-                        {isStudent && completedActivityIds.includes(String(activity.id)) ? 'Jogar Novamente' : 'Iniciar Atividade'}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {activity.description && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => setActivityForGuide(activity)}
+                            className="text-xs h-10 px-3 flex items-center gap-1.5 border-border hover:bg-muted font-medium shrink-0"
+                            title="Ver orientações e objetivo pedagógico completo"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-primary" />
+                            <span className="hidden sm:inline">Orientações</span>
+                          </Button>
+                        )}
+                        <Button 
+                          onClick={() => handleStartActivity(activity)}
+                          className={`flex-1 text-white shadow-md flex items-center justify-center gap-2 h-10 font-semibold ${
+                            isStudent && completedActivityIds.includes(String(activity.id))
+                              ? 'bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600'
+                              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:shadow-indigo-500/25'
+                          }`}
+                        >
+                          <Play className="w-4 h-4 fill-white" />
+                          {isStudent && completedActivityIds.includes(String(activity.id)) ? 'Jogar Novamente' : 'Iniciar Atividade'}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -623,6 +645,20 @@ export default function InteractiveActivities() {
           onCompleted={(activityId) => {
             setCompletedActivityIds(prev => [...prev, String(activityId)]);
           }}
+        />
+      )}
+
+      {/* Modal de Orientações e Instruções da Atividade para o Aluno */}
+      {activityForGuide && (
+        <InteractiveActivityGuideModal
+          isOpen={Boolean(activityForGuide)}
+          onClose={() => setActivityForGuide(null)}
+          title={activityForGuide.title}
+          description={activityForGuide.description}
+          duration={activityForGuide.duration}
+          points={activityForGuide.points}
+          difficulty={activityForGuide.difficulty}
+          type={activityForGuide.type}
         />
       )}
     </MainLayout>

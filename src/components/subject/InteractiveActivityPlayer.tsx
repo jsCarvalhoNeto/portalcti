@@ -12,12 +12,14 @@ import {
   Layers, 
   CheckCircle2,
   Trophy,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 import { InteractiveActivity } from '@/services/interactiveActivityService';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { awardInteractiveActivity, checkInteractiveActivityCompleted } from '@/services/gamificationService';
+import { InteractiveActivityGuideModal } from './InteractiveActivityDescription';
 
 interface InteractiveActivityPlayerProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function InteractiveActivityPlayer({
   const [reloadKey, setReloadKey] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Verificar se o aluno já concluiu essa atividade previamente
@@ -208,15 +211,43 @@ export default function InteractiveActivityPlayer({
                   )}
                 </div>
                 {subjectName && (
-                  <p className="text-xs text-slate-400 truncate">
-                    {subjectName} {activity.description ? `• ${activity.description}` : ''}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 truncate">
+                    <span>{subjectName}</span>
+                    {activity.description && (
+                      <>
+                        <span className="text-slate-600">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowGuideModal(true)}
+                          className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 flex items-center gap-1 shrink-0 font-medium"
+                          title="Clique para ler todas as orientações"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          <span>Orientações pedagógicas</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Controles de Ação */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* Botão para Ler Orientações */}
+              {activity.description && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setShowGuideModal(true)}
+                  className="bg-indigo-950/70 border-indigo-700/60 text-indigo-200 hover:bg-indigo-900 hover:text-white text-xs flex items-center gap-1.5 shadow-xs font-semibold"
+                  title="Abrir orientações pedagógicas, objetivos e como jogar"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="hidden sm:inline">Orientações</span>
+                </Button>
+              )}
               {/* Botão de Conclusão para Estudante */}
               {isStudent && (
                 isCompleted ? (
@@ -301,6 +332,20 @@ export default function InteractiveActivityPlayer({
             </div>
           </div>
         </div>
+
+        {/* Modal de Orientações da Atividade */}
+        {showGuideModal && (
+          <InteractiveActivityGuideModal
+            isOpen={showGuideModal}
+            onClose={() => setShowGuideModal(false)}
+            title={activity.title}
+            description={activity.description}
+            duration={activity.duration}
+            points={activity.points}
+            difficulty={activity.difficulty}
+            type={activity.type}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

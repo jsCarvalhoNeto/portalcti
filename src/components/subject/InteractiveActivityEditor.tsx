@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Code, Sparkles, HelpCircle, Gamepad2, Play, Trophy, PenTool } from 'lucide-react';
+import { Eye, Code, Sparkles, HelpCircle, Gamepad2, Play, Trophy, PenTool, Wand2, FileText, CheckCircle2, AlignLeft } from 'lucide-react';
 import { InteractiveActivity } from '@/services/interactiveActivityService';
+import InteractiveActivityDescription, { autoFormatActivityText } from './InteractiveActivityDescription';
 
 interface InteractiveActivityEditorProps {
   isOpen: boolean;
@@ -121,6 +122,50 @@ export default function InteractiveActivityEditor({
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [descriptionView, setDescriptionView] = useState<'edit' | 'preview'>('edit');
+  const [formatMessage, setFormatMessage] = useState<string | null>(null);
+
+  const handleAutoFormatDescription = () => {
+    if (!formData.description.trim()) return;
+    const formatted = autoFormatActivityText(formData.description);
+    setFormData(prev => ({ ...prev, description: formatted }));
+    setFormatMessage('Texto organizado em tópicos estruturados!');
+    setTimeout(() => setFormatMessage(null), 3500);
+  };
+
+  const handleInsertTemplateDescription = () => {
+    const template = `🎯 **Objetivo Pedagógico:**
+Consolidar a identificação dos conceitos e componentes através da experimentação interativa.
+
+👥 **Público-Alvo:**
+Alunos do Curso Técnico em Informática.
+
+📋 **Orientações para o Aluno:**
+• Leia com atenção cada uma das perguntas e instruções na tela.
+• Clique nos botões ou elementos interativos para responder aos desafios.
+• Observe o feedback imediato para fixar os conceitos.
+
+💡 **Dicas:**
+• Você pode reiniciar a atividade caso deseje revisar o conteúdo.`;
+
+    if (formData.description.trim() && !confirm('Deseja substituir a descrição atual pelo modelo estruturado?')) {
+      return;
+    }
+    setFormData(prev => ({ ...prev, description: template }));
+    setFormatMessage('Modelo estruturado inserido!');
+    setTimeout(() => setFormatMessage(null), 3500);
+  };
+
+  const handleAppendSection = (sectionPrefix: string) => {
+    setFormData(prev => {
+      const current = prev.description.trim();
+      const separator = current ? '\n\n' : '';
+      return {
+        ...prev,
+        description: `${current}${separator}${sectionPrefix}\n`
+      };
+    });
+  };
 
   useEffect(() => {
     if (activity) {
@@ -223,18 +268,143 @@ export default function InteractiveActivityEditor({
             />
           </div>
 
-          {/* Descrição / Instruções */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-semibold">
-              Descrição ou Orientações para o Aluno
-            </Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Descreva o objetivo da atividade e instruções para os estudantes..."
-              rows={2}
-            />
+          {/* Descrição e Orientações Pedagógicas para o Aluno */}
+          <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="description" className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                  <AlignLeft className="w-4 h-4 text-primary" />
+                  Descrição ou Orientações para o Aluno
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Organize em tópicos como objetivo, regras e passos para facilitar o entendimento do estudante.
+                </p>
+              </div>
+
+              {/* Botões de Ações e Alternância de Abas */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutoFormatDescription}
+                  className="text-xs h-7 px-2.5 gap-1.5 border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-950/60 shadow-xs font-medium"
+                  title="Detecta seções coladas como 'Objetivo Pedagógico:', 'Público Alvo:', 'Instruções:' e divide em parágrafos e tópicos legíveis"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Organizar em Tópicos</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleInsertTemplateDescription}
+                  className="text-xs h-7 px-2.5 gap-1.5 shadow-xs font-medium"
+                  title="Inserir modelo com seções pré-definidas"
+                >
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <span>Modelo Pronto</span>
+                </Button>
+
+                <div className="flex items-center border rounded-lg overflow-hidden bg-background shadow-xs">
+                  <Button
+                    type="button"
+                    variant={descriptionView === 'edit' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setDescriptionView('edit')}
+                    className="text-xs h-7 px-2.5 rounded-none font-medium"
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={descriptionView === 'preview' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setDescriptionView('preview')}
+                    className="text-xs h-7 px-2.5 rounded-none font-medium gap-1 text-primary"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Prévia do Aluno
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mensagem de confirmação de ação */}
+            {formatMessage && (
+              <div className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-1.5 flex items-center gap-2 animate-in fade-in duration-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>{formatMessage}</span>
+              </div>
+            )}
+
+            {descriptionView === 'edit' ? (
+              <div className="space-y-2">
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder={`🎯 Objetivo Pedagógico:\nConsolidar a identificação das unidades internas do processador (UC, ULA e Registradores)...\n\n📋 Orientações para o Aluno:\n• Leia com atenção o enunciado antes de clicar na resposta...\n\n💡 Dicas:\n• Você pode refazer a atividade para fixar o aprendizado.`}
+                  rows={6}
+                  className="min-h-[140px] text-sm leading-relaxed resize-y font-normal bg-background border-input focus:border-primary"
+                />
+
+                {/* Tags rápidas para estruturar seções com um clique */}
+                <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground pt-0.5">
+                  <span className="text-[11px] font-medium mr-1 text-foreground/80">Inserir tópico rápido:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAppendSection('🎯 **Objetivo Pedagógico:**')}
+                    className="px-2 py-0.5 rounded-md bg-background border hover:bg-muted text-[11px] font-medium transition-colors hover:border-indigo-400"
+                  >
+                    + 🎯 Objetivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAppendSection('👥 **Público-Alvo:**')}
+                    className="px-2 py-0.5 rounded-md bg-background border hover:bg-muted text-[11px] font-medium transition-colors hover:border-emerald-400"
+                  >
+                    + 👥 Público-Alvo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAppendSection('📋 **Orientações para o Aluno:**')}
+                    className="px-2 py-0.5 rounded-md bg-background border hover:bg-muted text-[11px] font-medium transition-colors hover:border-blue-400"
+                  >
+                    + 📋 Orientações
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAppendSection('🕹️ **Como Jogar / Realizar:**')}
+                    className="px-2 py-0.5 rounded-md bg-background border hover:bg-muted text-[11px] font-medium transition-colors hover:border-purple-400"
+                  >
+                    + 🕹️ Como Jogar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAppendSection('💡 **Dicas:**')}
+                    className="px-2 py-0.5 rounded-md bg-background border hover:bg-muted text-[11px] font-medium transition-colors hover:border-amber-400"
+                  >
+                    + 💡 Dicas
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border rounded-xl p-4 bg-background min-h-[140px] max-h-[260px] overflow-y-auto">
+                <div className="text-xs font-semibold text-muted-foreground mb-3 flex items-center justify-between pb-2 border-b">
+                  <span className="flex items-center gap-1.5 text-primary">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Como o aluno visualizará este texto:
+                  </span>
+                  <span className="text-[11px] font-normal text-muted-foreground">Formatação automática em cartões</span>
+                </div>
+                <InteractiveActivityDescription 
+                  content={formData.description} 
+                  variant="full" 
+                />
+              </div>
+            )}
           </div>
 
           {/* Metadados: Tipo, Dificuldade, Duração e Pontos de Recompensa */}
