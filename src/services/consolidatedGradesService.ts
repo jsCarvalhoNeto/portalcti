@@ -165,12 +165,16 @@ export async function getConsolidatedPeriodGrades(
     };
 
     // 2. Buscar alunos matriculados na disciplina
-    const { data: enrollmentsData, error: enrollmentsError } = await supabase
+    let enrollmentsData: any[] = [];
+    
+    // Tenta primeiro com join profiles
+    const { data: joinData, error: joinError } = await supabase
       .from('enrollments')
       .select(`
         id,
         student_id,
-        profiles:student_id (
+        profiles (
+          id,
           full_name,
           email,
           student_registration,
@@ -179,7 +183,39 @@ export async function getConsolidatedPeriodGrades(
       `)
       .eq('subject_id', subjectId);
 
-    if (enrollmentsError) throw enrollmentsError;
+    if (!joinError && joinData) {
+      enrollmentsData = joinData;
+    } else {
+      // Fallback seguro: busca direta em enrollments + profiles (evita falha PGRST200)
+      const { data: rawEnrollments, error: rawError } = await supabase
+        .from('enrollments')
+        .select('id, student_id')
+        .eq('subject_id', subjectId);
+
+      if (rawError) throw rawError;
+
+      const studentIds = Array.from(
+        new Set((rawEnrollments || []).map((e: any) => e.student_id).filter(Boolean))
+      );
+
+      let profileMap = new Map<string, any>();
+      if (studentIds.length > 0) {
+        const { data: profilesList } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, student_registration, grade')
+          .in('id', studentIds);
+
+        (profilesList || []).forEach((p: any) => {
+          profileMap.set(p.id, p);
+        });
+      }
+
+      enrollmentsData = (rawEnrollments || []).map((e: any) => ({
+        id: e.id,
+        student_id: e.student_id,
+        profiles: profileMap.get(e.student_id) || null
+      }));
+    }
 
     let enrollments = (enrollmentsData || []).map((e: any) => ({
       enrollment_id: Number(e.id),
