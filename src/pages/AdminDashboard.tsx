@@ -30,6 +30,7 @@ interface User {
   student_registration?: string | null;
   roles: Array<{ role: string }>;
   grade?: string;
+  created_at?: string;
 }
 
 interface Teacher {
@@ -97,6 +98,11 @@ export default function AdminDashboard() {
   const [isDemoting, setIsDemoting] = useState(false);
   const { toast } = useToast();
 
+  // Filtros para Usuários
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userSearch, setUserSearch] = useState('');
+  const [userSortBy, setUserSortBy] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc'>('name-asc');
+
   // Filtros para Estudantes
   const [studentGradeFilter, setStudentGradeFilter] = useState('all');
   const [studentSearch, setStudentSearch] = useState('');
@@ -125,6 +131,50 @@ export default function AdminDashboard() {
         .filter((sem): sem is string => Boolean(sem && sem.length > 0))
     )
   ).sort();
+
+  // Filtragem e ordenação de Usuários
+  const filteredUsers = useMemo(() => {
+    const list = users.filter((u) => {
+      if (userRoleFilter !== 'all') {
+        const hasRole = u.roles?.some((r: any) => r.role === userRoleFilter);
+        if (!hasRole) return false;
+      }
+      if (userSearch.trim()) {
+        const searchLower = userSearch.toLowerCase().trim();
+        const matchName = u.full_name?.toLowerCase().includes(searchLower);
+        const matchEmail = u.email?.toLowerCase().includes(searchLower);
+        const matchReg = u.student_registration?.toLowerCase().includes(searchLower);
+        if (!matchName && !matchEmail && !matchReg) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return [...list].sort((a, b) => {
+      if (userSortBy === 'name-asc') {
+        const nameA = (a.full_name || a.email || '').trim();
+        const nameB = (b.full_name || b.email || '').trim();
+        return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+      }
+      if (userSortBy === 'name-desc') {
+        const nameA = (a.full_name || a.email || '').trim();
+        const nameB = (b.full_name || b.email || '').trim();
+        return nameB.localeCompare(nameA, 'pt-BR', { sensitivity: 'base' });
+      }
+      if (userSortBy === 'date-desc') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      }
+      if (userSortBy === 'date-asc') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateA - dateB;
+      }
+      return 0;
+    });
+  }, [users, userRoleFilter, userSearch, userSortBy]);
 
   // Filtragem e ordenação de Estudantes
   const filteredStudents = useMemo(() => {
@@ -816,11 +866,145 @@ export default function AdminDashboard() {
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Lista de Todos os Usuários</CardTitle>
-                <CardDescription>
-                  Estudantes, professores e administradores do sistema
-                </CardDescription>
+              <CardHeader className="pb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>Lista de Todos os Usuários</CardTitle>
+                    <CardDescription>
+                      {filteredUsers.length === users.length
+                        ? `Total de ${users.length} usuários cadastrados`
+                        : `Exibindo ${filteredUsers.length} de ${users.length} usuários`}
+                    </CardDescription>
+                  </div>
+
+                  {/* Filtro rápido por Papel / Tipo (Badges / Pílulas) */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={userRoleFilter === 'all' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setUserRoleFilter('all')}
+                    >
+                      Todos
+                      <Badge variant={userRoleFilter === 'all' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {users.length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={userRoleFilter === 'student' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setUserRoleFilter('student')}
+                    >
+                      Estudantes
+                      <Badge variant={userRoleFilter === 'student' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {users.filter(u => u.roles.some((r: any) => r.role === 'student')).length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={userRoleFilter === 'teacher' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setUserRoleFilter('teacher')}
+                    >
+                      Professores
+                      <Badge variant={userRoleFilter === 'teacher' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {users.filter(u => u.roles.some((r: any) => r.role === 'teacher')).length}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={userRoleFilter === 'admin' ? 'default' : 'outline'}
+                      className="text-xs h-8"
+                      onClick={() => setUserRoleFilter('admin')}
+                    >
+                      Administradores
+                      <Badge variant={userRoleFilter === 'admin' ? 'secondary' : 'outline'} className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length}
+                      </Badge>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Barra de Busca e Filtro */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-3">
+                  <div className="relative w-full sm:flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome, email ou matrícula..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="pl-9 pr-8 h-9"
+                    />
+                    {userSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setUserSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="w-full sm:w-48">
+                    <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                      <SelectTrigger className="h-9">
+                        <div className="flex items-center gap-2 truncate">
+                          <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <SelectValue placeholder="Filtrar por papel" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Papéis</SelectItem>
+                        <SelectItem value="student">Estudantes</SelectItem>
+                        <SelectItem value="teacher">Professores</SelectItem>
+                        <SelectItem value="admin">Administradores</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="w-full sm:w-56">
+                    <Select
+                      value={userSortBy}
+                      onValueChange={(val: 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc') => setUserSortBy(val)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <div className="flex items-center gap-2 truncate">
+                          <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <SelectValue placeholder="Classificar por" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
+                        <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
+                        <SelectItem value="date-desc">Data de Cadastro (Mais recentes)</SelectItem>
+                        <SelectItem value="date-asc">Data de Cadastro (Mais antigos)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(userRoleFilter !== 'all' || userSearch.trim() !== '' || userSortBy !== 'name-asc') && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setUserRoleFilter('all');
+                        setUserSearch('');
+                        setUserSortBy('name-asc');
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground h-9 px-3 shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingUsers ? (
@@ -829,11 +1013,11 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {users.map((user) => {
+                    {filteredUsers.map((user) => {
                       const status = getUserStatus(user);
                       const isStudent = user.roles.some((r: any) => r.role === 'student');
                       return (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:border-primary/40 transition-colors">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                               <span className="text-sm font-semibold text-primary">
@@ -843,13 +1027,21 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-medium">{user.full_name || 'Sem nome'}</p>
                               <p className="text-sm text-muted-foreground">{user.email}</p>
-                              {isStudent && user.student_registration && (
-                                <p className="text-xs text-muted-foreground">
-                                  Matrícula: {user.student_registration}
-                                </p>
-                              )}
+                              <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                                {isStudent && user.student_registration && (
+                                  <span>Matrícula: {user.student_registration}</span>
+                                )}
+                                {user.created_at && (
+                                  <>
+                                    {isStudent && user.student_registration && <span>•</span>}
+                                    <span>
+                                      Cadastrado em: {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                               {isStudent && user.grade && (
-                                <Badge variant="secondary" className={`text-xs ${
+                                <Badge variant="secondary" className={`text-xs mt-1.5 inline-block ${
                                   user.grade === '1º Ano' ? 'bg-green-100 text-green-800 border-green-200' :
                                   user.grade === '2º Ano' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                   user.grade === '3º Ano' ? 'bg-purple-100 text-purple-800 border-purple-200' :
@@ -947,10 +1139,31 @@ export default function AdminDashboard() {
                         </div>
                       );
                     })}
-                    {users.length === 0 && (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhum usuário encontrado
-                      </p>
+                    {filteredUsers.length === 0 && (
+                      <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
+                        <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+                        <p className="text-base font-medium text-foreground">Nenhum usuário encontrado</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {userRoleFilter !== 'all' || userSearch
+                            ? 'Nenhum usuário corresponde aos filtros selecionados.'
+                            : 'Nenhum usuário cadastrado no sistema.'}
+                        </p>
+                        {(userRoleFilter !== 'all' || userSearch || userSortBy !== 'name-asc') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => {
+                              setUserRoleFilter('all');
+                              setUserSearch('');
+                              setUserSortBy('name-asc');
+                            }}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                            Limpar filtros
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
