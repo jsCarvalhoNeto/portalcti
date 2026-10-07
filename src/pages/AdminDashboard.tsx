@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap, Bell } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap, Bell, ArrowUpDown } from 'lucide-react';
 import TeacherNotificationsModal from '@/components/teacher/TeacherNotificationsModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +44,7 @@ interface Student {
   email: string;
   student_registration?: string;
   grade?: string | null;
+  created_at?: string;
 }
 
 interface AdminSubject {
@@ -99,6 +100,7 @@ export default function AdminDashboard() {
   // Filtros para Estudantes
   const [studentGradeFilter, setStudentGradeFilter] = useState('all');
   const [studentSearch, setStudentSearch] = useState('');
+  const [studentSortBy, setStudentSortBy] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc'>('name-asc');
 
   // Filtros para Disciplinas
   const [subjectGradeFilter, setSubjectGradeFilter] = useState('all');
@@ -124,26 +126,52 @@ export default function AdminDashboard() {
     )
   ).sort();
 
-  // Filtragem de Estudantes
-  const filteredStudents = students.filter((student) => {
-    if (studentGradeFilter !== 'all') {
-      if (studentGradeFilter === 'no-grade') {
-        if (student.grade) return false;
-      } else if (student.grade !== studentGradeFilter) {
-        return false;
+  // Filtragem e ordenação de Estudantes
+  const filteredStudents = useMemo(() => {
+    const list = students.filter((student) => {
+      if (studentGradeFilter !== 'all') {
+        if (studentGradeFilter === 'no-grade') {
+          if (student.grade) return false;
+        } else if (student.grade !== studentGradeFilter) {
+          return false;
+        }
       }
-    }
-    if (studentSearch.trim()) {
-      const searchLower = studentSearch.toLowerCase().trim();
-      const matchName = student.full_name?.toLowerCase().includes(searchLower);
-      const matchEmail = student.email?.toLowerCase().includes(searchLower);
-      const matchReg = student.student_registration?.toLowerCase().includes(searchLower);
-      if (!matchName && !matchEmail && !matchReg) {
-        return false;
+      if (studentSearch.trim()) {
+        const searchLower = studentSearch.toLowerCase().trim();
+        const matchName = student.full_name?.toLowerCase().includes(searchLower);
+        const matchEmail = student.email?.toLowerCase().includes(searchLower);
+        const matchReg = student.student_registration?.toLowerCase().includes(searchLower);
+        if (!matchName && !matchEmail && !matchReg) {
+          return false;
+        }
       }
-    }
-    return true;
-  });
+      return true;
+    });
+
+    return [...list].sort((a, b) => {
+      if (studentSortBy === 'name-asc') {
+        const nameA = (a.full_name || '').trim();
+        const nameB = (b.full_name || '').trim();
+        return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+      }
+      if (studentSortBy === 'name-desc') {
+        const nameA = (a.full_name || '').trim();
+        const nameB = (b.full_name || '').trim();
+        return nameB.localeCompare(nameA, 'pt-BR', { sensitivity: 'base' });
+      }
+      if (studentSortBy === 'date-desc') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      }
+      if (studentSortBy === 'date-asc') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateA - dateB;
+      }
+      return 0;
+    });
+  }, [students, studentGradeFilter, studentSearch, studentSortBy]);
 
   // Filtragem de Disciplinas
   const filteredSubjects = subjects.filter((subject) => {
@@ -1138,7 +1166,27 @@ export default function AdminDashboard() {
                     </Select>
                   </div>
 
-                  {(studentGradeFilter !== 'all' || studentSearch.trim() !== '') && (
+                  <div className="w-full sm:w-56">
+                    <Select
+                      value={studentSortBy}
+                      onValueChange={(val: 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc') => setStudentSortBy(val)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <div className="flex items-center gap-2 truncate">
+                          <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <SelectValue placeholder="Classificar por" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
+                        <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
+                        <SelectItem value="date-desc">Data de Cadastro (Mais recentes)</SelectItem>
+                        <SelectItem value="date-asc">Data de Cadastro (Mais antigos)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(studentGradeFilter !== 'all' || studentSearch.trim() !== '' || studentSortBy !== 'name-asc') && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -1146,6 +1194,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setStudentGradeFilter('all');
                         setStudentSearch('');
+                        setStudentSortBy('name-asc');
                       }}
                       className="text-xs text-muted-foreground hover:text-foreground h-9 px-3 shrink-0"
                     >
@@ -1176,11 +1225,19 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-medium">{student.full_name || 'Nome não informado'}</p>
                               <p className="text-sm text-muted-foreground">{student.email}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Matrícula: {student.student_registration || 'Não informado'}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                                <span>Matrícula: {student.student_registration || 'Não informado'}</span>
+                                {student.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span>
+                                      Cadastrado em: {new Date(student.created_at).toLocaleDateString('pt-BR')}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                               {student.grade && (
-                                <Badge variant="secondary" className={`text-xs mt-1 inline-block ${
+                                <Badge variant="secondary" className={`text-xs mt-1.5 inline-block ${
                                   student.grade === '1º Ano' ? 'bg-green-100 text-green-800 border-green-200' :
                                   student.grade === '2º Ano' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                   student.grade === '3º Ano' ? 'bg-purple-100 text-purple-800 border-purple-200' :
@@ -1238,7 +1295,7 @@ export default function AdminDashboard() {
                             ? 'Nenhum estudante corresponde aos filtros selecionados.'
                             : 'Nenhum estudante cadastrado no sistema.'}
                         </p>
-                        {(studentGradeFilter !== 'all' || studentSearch) && (
+                        {(studentGradeFilter !== 'all' || studentSearch || studentSortBy !== 'name-asc') && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -1246,6 +1303,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               setStudentGradeFilter('all');
                               setStudentSearch('');
+                              setStudentSortBy('name-asc');
                             }}
                           >
                             <RotateCcw className="w-3.5 h-3.5 mr-2" />
