@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap, Bell, ArrowUpDown } from 'lucide-react';
+import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, ShieldAlert, Plus, Edit, Trash2, Eye, Menu, Search, Filter, X, RotateCcw, KeyRound, Briefcase, GraduationCap, Bell, ArrowUpDown, Globe } from 'lucide-react';
 import TeacherNotificationsModal from '@/components/teacher/TeacherNotificationsModal';
+import PortalSettingsTab from '@/components/admin/portal/PortalSettingsTab';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -274,6 +275,7 @@ export default function AdminDashboard() {
       students: 'Estudantes',
       teachers: 'Professores',
       subjects: 'Disciplinas',
+      portal: 'Portal',
       settings: 'Configurações'
     };
     return labels[tabValue] || tabValue;
@@ -638,12 +640,13 @@ export default function AdminDashboard() {
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <div className="max-w-xl mx-auto mb-8">
-            <TabsList className="hidden md:grid w-full grid-cols-6 gap-3">
+            <TabsList className="hidden md:grid w-full grid-cols-7 gap-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="users">Usuários</TabsTrigger>
               <TabsTrigger value="students">Estudantes</TabsTrigger>
               <TabsTrigger value="teachers">Professores</TabsTrigger>
               <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
+              <TabsTrigger value="portal">Portal</TabsTrigger>
               <TabsTrigger value="settings">Configurações</TabsTrigger>
             </TabsList>
             
@@ -717,6 +720,17 @@ export default function AdminDashboard() {
                         >
                           <BookOpen className="w-4 h-4 mr-2" />
                           Disciplinas
+                        </Button>
+                        <Button
+                          variant={activeTab === 'portal' ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab('portal');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <Globe className="w-4 h-4 mr-2 text-primary" />
+                          Portal
                         </Button>
                         <Button
                           variant={activeTab === 'settings' ? "secondary" : "ghost"}
@@ -1847,6 +1861,10 @@ export default function AdminDashboard() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </TabsContent>
+
+          <TabsContent value="portal" className="space-y-6">
+            <PortalSettingsTab subjects={subjects} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

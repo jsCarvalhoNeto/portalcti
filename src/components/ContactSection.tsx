@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,11 @@ import {
   MapPin, 
   Phone, 
   Mail, 
-  Clock,
-  Send
+  Clock, 
+  Send 
 } from "lucide-react";
+import { getPortalSettings, DEFAULT_CONTACT_INFO } from "@/services/portalSettingsService";
+import { PortalContactInfo } from "@/types/portal";
 
 const ContactSection = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +23,31 @@ const ContactSection = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [contactData, setContactData] = useState<PortalContactInfo>(DEFAULT_CONTACT_INFO);
+
+  const fetchContactSettings = async () => {
+    try {
+      const settings = await getPortalSettings();
+      if (settings?.contact_info) {
+        setContactData(settings.contact_info);
+      }
+    } catch (err) {
+      console.warn("Erro ao buscar dados de contato:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchContactSettings();
+
+    const handleUpdate = () => {
+      fetchContactSettings();
+    };
+
+    window.addEventListener("portal-data-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("portal-data-updated", handleUpdate);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,25 +96,29 @@ const ContactSection = () => {
       icon: MapPin,
       title: "Localização",
       details: [
-        "EEEP Balbina Viana Arraes",
-        "R. Leonor Rufino, 943 - Sol Nascente",
-        "Brejo Santo - CE, CEP: 63260-000"
+        contactData.school_name || "EEEP Balbina Viana Arraes",
+        contactData.address || "Brejo Santo - CE",
+        "Ensino Médio Integrado"
       ],
       color: "from-blue-500 to-purple-600"
     },
     {
       icon: Phone,
       title: "Telefones & WhatsApp",
-      details: ["(88) 99849-9645", "Coordenação do Curso", "Atendimento via WhatsApp"],
+      details: [
+        contactData.whatsapp ? `${contactData.whatsapp} (WhatsApp)` : "(88) 99999-0000",
+        contactData.phone ? `${contactData.phone} (Secretaria)` : "(88) 3531-0000",
+        "Coordenação do Curso Técnico"
+      ],
       color: "from-purple-500 to-pink-600"
     },
     {
       icon: Mail,
       title: "E-mails Oficiais",
       details: [
-        "professorsantosbva@gmail.com",
-        "eeepbalbinaviana@escola.ce.gov.br",
-        "informatica.bva@escola.ce.gov.br"
+        contactData.email || "suporte@portalinfobva.tech",
+        contactData.secondary_email || "coordenacao@portalinfobva.tech",
+        "Atendimento Acadêmico"
       ],
       color: "from-pink-500 to-red-600"
     },
@@ -95,7 +126,7 @@ const ContactSection = () => {
       icon: Clock,
       title: "Horário de Funcionamento",
       details: [
-        "Segunda a Sexta: 07:30 às 17:00",
+        contactData.business_hours || "Segunda a Sexta: 07:30 às 17:00",
         "Ensino Médio Integrado (Tempo Integral)",
         "Portal Online: Acesso 24/7"
       ],

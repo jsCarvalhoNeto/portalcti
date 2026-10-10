@@ -1,39 +1,68 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   GraduationCap, 
-  Facebook, 
   Instagram, 
-  Twitter, 
   Youtube,
   Linkedin,
   Mail,
   Phone,
   MapPin,
-  Heart
+  Heart,
+  Github
 } from "lucide-react";
+import { getPortalSettings, DEFAULT_CONTACT_INFO, DEFAULT_SOCIAL_LINKS } from "@/services/portalSettingsService";
+import { PortalContactInfo, PortalSocialLinks } from "@/types/portal";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [contactData, setContactData] = useState<PortalContactInfo>(DEFAULT_CONTACT_INFO);
+  const [socialData, setSocialData] = useState<PortalSocialLinks>(DEFAULT_SOCIAL_LINKS);
+
+  const fetchFooterSettings = async () => {
+    try {
+      const settings = await getPortalSettings();
+      if (settings?.contact_info) setContactData(settings.contact_info);
+      if (settings?.social_links) setSocialData(settings.social_links);
+    } catch (err) {
+      console.warn("Erro ao buscar dados do footer:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFooterSettings();
+
+    const handleUpdate = () => {
+      fetchFooterSettings();
+    };
+
+    window.addEventListener("portal-data-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("portal-data-updated", handleUpdate);
+    };
+  }, []);
 
   const quickLinks = [
-    { name: "Sobre o Curso", href: "#about" },
-    { name: "Disciplinas", href: "#courses" },
+    { name: "Início", href: "/" },
+    { name: "Disciplinas", href: "/disciplinas" },
     { name: "Projetos", href: "#projects" },
-    { name: "Processo Seletivo", href: "#admission" },
+    { name: "Notícias", href: "#news" },
+    { name: "Eventos", href: "/eventos" },
+    { name: "Contato", href: "#contact" },
   ];
 
   const resources = [
     { name: "Biblioteca Digital", href: "#library" },
-    { name: "Portal do Aluno", href: "#student" },
+    { name: "Portal do Aluno", href: "/student" },
+    { name: "Painel do Professor", href: "/teacher" },
     { name: "Calendário Acadêmico", href: "#calendar" }
   ];
 
   const socialLinks = [
-    { icon: Facebook, href: "#", name: "Facebook" },
-    { icon: Instagram, href: "#", name: "Instagram" },
-    { icon: Twitter, href: "#", name: "Twitter" },
-    { icon: Youtube, href: "#", name: "YouTube" },
-    { icon: Linkedin, href: "#", name: "LinkedIn" },
+    { icon: Instagram, href: socialData.instagram || "https://instagram.com", name: "Instagram" },
+    { icon: Github, href: socialData.github || "https://github.com", name: "GitHub" },
+    { icon: Youtube, href: socialData.youtube || "https://youtube.com", name: "YouTube" },
+    { icon: Linkedin, href: socialData.linkedin || "#", name: "LinkedIn" },
   ];
 
   return (
@@ -122,18 +151,18 @@ const Footer = () => {
               <div className="flex items-start space-x-3">
                 <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="text-muted-foreground">
-                  <p>R. Leonor Rufino, 943 - Sol Nascente, Brejo Santo - CE, 63260-000</p>
+                  <p>{contactData.school_name} - {contactData.address}</p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-primary flex-shrink-0" />
-                <span className="text-muted-foreground">(88) 998499645</span>
+                <span className="text-muted-foreground">{contactData.whatsapp || contactData.phone}</span>
               </div>
               
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-primary flex-shrink-0" />
-                <span className="text-muted-foreground">professorsantosbva@gmail.com</span>
+                <span className="text-muted-foreground">{contactData.email}</span>
               </div>
             </div>
 

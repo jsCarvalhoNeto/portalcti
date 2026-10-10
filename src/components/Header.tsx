@@ -1,22 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoCurso from "@/assets/logocurso.png";
+import { getPortalSettings, DEFAULT_MENU_ITEMS } from "@/services/portalSettingsService";
+import { PortalMenuItem } from "@/types/portal";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, userRole, signOut, isAdmin, isStudent, isTeacher } = useAuth();
+  const [navigationItems, setNavigationItems] = useState<PortalMenuItem[]>(
+    DEFAULT_MENU_ITEMS.filter((item) => item.is_active)
+  );
 
-  const navigationItems = [
-    { name: "Início", href: "/" },
-    { name: "Disciplinas", href: "/disciplinas" },
-    { name: "Projetos", href: "#projects" },
-    { name: "Notícias", href: "#news" },
-    { name: "Eventos", href: "/eventos" },
-    { name: "Contato", href: "#contact" },
-  ];
+  const fetchMenu = async () => {
+    try {
+      const settings = await getPortalSettings();
+      if (settings?.menu_items) {
+        const activeItems = settings.menu_items
+          .filter((item) => item.is_active)
+          .sort((a, b) => a.order - b.order);
+        setNavigationItems(activeItems);
+      }
+    } catch (err) {
+      console.warn("Erro ao carregar menu dinâmico:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMenu();
+
+    const handleUpdate = () => {
+      fetchMenu();
+    };
+
+    window.addEventListener("portal-data-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("portal-data-updated", handleUpdate);
+    };
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-primary/95 backdrop-blur-md border-b border-primary/30 shadow-lg">
