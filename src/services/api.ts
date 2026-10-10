@@ -6,12 +6,15 @@ export const API_URL = import.meta.env.VITE_API_URL;
 const createAPI = () => {
   let baseURL = API_URL;
 
-  // Validar se VITE_API_URL está definida
-  if (!baseURL) {
-    console.error('❌ VITE_API_URL não está definida! Configure a variável de ambiente no Railway.');
-    console.error('📋 Adicione: VITE_API_URL=https://ctibackend-production.up.railway.app/api');
-    // Usar fallback para desenvolvimento local
-    baseURL = '/api';
+  const isProd = import.meta.env.PROD || (
+    typeof window !== 'undefined' && 
+    !window.location.hostname.includes('localhost') && 
+    !window.location.hostname.includes('127.0.0.1')
+  );
+
+  // Se estiver em ambiente público (portalinfobva.tech) e a URL apontar para localhost ou estiver vazia, usar backend de produção
+  if (!baseURL || (isProd && baseURL.includes('localhost'))) {
+    baseURL = 'https://ctibackend-production.up.railway.app/api';
   }
 
   // Remover barra final se existir para evitar dupla barra
