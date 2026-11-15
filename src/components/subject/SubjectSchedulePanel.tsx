@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import subjectLessonService, { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import SubjectLessonEditor from './SubjectLessonEditor';
 import SubjectLessonViewer from './SubjectLessonViewer';
+import SubjectAiLessonGeneratorModal from './SubjectAiLessonGeneratorModal';
 import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 
 interface SubjectSchedulePanelProps {
@@ -62,9 +63,29 @@ export default function SubjectSchedulePanel({
   // Modais
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [viewerInitialTab, setViewerInitialTab] = useState<'content' | 'plan'>('content');
   const [selectedLessonForEdit, setSelectedLessonForEdit] = useState<SubjectLesson | null>(null);
   const [selectedLessonForView, setSelectedLessonForView] = useState<SubjectLesson | null>(null);
+  const [selectedLessonForAi, setSelectedLessonForAi] = useState<SubjectLesson | null>(null);
+
+  const handleOpenAiGenerator = (lesson: SubjectLesson | null = null) => {
+    setSelectedLessonForAi(lesson);
+    setIsAiGeneratorOpen(true);
+  };
+
+  const handleAiLessonSaved = (savedLesson: SubjectLesson, isUpdate: boolean) => {
+    setLessons((prev) => {
+      if (isUpdate) {
+        return prev.map((item) =>
+          String(item.id) === String(savedLesson.id) ? savedLesson : item
+        );
+      }
+      return [...prev, savedLesson].sort(
+        (a, b) => (a.order_index || 0) - (b.order_index || 0)
+      );
+    });
+  };
 
   const numSubjectId = Number(subjectId);
 
@@ -304,13 +325,24 @@ export default function SubjectSchedulePanel({
             </Button>
 
             {canManage && (
-              <Button
-                onClick={handleOpenCreate}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg gap-2 h-9"
-              >
-                <Plus className="w-4 h-4" />
-                Nova Aula
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenAiGenerator(null)}
+                  className="bg-indigo-600/80 hover:bg-indigo-600 text-white border-indigo-400/50 font-semibold shadow-lg gap-1.5 h-9"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Gerar Aula com IA
+                </Button>
+                <Button
+                  onClick={handleOpenCreate}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg gap-2 h-9"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nova Aula
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -609,6 +641,21 @@ export default function SubjectSchedulePanel({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
+                        handleOpenAiGenerator(lesson);
+                      }}
+                      title="Gerar ou substituir conteúdo desta aula com IA"
+                      className="h-8 w-8 p-0 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border-amber-200 dark:border-amber-900/30"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+
+                  {canManage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleOpenLessonPlan(lesson);
                       }}
                       title="Plano de Aula & Roteiro do Professor"
@@ -765,6 +812,20 @@ export default function SubjectSchedulePanel({
           );
           setSelectedLessonForView(updatedLesson);
         }}
+      />
+
+      {/* Modal de Geração de Aulas com IA (Ementa/Cronograma/Modelo) */}
+      <SubjectAiLessonGeneratorModal
+        isOpen={isAiGeneratorOpen}
+        onClose={() => {
+          setIsAiGeneratorOpen(false);
+          setSelectedLessonForAi(null);
+        }}
+        subjectId={numSubjectId}
+        subjectName={subjectName}
+        lessons={lessons}
+        initialLesson={selectedLessonForAi}
+        onLessonSaved={handleAiLessonSaved}
       />
     </div>
   );

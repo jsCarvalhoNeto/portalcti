@@ -25,6 +25,11 @@ export interface SaveTeacherAiConfigInput {
   is_default?: boolean;
 }
 
+export interface AiAttachment {
+  mimeType: string;
+  data: string;
+}
+
 export interface AiGenerationOptions {
   prompt: string;
   systemInstruction?: string;
@@ -32,6 +37,8 @@ export interface AiGenerationOptions {
   maxOutputTokens?: number;
   configId?: string;
   fallbackOnError?: boolean;
+  attachments?: AiAttachment[];
+  responseMimeType?: 'text/plain' | 'application/json';
 }
 
 export interface AiGenerationResult {
@@ -308,6 +315,30 @@ export async function toggleTeacherAiConfigActive(
 }
 
 /**
+ * Converte um arquivo (ex: PDF) em AiAttachment (base64) para envio multimodal à API do Gemini.
+ */
+export function fileToAiAttachment(file: File): Promise<AiAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const commaIndex = result.indexOf(',');
+      const base64 = commaIndex >= 0 ? result.slice(commaIndex + 1) : result;
+      if (!base64) {
+        reject(new Error(`Não foi possível ler o arquivo "${file.name}".`));
+        return;
+      }
+      resolve({
+        mimeType: file.type || 'application/pdf',
+        data: base64,
+      });
+    };
+    reader.onerror = () => reject(new Error(`Erro ao ler o arquivo "${file.name}".`));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Executa uma chamada de geração de conteúdo na API do Google Gemini.
  */
 export async function generateWithGoogleAi(
@@ -323,11 +354,26 @@ export async function generateWithGoogleAi(
 
   const endpoint = `${GOOGLE_API_BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
+  const requestParts: Array<Record<string, unknown>> = [];
+  if (Array.isArray(options.attachments)) {
+    for (const attachment of options.attachments) {
+      if (attachment?.data && attachment?.mimeType) {
+        requestParts.push({
+          inlineData: {
+            mimeType: attachment.mimeType,
+            data: attachment.data,
+          },
+        });
+      }
+    }
+  }
+  requestParts.push({ text: options.prompt });
+
   const body: Record<string, unknown> = {
     contents: [
       {
         role: 'user',
-        parts: [{ text: options.prompt }],
+        parts: requestParts,
       },
     ],
   };
@@ -344,6 +390,9 @@ export async function generateWithGoogleAi(
   }
   if (typeof options.maxOutputTokens === 'number') {
     generationConfig.maxOutputTokens = options.maxOutputTokens;
+  }
+  if (options.responseMimeType) {
+    generationConfig.responseMimeType = options.responseMimeType;
   }
   if (Object.keys(generationConfig).length > 0) {
     body.generationConfig = generationConfig;
