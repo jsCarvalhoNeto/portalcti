@@ -759,6 +759,12 @@ export default function SubjectSchedulePanel({
           handleDeleteLesson(lessonId);
         }}
         onToggleCompleted={handleToggleCompleted}
+        onLessonUpdated={(updatedLesson) => {
+          setLessons((prev) =>
+            prev.map((item) => (String(item.id) === String(updatedLesson.id) ? updatedLesson : item))
+          );
+          setSelectedLessonForView(updatedLesson);
+        }}
       />
     </div>
   );

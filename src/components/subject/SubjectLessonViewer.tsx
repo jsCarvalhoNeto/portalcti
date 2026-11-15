@@ -43,12 +43,13 @@ import {
   RotateCcw,
   CircleDot
 } from 'lucide-react';
-import { SubjectLesson } from '@/services/subjectLessonService';
+import { SubjectLesson, subjectLessonService } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
 import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 import TextHighlightToolbar from './TextHighlightToolbar';
 import LaserPointerOverlay from './LaserPointerOverlay';
+import LessonPlanAiAssistant from './LessonPlanAiAssistant';
 import {
   HIGHLIGHT_COLORS,
   getColorById,
@@ -72,6 +73,7 @@ interface SubjectLessonViewerProps {
   onEdit?: (lesson: SubjectLesson) => void;
   onDelete?: (lessonId: string) => void;
   onToggleCompleted?: (lessonId: string, currentStatus: boolean) => void;
+  onLessonUpdated?: (lesson: SubjectLesson) => void;
 }
 
 export default function SubjectLessonViewer({
@@ -83,12 +85,14 @@ export default function SubjectLessonViewer({
   initialTab = 'content',
   onEdit,
   onDelete,
-  onToggleCompleted
+  onToggleCompleted,
+  onLessonUpdated
 }: SubjectLessonViewerProps) {
   const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'plan'>(initialTab);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
 
@@ -115,12 +119,36 @@ export default function SubjectLessonViewer({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
+      setShowAiAssistant(false);
     } else {
       setIsPresentationMode(false);
       setZoomLevel(100);
       setIsLaserActive(false);
+      setShowAiAssistant(false);
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, lesson?.id]);
+
+  const handleApplyAiLessonPlan = async (newPlan: string) => {
+    if (!lesson) return;
+    try {
+      const updated = await subjectLessonService.update(String(lesson.id), {
+        lesson_plan: newPlan,
+      });
+      onLessonUpdated?.(updated);
+      toast({
+        title: 'Plano de Aula Atualizado',
+        description: 'As alterações no plano de aula foram salvas com sucesso.',
+      });
+    } catch (error) {
+      console.error('Erro ao salvar plano de aula:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o plano de aula.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1027,9 +1055,25 @@ export default function SubjectLessonViewer({
                   </div>
 
                   {activeTab === 'plan' && (
-                    <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Exclusivo para o Professor</span>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={showAiAssistant ? 'default' : 'outline'}
+                        onClick={() => setShowAiAssistant((prev) => !prev)}
+                        className={`h-7 text-xs gap-1.5 ${
+                          showAiAssistant
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            : 'border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
+                      </Button>
+                      <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Exclusivo para o Professor</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1096,55 +1140,79 @@ export default function SubjectLessonViewer({
               onClick={handleContainerClick}
             >
               {activeTab === 'plan' ? (
-                defaultPlanHtml ? (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
-                        <ClipboardList className="w-5 h-5" />
+                <div className="space-y-5">
+                  {showAiAssistant && (
+                    <LessonPlanAiAssistant
+                      lesson={lesson}
+                      subjectName={subjectName}
+                      onApplyLessonPlan={handleApplyAiLessonPlan}
+                      onClose={() => setShowAiAssistant(false)}
+                    />
+                  )}
+
+                  {defaultPlanHtml ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                          <ClipboardList className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                            Plano de Aula & Roteiro Pedagógico do Professor
+                            <Badge className="bg-indigo-600 text-white text-[10px] h-4">Docente</Badge>
+                          </h4>
+                          <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
+                            Estrutura de objetivos didáticos, metodologia de aplicação em sala de aula, recursos necessários e critérios de avaliação.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                          Plano de Aula & Roteiro Pedagógico do Professor
-                          <Badge className="bg-indigo-600 text-white text-[10px] h-4">Docente</Badge>
-                        </h4>
-                        <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
-                          Estrutura de objetivos didáticos, metodologia de aplicação em sala de aula, recursos necessários e critérios de avaliação.
+
+                      <div 
+                        className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words pt-2"
+                        dangerouslySetInnerHTML={{ __html: currentHtml || defaultPlanHtml }}
+                      />
+                    </div>
+                  ) : (
+                    /* Empty State do Plano de Aula */
+                    <div className="text-center py-12 px-4 space-y-4 max-w-md mx-auto">
+                      <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+                        <ClipboardList className="w-8 h-8" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-bold text-foreground">Nenhum Plano de Aula cadastrado</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Você pode cadastrar os objetivos pedagógicos, recursos e anotações didáticas manualmente ou gerar com o Assistente IA.
                         </p>
                       </div>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        {!showAiAssistant && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowAiAssistant(true)}
+                            className="border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-semibold text-xs gap-1.5"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Gerar com IA
+                          </Button>
+                        )}
+                        {onEdit && (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onEdit(lesson);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs gap-1.5 shadow"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Cadastrar Plano de Aula
+                          </Button>
+                        )}
+                      </div>
                     </div>
-
-                    <div 
-                      className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words pt-2"
-                      dangerouslySetInnerHTML={{ __html: currentHtml || defaultPlanHtml }}
-                    />
-                  </div>
-                ) : (
-                  /* Empty State do Plano de Aula */
-                  <div className="text-center py-16 px-4 space-y-4 max-w-md mx-auto">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
-                      <ClipboardList className="w-8 h-8" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-foreground">Nenhum Plano de Aula cadastrado</h3>
-                      <p className="text-xs text-muted-foreground">
-                        Você pode cadastrar os objetivos pedagógicos, recursos e anotações didáticas que ficam salvos exclusivamente para a gestão docente.
-                      </p>
-                    </div>
-                    {onEdit && (
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onEdit(lesson);
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs gap-1.5 shadow"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Cadastrar Plano de Aula
-                      </Button>
-                    )}
-                  </div>
-                )
+                  )}
+                </div>
               ) : (
                 <div 
                   className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
