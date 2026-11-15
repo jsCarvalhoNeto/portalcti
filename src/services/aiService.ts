@@ -362,13 +362,25 @@ export async function generateWithGoogleAi(
     throw new Error(`Falha na API do Google (${model}): ${apiMessage}`);
   }
 
-  const parts = payload?.candidates?.[0]?.content?.parts;
+  const candidate = payload?.candidates?.[0];
+  const parts = candidate?.content?.parts;
   const text = Array.isArray(parts)
-    ? parts.map((p: { text?: string }) => p.text || '').join('').trim()
+    ? parts
+        .filter((p: { thought?: boolean }) => !p.thought)
+        .map((p: { text?: string }) => p.text || '')
+        .join('')
+        .trim()
     : '';
 
   if (!text) {
-    throw new Error('A API do Google retornou uma resposta vazia.');
+    const finishReason = candidate?.finishReason;
+    const blockReason = payload?.promptFeedback?.blockReason;
+    const detail = blockReason
+      ? `Bloqueio: ${blockReason}`
+      : finishReason
+        ? `Motivo: ${finishReason}`
+        : 'Sem conteúdo retornado';
+    throw new Error(`A API do Google retornou uma resposta vazia (${detail}).`);
   }
 
   return {
@@ -393,7 +405,7 @@ export async function testGoogleAiConnection(
       {
         prompt: 'Responda apenas com: OK',
         temperature: 0,
-        maxOutputTokens: 16,
+        maxOutputTokens: 512,
       }
     );
 
