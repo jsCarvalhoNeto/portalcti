@@ -47,7 +47,9 @@ import {
   Target,
   Wrench,
   GraduationCap,
-  ImageIcon
+  ImageIcon,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -193,6 +195,7 @@ export default function SubjectLessonEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Referências para os textareas de Conteúdo e Plano de Aula
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -430,11 +433,25 @@ export default function SubjectLessonEditor({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-background border shadow-2xl">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setIsFullscreen(false);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent
+        className={`flex flex-col p-0 overflow-hidden bg-background border shadow-2xl transition-all duration-200 ${
+          isFullscreen
+            ? 'w-screen h-screen max-w-none max-h-none rounded-none'
+            : 'max-w-4xl max-h-[92vh]'
+        }`}
+      >
         {/* Header com visual refinado */}
         <DialogHeader className="p-6 pb-4 border-b bg-muted/40 flex-shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 pr-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                 <BookOpen className="w-5 h-5" />
@@ -448,11 +465,27 @@ export default function SubjectLessonEditor({
                 </DialogDescription>
               </div>
             </div>
-            {lesson && (
-              <Badge variant="outline" className="text-xs bg-background">
-                ID: {String(lesson.id).slice(0, 8)}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {lesson && (
+                <Badge variant="outline" className="text-xs bg-background">
+                  ID: {String(lesson.id).slice(0, 8)}
+                </Badge>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsFullscreen((prev) => !prev)}
+                title={isFullscreen ? 'Restaurar tamanho' : 'Ampliar para tela cheia'}
+                className="h-8 w-8 p-0 bg-background"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-3.5 h-3.5" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5" />
+                )}
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
