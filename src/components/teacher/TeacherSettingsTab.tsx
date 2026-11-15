@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import EventReportsModal from '@/components/EventReportsModal';
 import DetailedReportModal from '@/components/DetailedReportModal';
 import TeamManagementModal from '@/components/TeamManagementModal';
+import TeacherAiSettingsCard from '@/components/teacher/TeacherAiSettingsCard';
 
 export default function TeacherSettingsTab() {
   const { profile, editingProfile, setEditingProfile } = useTeacherDashboard();
@@ -275,6 +276,8 @@ export default function TeacherSettingsTab() {
             </Button>
           </CardContent>
         </Card>
+
+        <TeacherAiSettingsCard />
       </div>
 
       {/* Modal de Relatórios */}
