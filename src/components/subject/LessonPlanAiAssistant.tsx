@@ -44,13 +44,15 @@ interface ChatMessage {
 interface LessonPlanAiAssistantProps {
   lesson: SubjectLesson;
   subjectName?: string;
-  onApplyLessonPlan: (newPlan: string) => Promise<void>;
+  target?: 'plan' | 'content';
+  onApplyLessonPlan: (newText: string) => Promise<void>;
   onClose: () => void;
 }
 
 export default function LessonPlanAiAssistant({
   lesson,
   subjectName,
+  target = 'plan',
   onApplyLessonPlan,
   onClose,
 }: LessonPlanAiAssistantProps) {
@@ -98,14 +100,28 @@ export default function LessonPlanAiAssistant({
     };
   }, [user?.id]);
 
-  // Reset conversa ao trocar de aula
+  // Reset conversa ao trocar de aula ou de alvo (conteúdo vs plano)
   useEffect(() => {
     setMessages([]);
     setDraftPlan(null);
     setPromptInput('');
-  }, [lesson.id]);
+  }, [lesson.id, target]);
+
+  const isContentTarget = target === 'content';
+  const targetLabel = isContentTarget ? 'Conteúdo da Aula' : 'Plano de Aula';
+  const currentTargetText = isContentTarget ? lesson.content || '' : lesson.lesson_plan || '';
+  const hasExistingTarget = Boolean(currentTargetText.trim());
 
   const buildSystemInstruction = () => {
+    if (isContentTarget) {
+      return [
+        'Você é um assistente pedagógico especialista em Educação Profissional e Tecnológica (Curso Técnico em Informática).',
+        'Ajude o professor a analisar, estruturar, editar e melhorar o Conteúdo da Aula (material didático exibido aos alunos) em português do Brasil.',
+        'Quando o professor pedir um conteúdo completo ou reescrito, entregue em Markdown didático e bem formatado (títulos, explicações claras, exemplos práticos/código quando aplicável e atividades de fixação), sem blocos de código ```markdown envolvendo tudo.',
+        'Seja claro, preciso e adequado ao nível técnico dos estudantes.',
+      ].join(' ');
+    }
+
     return [
       'Você é um assistente pedagógico especialista em Educação Profissional e Tecnológica (Curso Técnico em Informática).',
       'Ajude o professor a analisar, planejar, editar e melhorar o Plano de Aula em português do Brasil.',
@@ -231,8 +247,6 @@ export default function LessonPlanAiAssistant({
     }
   };
 
-  const hasExistingPlan = Boolean(lesson.lesson_plan && lesson.lesson_plan.trim());
-
   return (
     <div className="rounded-xl border border-indigo-500/30 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 space-y-4">
       {/* Cabeçalho do Assistente */}
@@ -243,13 +257,15 @@ export default function LessonPlanAiAssistant({
           </div>
           <div>
             <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              Assistente de IA do Plano de Aula
+              Assistente de IA — {targetLabel}
               <Badge variant="secondary" className="text-[10px]">
                 Google Gemini
               </Badge>
             </h4>
             <p className="text-xs text-muted-foreground">
-              Analise, peça sugestões, converse sobre a aula e aplique melhorias no plano docente.
+              {isContentTarget
+                ? 'Analise, peça sugestões, converse sobre o material didático e aplique melhorias no conteúdo da aula.'
+                : 'Analise, peça sugestões, converse sobre a aula e aplique melhorias no plano docente.'}
             </p>
           </div>
         </div>
@@ -307,14 +323,16 @@ export default function LessonPlanAiAssistant({
               disabled={generating || loadingConfigs}
               onClick={() =>
                 runAiPrompt(
-                  'Analisar plano de aula atual',
-                  'Analise criticamente o plano de aula atual em relação ao conteúdo da aula. Destaque pontos fortes, possíveis lacunas, adequação do tempo e clareza dos objetivos.'
+                  isContentTarget ? 'Analisar conteúdo da aula atual' : 'Analisar plano de aula atual',
+                  isContentTarget
+                    ? 'Analise criticamente o conteúdo da aula atual exibido aos alunos. Avalie clareza didática, profundidade técnica, exemplos, organização em Markdown e possíveis lacunas.'
+                    : 'Analise criticamente o plano de aula atual em relação ao conteúdo da aula. Destaque pontos fortes, possíveis lacunas, adequação do tempo e clareza dos objetivos.'
                 )
               }
               className="h-8 text-xs gap-1.5 bg-background"
             >
               <SearchCheck className="w-3.5 h-3.5 text-blue-600" />
-              Analisar Plano
+              {isContentTarget ? 'Analisar Conteúdo' : 'Analisar Plano'}
             </Button>
 
             <Button
@@ -324,8 +342,10 @@ export default function LessonPlanAiAssistant({
               disabled={generating || loadingConfigs}
               onClick={() =>
                 runAiPrompt(
-                  'Sugerir melhorias e dinâmicas',
-                  'Dê sugestões práticas de melhoria para esta aula: metodologias ativas, dinâmicas rápidas, exemplos do mercado de trabalho e perguntas para engajar os alunos.'
+                  isContentTarget ? 'Sugerir melhorias para o conteúdo' : 'Sugerir melhorias e dinâmicas',
+                  isContentTarget
+                    ? 'Dê sugestões práticas de melhoria para o material da aula: explicações mais claras, analogias, exemplos de código/caso real e exercícios de fixação para os alunos.'
+                    : 'Dê sugestões práticas de melhoria para esta aula: metodologias ativas, dinâmicas rápidas, exemplos do mercado de trabalho e perguntas para engajar os alunos.'
                 )
               }
               className="h-8 text-xs gap-1.5 bg-background"
@@ -341,23 +361,29 @@ export default function LessonPlanAiAssistant({
               disabled={generating || loadingConfigs}
               onClick={() =>
                 runAiPrompt(
-                  hasExistingPlan ? 'Reescrever e aprimorar plano de aula' : 'Gerar plano de aula completo',
-                  hasExistingPlan
-                    ? 'Reescreva e aprimore o Plano de Aula atual mantendo o que já está bom, corrigindo lacunas e deixando-o pronto para uso em sala de aula em Markdown.'
-                    : 'Crie um Plano de Aula completo em Markdown baseado no título e no conteúdo da aula, incluindo objetivos, roteiro com tempos, metodologia, dinâmica prática e avaliação.'
+                  hasExistingTarget
+                    ? `Reescrever e aprimorar ${targetLabel.toLowerCase()}`
+                    : `Gerar ${targetLabel.toLowerCase()} completo`,
+                  isContentTarget
+                    ? hasExistingTarget
+                      ? 'Reescreva e aprimore o Conteúdo da Aula atual mantendo os pontos essenciais, melhorando a didática, exemplos e formatação em Markdown para os alunos.'
+                      : 'Crie um Conteúdo da Aula completo e didático em Markdown baseado no título da aula e no plano de aula, com introdução, explicação, exemplos práticos e exercícios.'
+                    : hasExistingTarget
+                      ? 'Reescreva e aprimore o Plano de Aula atual mantendo o que já está bom, corrigindo lacunas e deixando-o pronto para uso em sala de aula em Markdown.'
+                      : 'Crie um Plano de Aula completo em Markdown baseado no título e no conteúdo da aula, incluindo objetivos, roteiro com tempos, metodologia, dinâmica prática e avaliação.'
                 )
               }
               className="h-8 text-xs gap-1.5 bg-background"
             >
-              {hasExistingPlan ? (
+              {hasExistingTarget ? (
                 <>
                   <Wand2 className="w-3.5 h-3.5 text-indigo-600" />
-                  Aprimorar Plano
+                  {isContentTarget ? 'Aprimorar Conteúdo' : 'Aprimorar Plano'}
                 </>
               ) : (
                 <>
                   <FilePlus2 className="w-3.5 h-3.5 text-indigo-600" />
-                  Gerar Plano do Zero
+                  {isContentTarget ? 'Gerar Conteúdo do Zero' : 'Gerar Plano do Zero'}
                 </>
               )}
             </Button>
@@ -366,20 +392,20 @@ export default function LessonPlanAiAssistant({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setDraftPlan(lesson.lesson_plan || '')}
+              onClick={() => setDraftPlan(currentTargetText)}
               className="h-8 text-xs gap-1.5 bg-background ml-auto"
             >
               <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-              Editar Plano Aqui
+              {isContentTarget ? 'Editar Conteúdo Aqui' : 'Editar Plano Aqui'}
             </Button>
           </div>
 
-          {/* Editor Rápido do Plano (quando aberto) */}
+          {/* Editor Rápido (quando aberto) */}
           {draftPlan !== null && (
             <div className="rounded-lg border bg-background p-3 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">
-                  Edição Rápida do Plano de Aula (Markdown)
+                  Edição Rápida — {targetLabel} (Markdown)
                 </span>
                 <Button
                   type="button"
@@ -397,7 +423,7 @@ export default function LessonPlanAiAssistant({
                 onChange={(e) => setDraftPlan(e.target.value)}
                 rows={10}
                 className="font-mono text-xs"
-                placeholder="Edite o plano de aula em Markdown..."
+                placeholder={`Edite o ${targetLabel.toLowerCase()} em Markdown...`}
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -412,7 +438,7 @@ export default function LessonPlanAiAssistant({
                   ) : (
                     <Save className="w-3.5 h-3.5" />
                   )}
-                  Salvar Plano de Aula
+                  Salvar {targetLabel}
                 </Button>
               </div>
             </div>
@@ -472,7 +498,7 @@ export default function LessonPlanAiAssistant({
                             onClick={() => handleApplyDirect(msg.content)}
                           >
                             <Save className="w-3 h-3" />
-                            Aplicar no Plano
+                            {isContentTarget ? 'Aplicar no Conteúdo' : 'Aplicar no Plano'}
                           </Button>
                         </div>
                       </div>

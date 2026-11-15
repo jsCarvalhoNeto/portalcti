@@ -128,22 +128,25 @@ export default function SubjectLessonViewer({
     }
   }, [isOpen, initialTab, lesson?.id]);
 
-  const handleApplyAiLessonPlan = async (newPlan: string) => {
+  const handleApplyAiText = async (newText: string, target: 'plan' | 'content') => {
     if (!lesson) return;
     try {
-      const updated = await subjectLessonService.update(String(lesson.id), {
-        lesson_plan: newPlan,
-      });
+      const updatePayload =
+        target === 'content' ? { content: newText } : { lesson_plan: newText };
+      const updated = await subjectLessonService.update(String(lesson.id), updatePayload);
       onLessonUpdated?.(updated);
       toast({
-        title: 'Plano de Aula Atualizado',
-        description: 'As alterações no plano de aula foram salvas com sucesso.',
+        title: target === 'content' ? 'Conteúdo da Aula Atualizado' : 'Plano de Aula Atualizado',
+        description:
+          target === 'content'
+            ? 'As alterações no conteúdo da aula foram salvas com sucesso.'
+            : 'As alterações no plano de aula foram salvas com sucesso.',
       });
     } catch (error) {
-      console.error('Erro ao salvar plano de aula:', error);
+      console.error('Erro ao salvar alteração da IA:', error);
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar o plano de aula.',
+        description: 'Não foi possível salvar as alterações.',
         variant: 'destructive',
       });
       throw error;
@@ -1054,28 +1057,28 @@ export default function SubjectLessonViewer({
                     </button>
                   </div>
 
-                  {activeTab === 'plan' && (
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={showAiAssistant ? 'default' : 'outline'}
-                        onClick={() => setShowAiAssistant((prev) => !prev)}
-                        className={`h-7 text-xs gap-1.5 ${
-                          showAiAssistant
-                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                            : 'border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
-                        }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
-                      </Button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={showAiAssistant ? 'default' : 'outline'}
+                      onClick={() => setShowAiAssistant((prev) => !prev)}
+                      className={`h-7 text-xs gap-1.5 ${
+                        showAiAssistant
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                          : 'border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
+                    </Button>
+                    {activeTab === 'plan' && (
                       <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
                         <Lock className="w-3.5 h-3.5" />
                         <span>Exclusivo para o Professor</span>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1145,7 +1148,8 @@ export default function SubjectLessonViewer({
                     <LessonPlanAiAssistant
                       lesson={lesson}
                       subjectName={subjectName}
-                      onApplyLessonPlan={handleApplyAiLessonPlan}
+                      target="plan"
+                      onApplyLessonPlan={(newPlan) => handleApplyAiText(newPlan, 'plan')}
                       onClose={() => setShowAiAssistant(false)}
                     />
                   )}
@@ -1214,10 +1218,21 @@ export default function SubjectLessonViewer({
                   )}
                 </div>
               ) : (
-                <div 
-                  className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
-                  dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
-                />
+                <div className="space-y-5">
+                  {isTeacher && showAiAssistant && (
+                    <LessonPlanAiAssistant
+                      lesson={lesson}
+                      subjectName={subjectName}
+                      target="content"
+                      onApplyLessonPlan={(newContent) => handleApplyAiText(newContent, 'content')}
+                      onClose={() => setShowAiAssistant(false)}
+                    />
+                  )}
+                  <div 
+                    className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
+                    dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
+                  />
+                </div>
               )}
             </div>
 

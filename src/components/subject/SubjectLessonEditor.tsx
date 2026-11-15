@@ -54,6 +54,7 @@ import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
 import fileUploadService from '@/services/fileUploadService';
 import SubjectLessonImageModal from './SubjectLessonImageModal';
+import LessonPlanAiAssistant from './LessonPlanAiAssistant';
 
 interface SubjectLessonEditorProps {
   isOpen: boolean;
@@ -191,6 +192,7 @@ export default function SubjectLessonEditor({
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSaving, setIsSaving] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
 
   // Referências para os textareas de Conteúdo e Plano de Aula
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -708,27 +710,59 @@ export default function SubjectLessonEditor({
               </div>
 
               {contentSection === 'content' ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleInsertSnippet(LESSON_TEMPLATE)}
-                  className="text-xs h-8 gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Modelo Padrão de Aula
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant={showAiAssistant ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowAiAssistant((prev) => !prev)}
+                    className={`text-xs h-8 gap-1.5 ${
+                      showAiAssistant
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:hover:bg-indigo-950/50'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleInsertSnippet(LESSON_TEMPLATE)}
+                    className="text-xs h-8 gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Modelo Padrão de Aula
+                  </Button>
+                </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleInsertSnippet(LESSON_PLAN_TEMPLATE)}
-                  className="text-xs h-8 gap-1.5 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:hover:bg-indigo-950/50"
-                >
-                  <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Modelo Pedagógico de Plano
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant={showAiAssistant ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowAiAssistant((prev) => !prev)}
+                    className={`text-xs h-8 gap-1.5 ${
+                      showAiAssistant
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:hover:bg-indigo-950/50'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleInsertSnippet(LESSON_PLAN_TEMPLATE)}
+                    className="text-xs h-8 gap-1.5 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:hover:bg-indigo-950/50"
+                  >
+                    <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    Modelo Pedagógico de Plano
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -740,6 +774,41 @@ export default function SubjectLessonEditor({
                   <strong>Área Exclusiva do Docente:</strong> Este conteúdo (estratégia didática, objetivos pedagógicos, gabaritos e anotações) só é visível para os professores da disciplina.
                 </span>
               </div>
+            )}
+
+            {/* Assistente de IA (Conteúdo da Aula ou Plano de Aula) */}
+            {showAiAssistant && (
+              <LessonPlanAiAssistant
+                lesson={{
+                  id: lesson?.id || 'draft-lesson',
+                  subject_id: subjectId,
+                  title: formData.title || lesson?.title || 'Aula sem título',
+                  content: formData.content || '',
+                  lesson_plan: formData.lesson_plan || '',
+                  is_completed: Boolean(formData.is_completed),
+                  period: formData.period || '1',
+                  evaluation_type: formData.evaluation_type || 'none',
+                  order_index: formData.order_index || 1,
+                }}
+                subjectName={subjectName}
+                target={contentSection}
+                onApplyLessonPlan={async (newText) => {
+                  if (contentSection === 'content') {
+                    setFormData((prev) => ({ ...prev, content: newText }));
+                    toast({
+                      title: 'Conteúdo aplicado no editor',
+                      description: 'Revise se desejar e clique em "Salvar Alterações" para gravar.',
+                    });
+                  } else {
+                    setFormData((prev) => ({ ...prev, lesson_plan: newText }));
+                    toast({
+                      title: 'Plano aplicado no editor',
+                      description: 'Revise se desejar e clique em "Salvar Alterações" para gravar.',
+                    });
+                  }
+                }}
+                onClose={() => setShowAiAssistant(false)}
+              />
             )}
 
             {/* Abas Editor / Preview */}
