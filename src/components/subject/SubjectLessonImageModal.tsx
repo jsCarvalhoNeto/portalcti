@@ -88,6 +88,69 @@ export default function SubjectLessonImageModal({
     });
   };
 
+  /**
+   * Redimensiona e comprime imagens (exceto GIF animado e SVG) para WebP antes do envio/Base64.
+   */
+  const optimizeImageFile = (file: File, maxWidth = 1280, quality = 0.82): Promise<File> => {
+    if (file.type === 'image/gif' || file.type === 'image/svg+xml') {
+      return Promise.resolve(file);
+    }
+
+    return new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file);
+              return;
+            }
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+            resolve(new File([blob], `${baseName}.webp`, { type: 'image/webp' }));
+          },
+          'image/webp',
+          quality
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    });
+  };
+
+  const buildImageSnippet = (url: string, caption: string): string => {
+    if (imageAlignment === 'center') {
+      return `\n\n<div align="center">\n  <img src="${url}" alt="${caption}" loading="lazy" decoding="async" style="max-width: 100%; height: auto; max-height: 520px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />\n  <p><em>${caption}</em></p>\n</div>\n\n`;
+    }
+    return `\n\n![${caption}](${url})\n\n`;
+  };
+
   const handleUploadAndInsert = async () => {
     if (!selectedFile) {
       toast({
@@ -100,27 +163,21 @@ export default function SubjectLessonImageModal({
 
     try {
       setIsUploading(true);
+      const optimizedFile = await optimizeImageFile(selectedFile);
       let finalUrl = '';
 
       try {
         // Tenta upload no endpoint do servidor
-        finalUrl = await fileUploadService.uploadImage(selectedFile);
+        finalUrl = await fileUploadService.uploadImage(optimizedFile);
       } catch (uploadError) {
         console.warn('Upload via API falhou, utilizando fallback Base64 embutido:', uploadError);
-        // Fallback garantido: converte para Data URL (Base64)
-        finalUrl = await readFileAsDataUrl(selectedFile);
+        // Fallback garantido: converte para Data URL (Base64) já otimizado
+        finalUrl = await readFileAsDataUrl(optimizedFile);
       }
 
       const caption = altText.trim() || 'Imagem da aula';
-      let snippet = '';
+      onInsertImage(buildImageSnippet(finalUrl, caption));
 
-      if (imageAlignment === 'center') {
-        snippet = `\n\n<div align="center">\n  <img src="${finalUrl}" alt="${caption}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />\n  <p><em>${caption}</em></p>\n</div>\n\n`;
-      } else {
-        snippet = `\n\n![${caption}](${finalUrl})\n\n`;
-      }
-
-      onInsertImage(snippet);
       toast({
         title: 'Imagem inserida!',
         description: 'A imagem foi adicionada com sucesso ao conteúdo da aula.',
@@ -150,15 +207,8 @@ export default function SubjectLessonImageModal({
     }
 
     const caption = altText.trim() || 'Imagem da aula';
-    let snippet = '';
+    onInsertImage(buildImageSnippet(imageUrl.trim(), caption));
 
-    if (imageAlignment === 'center') {
-      snippet = `\n\n<div align="center">\n  <img src="${imageUrl.trim()}" alt="${caption}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />\n  <p><em>${caption}</em></p>\n</div>\n\n`;
-    } else {
-      snippet = `\n\n![${caption}](${imageUrl.trim()})\n\n`;
-    }
-
-    onInsertImage(snippet);
     toast({
       title: 'Imagem inserida!',
       description: 'A imagem da URL foi adicionada ao conteúdo da aula.',
