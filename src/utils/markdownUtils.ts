@@ -113,14 +113,34 @@ export function escapeHtmlTagsInMarkdown(markdown: string): string {
     return key;
   });
 
+  // 5b. Proteger blocos HTML de imagens centralizadas/alinhadas e figuras (inseridos pelo editor de aula)
+  text = text.replace(/(<div\s+align=["'](?:center|left|right)["'][^>]*>[\s\S]*?<\/div>)/gi, (match) => {
+    const key = `___ALIGNED_BLOCK_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  text = text.replace(/(<figure[^>]*>[\s\S]*?<\/figure>)/gi, (match) => {
+    const key = `___FIGURE_BLOCK_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  // 5c. Proteger tags <img> reais com src de URL ou Data URI
+  text = text.replace(/(<img\b[^>]*\bsrc\s*=\s*["'](?:https?:\/\/|\/|data:image\/)[^"']*["'][^>]*\/?>)/gi, (match) => {
+    const key = `___IMG_TAG_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
   // 6. Escapar tags HTML soltas no texto para que sejam exibidas como tags de código destacadas
   text = text.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (_, slash, tagName, rest) => {
     return `<code>&lt;${slash}${tagName}${rest}&gt;</code>`;
   });
 
-  // 7. Restaurar os blocos protegidos
+  // 7. Restaurar os blocos protegidos (usando função para evitar interpretação de $ na URL/código)
   placeholders.forEach(({ key, value }) => {
-    text = text.replace(key, value);
+    text = text.replace(key, () => value);
   });
 
   return text;
