@@ -32,6 +32,10 @@ import {
   getTeacherAiConfigs,
   generateWithTeacherAi,
 } from '@/services/aiService';
+import {
+  SubjectAiContext,
+  getSubjectAiContext,
+} from '@/services/subjectAiContextService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 
 interface ChatMessage {
@@ -62,6 +66,7 @@ export default function LessonPlanAiAssistant({
   const [configs, setConfigs] = useState<TeacherAiConfig[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string>('');
   const [loadingConfigs, setLoadingConfigs] = useState(true);
+  const [subjectAiContext, setSubjectAiContext] = useState<SubjectAiContext | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [promptInput, setPromptInput] = useState('');
@@ -100,6 +105,18 @@ export default function LessonPlanAiAssistant({
     };
   }, [user?.id]);
 
+  // Carrega contexto/instruções gerais da disciplina
+  useEffect(() => {
+    if (!lesson.subject_id) return;
+    let active = true;
+    getSubjectAiContext(lesson.subject_id).then((ctx) => {
+      if (active) setSubjectAiContext(ctx);
+    });
+    return () => {
+      active = false;
+    };
+  }, [lesson.subject_id]);
+
   // Reset conversa ao trocar de aula ou de alvo (conteúdo vs plano)
   useEffect(() => {
     setMessages([]);
@@ -133,17 +150,27 @@ export default function LessonPlanAiAssistant({
   const buildLessonContext = () => {
     const contentText = (lesson.content || '').trim() || 'Não informado.';
     const planText = (lesson.lesson_plan || '').trim() || 'Nenhum plano de aula cadastrado ainda.';
+    const generalInstructions = (subjectAiContext?.content_template || '').trim();
+    const syllabusSummary = (subjectAiContext?.syllabus_text || '').trim();
 
     return [
       `Disciplina: ${subjectName || 'Não informada'}`,
       `Aula: ${lesson.title}`,
+      generalInstructions
+        ? `\n--- INSTRUÇÕES GERAIS E MODELO DA DISCIPLINA ---\n${generalInstructions}`
+        : '',
+      syllabusSummary
+        ? `\n--- EMENTA E ESCOPO DA DISCIPLINA ---\n${syllabusSummary}`
+        : '',
       '',
       '--- CONTEÚDO DA AULA (visível aos alunos) ---',
       contentText,
       '',
       '--- PLANO DE AULA ATUAL (exclusivo do professor) ---',
       planText,
-    ].join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
   };
 
   const runAiPrompt = async (userLabel: string, instruction: string) => {

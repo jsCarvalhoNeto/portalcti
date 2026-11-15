@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { 
   BookOpen, 
@@ -29,10 +30,19 @@ import {
   ExternalLink,
   Printer,
   ClipboardList,
-  Lock
+  Lock,
+  Save,
+  Settings2,
+  Loader2
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import subjectLessonService, { SubjectLesson, CreateLessonData } from '@/services/subjectLessonService';
+import {
+  getSubjectAiContext,
+  saveSubjectAiContext,
+  createEmptySubjectAiContext,
+} from '@/services/subjectAiContextService';
 import SubjectLessonEditor from './SubjectLessonEditor';
 import SubjectLessonViewer from './SubjectLessonViewer';
 import SubjectAiLessonGeneratorModal from './SubjectAiLessonGeneratorModal';
@@ -49,7 +59,13 @@ export default function SubjectSchedulePanel({
   subjectName = 'Disciplina',
   canManage = false
 }: SubjectSchedulePanelProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
+
+  // Instruções gerais de IA da disciplina (inclui modelo de aula)
+  const [isAiInstructionsOpen, setIsAiInstructionsOpen] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [savingAiInstructions, setSavingAiInstructions] = useState(false);
 
   const [lessons, setLessons] = useState<SubjectLesson[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +126,51 @@ export default function SubjectSchedulePanel({
   useEffect(() => {
     loadLessons();
   }, [loadLessons]);
+
+  useEffect(() => {
+    if (!canManage || !numSubjectId) return;
+    let active = true;
+    getSubjectAiContext(numSubjectId).then((ctx) => {
+      if (active && ctx) {
+        setAiInstructions(ctx.content_template || '');
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [canManage, numSubjectId]);
+
+  const handleSaveAiInstructions = async () => {
+    if (!numSubjectId) return;
+    setSavingAiInstructions(true);
+    try {
+      const existing =
+        (await getSubjectAiContext(numSubjectId)) ||
+        createEmptySubjectAiContext(numSubjectId);
+      await saveSubjectAiContext({
+        ...existing,
+        subject_id: numSubjectId,
+        teacher_id: user?.id || existing.teacher_id || null,
+        total_lessons: existing.total_lessons || lessons.length || 20,
+        content_template: aiInstructions,
+      });
+      toast({
+        title: 'Instruções de IA salvas',
+        description:
+          'As instruções gerais e o modelo da aula foram salvos para esta disciplina.',
+      });
+      setIsAiInstructionsOpen(false);
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar instruções',
+        description:
+          error instanceof Error ? error.message : 'Não foi possível salvar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAiInstructions(false);
+    }
+  };
 
   // Ações de Salvar / Criar / Editar
   const handleSaveLesson = async (formData: CreateLessonData) => {
@@ -329,6 +390,16 @@ export default function SubjectSchedulePanel({
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setIsAiInstructionsOpen((prev) => !prev)}
+                  className="bg-black/30 hover:bg-black/50 text-white border-white/25 gap-1.5 h-9"
+                  title="Configurar instruções gerais e modelo de aula para a IA"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  Instruções IA
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleOpenAiGenerator(null)}
                   className="bg-indigo-600/80 hover:bg-indigo-600 text-white border-indigo-400/50 font-semibold shadow-lg gap-1.5 h-9"
                 >
@@ -372,6 +443,66 @@ export default function SubjectSchedulePanel({
           </div>
         )}
       </div>
+
+      {/* Painel de Instruções Gerais de Geração com IA (Modelo da Disciplina) */}
+      {canManage && isAiInstructionsOpen && (
+        <Card className="border-indigo-500/30 bg-indigo-500/5 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  Instruções Gerais para Geração de Aulas com IA
+                </CardTitle>
+                <CardDescription className="text-xs mt-1">
+                  Informe todas as diretrizes e cole o modelo padrão de aula desta disciplina. Essas instruções serão usadas automaticamente ao gerar aulas com IA.
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAiInstructionsOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              rows={8}
+              value={aiInstructions}
+              onChange={(e) => setAiInstructions(e.target.value)}
+              placeholder="Escreva aqui as instruções gerais para a geração de aulas desta disciplina (público-alvo, metodologia, linguagem, regras de formatação) e cole o modelo padrão que a IA deve seguir..."
+              className="font-mono text-xs bg-background"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAiInstructionsOpen(false)}
+              >
+                Fechar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveAiInstructions}
+                disabled={savingAiInstructions}
+                className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {savingAiInstructions ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                Salvar Instruções da Disciplina
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Barra de Filtros e Busca */}
       <Card className="bg-card border shadow-sm">
@@ -635,21 +766,6 @@ export default function SubjectSchedulePanel({
                 </Button>
 
                 <div className="flex items-center gap-1">
-                  {canManage && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenAiGenerator(lesson);
-                      }}
-                      title="Gerar ou substituir conteúdo desta aula com IA"
-                      className="h-8 w-8 p-0 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border-amber-200 dark:border-amber-900/30"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-
                   {canManage && (
                     <Button
                       variant="outline"

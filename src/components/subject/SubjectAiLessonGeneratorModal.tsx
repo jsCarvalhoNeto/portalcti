@@ -919,7 +919,7 @@ export default function SubjectAiLessonGeneratorModal({
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">
-                  3. Modelo de Conteúdo da Aula (obrigatório na geração)
+                  3. Instruções Gerais de Geração & Modelo da Aula
                 </Label>
                 <Textarea
                   rows={8}
@@ -927,7 +927,7 @@ export default function SubjectAiLessonGeneratorModal({
                   onChange={(e) =>
                     setContext((prev) => ({ ...prev, content_template: e.target.value }))
                   }
-                  placeholder="Cole aqui o seu modelo de aula em Markdown (seções, cabeçalhos, estrutura de exemplos, atividades, etc.)..."
+                  placeholder="Escreva as instruções gerais (metodologia, tom, regras) e cole aqui o seu modelo de aula em Markdown..."
                   className="font-mono text-xs"
                 />
               </div>
