@@ -213,6 +213,40 @@ function stripMarkdownJsonFence(raw: string): string {
 }
 
 /**
+ * Remove cercas externas ```markdown ... ``` ou preâmbulos curtos antes de um bloco markdown completo,
+ * evitando que a prévia dos cards exiba "[Código]" no início da aula.
+ */
+export function stripOuterMarkdownFence(raw: string): string {
+  let text = raw.trim();
+  // Remove preâmbulo curto antes de um bloco ```markdown ... ``` que envolve o documento todo
+  const preambleFenceMatch = text.match(
+    /^(?:[^\n]{0,180}\n+){0,2}```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i
+  );
+  if (preambleFenceMatch) {
+    return preambleFenceMatch[1].trim();
+  }
+  const directFenceMatch = text.match(/^```(?:markdown|md)?\s*\n?([\s\S]*?)\n?```$/i);
+  if (directFenceMatch) {
+    return directFenceMatch[1].trim();
+  }
+  return text;
+}
+
+/**
+ * Monta o título padrão do card de aula preservando o título do cronograma quando disponível.
+ */
+export function formatLessonTitleFromSchedule(
+  orderIndex: number,
+  scheduleTitle?: string | null
+): string {
+  const padded = String(Math.max(1, orderIndex)).padStart(2, '0');
+  const clean = (scheduleTitle || '').trim();
+  if (!clean) return `Aula ${padded}`;
+  if (/^aula\s*\d+/i.test(clean)) return clean;
+  return `Aula ${padded} – ${clean}`;
+}
+
+/**
  * Lê os PDFs da disciplina (ementa, cronograma, escopo) com o Gemini e extrai:
  * 1) Um resumo estruturado da ementa e escopo
  * 2) O mapeamento das aulas (respeitando a quantidade informada ou detectada)
@@ -335,10 +369,16 @@ export async function generateSingleLessonWithAi(
   const hasContentTemplate = Boolean(context.content_template?.trim());
   const hasPlanTemplate = Boolean(context.lesson_plan_template?.trim());
 
+  const isGenericTitle = !title.trim() || /^aula\s*\d+\s*$/i.test(title.trim());
+  const effectiveTitle =
+    isGenericTitle && mappedItem?.title
+      ? formatLessonTitleFromSchedule(orderIndex, mappedItem.title)
+      : title.trim() || formatLessonTitleFromSchedule(orderIndex, mappedItem?.title);
+
   const contextBlocks: string[] = [
     `Disciplina: ${subjectName}`,
     `Aula alvo: #${orderIndex} de ${context.total_lessons || '?'}`,
-    `Título atual/planejado: ${title}`,
+    `Título oficial da aula (para o card no cronograma): ${effectiveTitle}`,
     period ? `Período/Bimestre: ${period}` : '',
     lessonDate ? `Data prevista no cronograma: ${lessonDate}` : '',
     previousLessonTitle ? `Aula anterior no cronograma: ${previousLessonTitle}` : '',
@@ -391,9 +431,9 @@ export async function generateSingleLessonWithAi(
       '',
       'Retorne EXCLUSIVAMENTE um JSON válido com a estrutura:',
       '{',
-      '  "title": "Título final da aula (mantendo o padrão Aula XX - ... se aplicável)",',
-      '  "content": "Conteúdo completo da aula em Markdown seguindo rigorosamente o modelo de conteúdo",',
-      '  "lessonPlan": "Plano de aula do professor em Markdown seguindo o modelo de plano de aula"',
+      `  "title": "Título final da aula preservando o título do cronograma (${effectiveTitle})",`,
+      '  "content": "Conteúdo completo da aula em Markdown seguindo rigorosamente o modelo de conteúdo (sem envolver em bloco ```markdown)",',
+      '  "lessonPlan": "Plano de aula do professor em Markdown seguindo o modelo de plano de aula (sem envolver em bloco ```markdown)"',
       '}'
     );
 
@@ -413,10 +453,14 @@ export async function generateSingleLessonWithAi(
       lessonPlan?: string;
     };
 
+    const parsedTitle = (parsed.title || '').trim();
+    const finalTitle =
+      parsedTitle && !/^aula\s*\d+\s*$/i.test(parsedTitle) ? parsedTitle : effectiveTitle;
+
     return {
-      title: (parsed.title || title).trim(),
-      content: (parsed.content || '').trim(),
-      lessonPlan: (parsed.lessonPlan || '').trim(),
+      title: finalTitle,
+      content: stripOuterMarkdownFence(parsed.content || ''),
+      lessonPlan: stripOuterMarkdownFence(parsed.lessonPlan || ''),
       model: res.model,
     };
   }
@@ -438,7 +482,7 @@ export async function generateSingleLessonWithAi(
 
   contextBlocks.push(
     '',
-    `Entregue apenas o Markdown final ${isPlanOnly ? 'do Plano de Aula' : 'do Conteúdo da Aula'}, sem envolver tudo em blocos \`\`\`markdown.`
+    `Entregue apenas o Markdown final ${isPlanOnly ? 'do Plano de Aula' : 'do Conteúdo da Aula'}, sem textos introdutórios e sem envolver tudo em blocos \`\`\`markdown.`
   );
 
   const res = await generateWithTeacherAi(teacherId, {
@@ -450,10 +494,12 @@ export async function generateSingleLessonWithAi(
     fallbackOnError: true,
   });
 
+  const cleanedText = stripOuterMarkdownFence(res.text);
+
   return {
-    title,
-    content: isPlanOnly ? undefined : res.text.trim(),
-    lessonPlan: isPlanOnly ? res.text.trim() : undefined,
+    title: effectiveTitle,
+    content: isPlanOnly ? undefined : cleanedText,
+    lessonPlan: isPlanOnly ? cleanedText : undefined,
     model: res.model,
   };
 }

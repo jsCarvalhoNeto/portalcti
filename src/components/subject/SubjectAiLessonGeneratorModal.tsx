@@ -44,6 +44,7 @@ import {
   SubjectAiContext,
   analyzeSubjectDocumentsWithAi,
   createEmptySubjectAiContext,
+  formatLessonTitleFromSchedule,
   generateSingleLessonWithAi,
   getSubjectAiContext,
   saveSubjectAiContext,
@@ -96,11 +97,12 @@ export default function SubjectAiLessonGeneratorModal({
   const [selectedLessonId, setSelectedLessonId] = useState<string>('');
   const [newOrderIndex, setNewOrderIndex] = useState<number>(1);
   const [newTitle, setNewTitle] = useState<string>('');
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState<boolean>(false);
   const [newPeriod, setNewPeriod] = useState<string>('1');
   const [newDate, setNewDate] = useState<string>('');
 
-  // Parâmetros de geração
-  const [generateTarget, setGenerateTarget] = useState<'content' | 'plan' | 'both'>('content');
+  // Parâmetros de geração (padrão 'both': Conteúdo + Plano Docente)
+  const [generateTarget, setGenerateTarget] = useState<'content' | 'plan' | 'both'>('both');
   const [extraInstructions, setExtraInstructions] = useState<string>('');
   const [generating, setGenerating] = useState(false);
 
@@ -166,6 +168,7 @@ export default function SubjectAiLessonGeneratorModal({
     setGeneratedContent('');
     setGeneratedPlan('');
     setExtraInstructions('');
+    setTitleManuallyEdited(false);
 
     if (initialLesson) {
       setTargetMode('existing');
@@ -183,7 +186,7 @@ export default function SubjectAiLessonGeneratorModal({
         ? Math.max(...sortedLessons.map((l) => l.order_index || 0)) + 1
         : 1;
     setNewOrderIndex(nextIdx);
-    setNewTitle(`Aula ${String(nextIdx).padStart(2, '0')}`);
+    setNewTitle(formatLessonTitleFromSchedule(nextIdx));
     setNewPeriod('1');
     setNewDate('');
   }, [isOpen, initialLesson, sortedLessons]);
@@ -210,6 +213,20 @@ export default function SubjectAiLessonGeneratorModal({
       null
     );
   }, [context.schedule_map, effectiveOrderIndex]);
+
+  // Sincroniza automaticamente título, período e data com o item do cronograma no modo "Nova Aula"
+  useEffect(() => {
+    if (!isOpen || targetMode !== 'new') return;
+    if (!titleManuallyEdited) {
+      setNewTitle(formatLessonTitleFromSchedule(newOrderIndex, mappedScheduleItem?.title));
+    }
+    if (mappedScheduleItem?.period) {
+      setNewPeriod(String(mappedScheduleItem.period));
+    }
+    if (mappedScheduleItem?.suggested_date) {
+      setNewDate(mappedScheduleItem.suggested_date);
+    }
+  }, [isOpen, targetMode, newOrderIndex, mappedScheduleItem, titleManuallyEdited]);
 
   const hasExistingContent = Boolean(selectedExistingLesson?.content?.trim());
   const hasExistingPlan = Boolean(selectedExistingLesson?.lesson_plan?.trim());
@@ -331,10 +348,15 @@ export default function SubjectAiLessonGeneratorModal({
       return;
     }
 
-    const targetTitle =
+    const rawExistingTitle =
       targetMode === 'existing' && selectedExistingLesson
         ? selectedExistingLesson.title
-        : newTitle.trim() || mappedScheduleItem?.title || `Aula ${String(effectiveOrderIndex).padStart(2, '0')}`;
+        : newTitle.trim();
+    const isGenericTitle = !rawExistingTitle || /^aula\s*\d+\s*$/i.test(rawExistingTitle);
+    const targetTitle =
+      isGenericTitle && mappedScheduleItem?.title
+        ? formatLessonTitleFromSchedule(effectiveOrderIndex, mappedScheduleItem.title)
+        : rawExistingTitle || formatLessonTitleFromSchedule(effectiveOrderIndex, mappedScheduleItem?.title);
 
     const targetPeriod =
       targetMode === 'existing' && selectedExistingLesson
@@ -407,12 +429,17 @@ export default function SubjectAiLessonGeneratorModal({
     setSavingLesson(true);
     try {
       if (selectedExistingLesson) {
-        // Substitui conteúdo/plano mantendo ordem, data, período e status no cronograma
+        // Substitui conteúdo/plano (e título se atualizado pelo cronograma/professor) mantendo ordem, data, período e status
         const updatePayload: {
+          title?: string;
           content?: string;
           lesson_plan?: string;
         } = {};
 
+        const trimmedTitle = generatedTitle.trim();
+        if (trimmedTitle && trimmedTitle !== selectedExistingLesson.title) {
+          updatePayload.title = trimmedTitle;
+        }
         if (generateTarget === 'content' || generateTarget === 'both') {
           updatePayload.content = generatedContent;
         }
@@ -432,9 +459,14 @@ export default function SubjectAiLessonGeneratorModal({
           description: `"${updated.title}" teve seu conteúdo substituído mantendo a organização atual.`,
         });
       } else {
+        const finalNewTitle =
+          generatedTitle.trim() ||
+          newTitle.trim() ||
+          formatLessonTitleFromSchedule(newOrderIndex, mappedScheduleItem?.title);
+
         const created = await subjectLessonService.create({
           subject_id: subjectId,
-          title: generatedTitle.trim() || newTitle.trim() || `Aula ${String(newOrderIndex).padStart(2, '0')}`,
+          title: finalNewTitle,
           order_index: newOrderIndex,
           period: newPeriod || '1',
           lesson_date: newDate || mappedScheduleItem?.suggested_date || null,
@@ -604,7 +636,10 @@ export default function SubjectAiLessonGeneratorModal({
                         type="number"
                         min={1}
                         value={newOrderIndex}
-                        onChange={(e) => setNewOrderIndex(Number(e.target.value) || 1)}
+                        onChange={(e) => {
+                          setTitleManuallyEdited(false);
+                          setNewOrderIndex(Number(e.target.value) || 1);
+                        }}
                         className="h-9 text-xs"
                       />
                     </div>
@@ -612,7 +647,10 @@ export default function SubjectAiLessonGeneratorModal({
                       <Label className="text-xs font-semibold">Título da Aula</Label>
                       <Input
                         value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
+                        onChange={(e) => {
+                          setTitleManuallyEdited(true);
+                          setNewTitle(e.target.value);
+                        }}
                         placeholder="Ex: Aula 05 - Estrutura de Dados"
                         className="h-9 text-xs"
                       />
@@ -748,6 +786,16 @@ export default function SubjectAiLessonGeneratorModal({
                         Editar Markdown
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Título do Card da Aula (Cronograma)</Label>
+                    <Input
+                      value={generatedTitle}
+                      onChange={(e) => setGeneratedTitle(e.target.value)}
+                      placeholder="Ex: Aula 05 – Representação das informações"
+                      className="h-9 text-xs font-medium"
+                    />
                   </div>
 
                   {generatedContent && (

@@ -65,6 +65,7 @@ export default function SubjectSchedulePanel({
   // Instruções gerais de IA da disciplina (inclui modelo de aula)
   const [isAiInstructionsOpen, setIsAiInstructionsOpen] = useState(false);
   const [aiInstructions, setAiInstructions] = useState('');
+  const [aiLessonPlanTemplate, setAiLessonPlanTemplate] = useState('');
   const [savingAiInstructions, setSavingAiInstructions] = useState(false);
 
   const [lessons, setLessons] = useState<SubjectLesson[]>([]);
@@ -133,6 +134,7 @@ export default function SubjectSchedulePanel({
     getSubjectAiContext(numSubjectId).then((ctx) => {
       if (active && ctx) {
         setAiInstructions(ctx.content_template || '');
+        setAiLessonPlanTemplate(ctx.lesson_plan_template || '');
       }
     });
     return () => {
@@ -153,6 +155,7 @@ export default function SubjectSchedulePanel({
         teacher_id: user?.id || existing.teacher_id || null,
         total_lessons: existing.total_lessons || lessons.length || 20,
         content_template: aiInstructions,
+        lesson_plan_template: aiLessonPlanTemplate,
       });
       toast({
         title: 'Instruções de IA salvas',
@@ -469,13 +472,30 @@ export default function SubjectSchedulePanel({
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Textarea
-              rows={8}
-              value={aiInstructions}
-              onChange={(e) => setAiInstructions(e.target.value)}
-              placeholder="Escreva aqui as instruções gerais para a geração de aulas desta disciplina (público-alvo, metodologia, linguagem, regras de formatação) e cole o modelo padrão que a IA deve seguir..."
-              className="font-mono text-xs bg-background"
-            />
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground block">
+                Modelo e Instruções do Conteúdo da Aula (Alunos)
+              </label>
+              <Textarea
+                rows={7}
+                value={aiInstructions}
+                onChange={(e) => setAiInstructions(e.target.value)}
+                placeholder="Escreva aqui as instruções gerais para a geração de aulas desta disciplina (público-alvo, metodologia, linguagem, regras de formatação) e cole o modelo padrão que a IA deve seguir..."
+                className="font-mono text-xs bg-background"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground block">
+                Modelo de Plano de Aula — Docente (opcional)
+              </label>
+              <Textarea
+                rows={5}
+                value={aiLessonPlanTemplate}
+                onChange={(e) => setAiLessonPlanTemplate(e.target.value)}
+                placeholder="Cole aqui o modelo de Plano de Aula (objetivos, etapas, metodologia, recursos, avaliação) para orientar o professor..."
+                className="font-mono text-xs bg-background"
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -812,6 +832,16 @@ export default function SubjectSchedulePanel({
                         }`}
                       >
                         <CheckCircle2 className="w-4 h-4" />
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenAiGenerator(lesson)}
+                        title="Gerar / Revisar esta aula com IA"
+                        className="h-8 w-8 p-0 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/30"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
                       </Button>
 
                       <Button
