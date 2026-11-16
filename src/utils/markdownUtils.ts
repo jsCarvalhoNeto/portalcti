@@ -147,6 +147,38 @@ export function escapeHtmlTagsInMarkdown(markdown: string): string {
 }
 
 /**
+ * Normaliza delimitadores de ênfase (**...** e ~~...~~) movendo espaços
+ * das extremidades internas para fora, evitando que o parser CommonMark
+ * deixe os asteriscos/tildes literais quando há espaço antes do fechamento.
+ */
+function normalizeMarkdownEmphasis(markdown: string): string {
+  const placeholders: Array<{ key: string; value: string }> = [];
+  let counter = 0;
+
+  let text = markdown.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`)/g, (match) => {
+    const key = `___MD_CODE_${counter++}___`;
+    placeholders.push({ key, value: match });
+    return key;
+  });
+
+  text = text.replace(/\*\*([ \t]*)(\S(?:[^\n]*?\S)?)([ \t]*)\*\*/g, (match, lead, inner, trail) => {
+    if (!lead && !trail) return match;
+    return `${lead}**${inner}**${trail}`;
+  });
+
+  text = text.replace(/~~([ \t]*)(\S(?:[^\n]*?\S)?)([ \t]*)~~/g, (match, lead, inner, trail) => {
+    if (!lead && !trail) return match;
+    return `${lead}~~${inner}~~${trail}`;
+  });
+
+  placeholders.forEach(({ key, value }) => {
+    text = text.replace(key, () => value);
+  });
+
+  return text;
+}
+
+/**
  * Converte markdown para HTML com syntax highlighting e quebras preservadas
  */
 export function markdownToHtml(markdown: string): string {
@@ -156,7 +188,7 @@ export function markdownToHtml(markdown: string): string {
     const collapsibleProcessed = processCollapsibleElements(markdown);
 
     // 2. Proteger e escapar tags HTML soltas para não sumirem no DOM
-    const safeMarkdown = escapeHtmlTagsInMarkdown(collapsibleProcessed);
+    const safeMarkdown = normalizeMarkdownEmphasis(escapeHtmlTagsInMarkdown(collapsibleProcessed));
     
     // 3. Parser do Markdown
     let html = marked.parse(safeMarkdown, { 
@@ -304,15 +336,23 @@ export function htmlToMarkdown(html: string): string {
     return `??? "${title}"\n${indentedContent}\n\n`;
   });
 
-  // 5. Formatação de texto
+  // 5. Formatação de texto (movendo espaços das bordas internas para fora dos delimitadores)
+  const wrapFormatted = (content: string, delimiter: string): string => {
+    const leading = content.match(/^\s*/)?.[0] ?? '';
+    const trailing = content.match(/\s*$/)?.[0] ?? '';
+    const inner = content.trim();
+    if (!inner) return content;
+    return `${leading}${delimiter}${inner}${delimiter}${trailing}`;
+  };
+
   markdown = markdown
-    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-    .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-    .replace(/<u[^>]*>(.*?)<\/u>/gi, '_$1_')
-    .replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~')
-    .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~');
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, (_, content) => wrapFormatted(content, '**'))
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, (_, content) => wrapFormatted(content, '**'))
+    .replace(/<em[^>]*>(.*?)<\/em>/gi, (_, content) => wrapFormatted(content, '*'))
+    .replace(/<i[^>]*>(.*?)<\/i>/gi, (_, content) => wrapFormatted(content, '*'))
+    .replace(/<u[^>]*>(.*?)<\/u>/gi, (_, content) => wrapFormatted(content, '_'))
+    .replace(/<s[^>]*>(.*?)<\/s>/gi, (_, content) => wrapFormatted(content, '~~'))
+    .replace(/<del[^>]*>(.*?)<\/del>/gi, (_, content) => wrapFormatted(content, '~~'));
 
   // 6. Links e imagens
   markdown = markdown.replace(/<a[^>]*href=['"](.*?)['"][^>]*>(.*?)<\/a>/gi, '[$2]($1)');

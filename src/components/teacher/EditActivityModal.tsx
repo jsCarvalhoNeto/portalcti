@@ -262,25 +262,25 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
             </Button>
           </div>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-1">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
+        <div className="overflow-y-auto flex-1 pr-1 py-4">
+          <div className="grid gap-4 w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="name" className="sm:text-right">
               Nome
             </Label>
             <Input
               id="name"
               value={activityName}
               onChange={(e) => setActivityName(e.target.value)}
-              className="col-span-3"
               placeholder="Ex: Prova de Matemática"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="subject" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="subject" className="sm:text-right">
               Disciplina
             </Label>
             <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!subjects || subjects.length === 0}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder={subjects && subjects.length > 0 ? "Selecione a disciplina" : "Nenhuma disciplina disponível"} />
               </SelectTrigger>
               <SelectContent>
@@ -292,12 +292,12 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="grade" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="grade" className="sm:text-right">
               Série
             </Label>
             <Select onValueChange={setSelectedGrade} value={selectedGrade}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder="Selecione a série" />
               </SelectTrigger>
               <SelectContent>
@@ -309,12 +309,12 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="period" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="period" className="sm:text-right">
               Período
             </Label>
             <Select onValueChange={setPeriod} value={period}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder="Selecione o período" />
               </SelectTrigger>
               <SelectContent>
@@ -325,12 +325,12 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="evaluation_type" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="evaluation_type" className="sm:text-right">
               Tipo de Avaliação
             </Label>
             <Select onValueChange={setEvaluationType} value={evaluationType}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo de avaliação" />
               </SelectTrigger>
               <SelectContent>
@@ -339,11 +339,11 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Tipo</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label className="sm:text-right">Tipo</Label>
             <RadioGroup
               defaultValue={activityType}
-              className="col-span-3 flex items-center gap-4"
+              className="flex items-center gap-4"
               onValueChange={(value) => setActivityType(value as 'individual' | 'team')}
               value={activityType}
             >
@@ -357,11 +357,11 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </div>
             </RadioGroup>
           </div>
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="description" className="text-right pt-2 font-semibold">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-start gap-2 sm:gap-4">
+            <Label htmlFor="description" className="sm:text-right sm:pt-2 font-semibold">
               Descrição
             </Label>
-            <div className="col-span-3">
+            <div>
               <MarkdownEditor
                 value={typeof description === 'string' ? description : ''}
                 onChange={(val) => setDescription(val)}
@@ -371,8 +371,8 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               />
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="deadline" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="deadline" className="sm:text-right">
               Data Final
             </Label>
             <Input
@@ -380,17 +380,16 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               type="datetime-local"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="col-span-3"
             />
           </div>
-          <div className="grid grid-cols-4 items-start gap-4 p-3 rounded-lg border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/10">
-            <div className="text-right flex items-center justify-end gap-1.5 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-start gap-2 sm:gap-4 p-3 rounded-lg border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/10">
+            <div className="sm:text-right flex items-center sm:justify-end gap-1.5 sm:pt-1">
               <Zap className="w-4 h-4 text-amber-500" />
               <Label htmlFor="edit_auto_grade" className="font-semibold text-xs text-amber-900 dark:text-amber-300">
                 Nota Automática
               </Label>
             </div>
-            <div className="col-span-3 space-y-2">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -428,11 +427,11 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="file" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] items-center gap-2 sm:gap-4">
+            <Label htmlFor="file" className="sm:text-right">
               Arquivo
             </Label>
-            <div className="col-span-3 space-y-2">
+            <div className="space-y-2">
               <Input
                 id="file"
                 type="file"
@@ -445,6 +444,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
                 </p>
               )}
             </div>
+          </div>
           </div>
         </div>
         <DialogFooter className="flex justify-between flex-shrink-0 pt-2 border-t">
