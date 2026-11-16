@@ -69,8 +69,8 @@ export default function SubjectDetail() {
       description: isStudent && !isEnrolled 
         ? 'Disponível apenas para alunos matriculados' 
         : 'Jogos e simuladores educativos',
-      color: isStudent && !isEnrolled ? 'text-slate-400' : 'text-purple-400',
-      bgColor: 'bg-gray-800',
+      color: isStudent && !isEnrolled ? 'text-muted-foreground' : 'text-purple-600 dark:text-purple-400',
+      bgColor: isStudent && !isEnrolled ? 'bg-muted' : 'bg-purple-500/10',
       badge: isStudent && !isEnrolled ? 'Restrito' : undefined,
       disabled: isStudent && !isEnrolled,
       onClick: () => {
@@ -89,24 +89,24 @@ export default function SubjectDetail() {
       icon: BookOpen,
       title: 'Cronograma e Material',
       description: 'Cronograma de aulas e material didático',
-      color: 'text-blue-400',
-      bgColor: 'bg-gray-800',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-500/10',
       onClick: () => setActiveTab('material')
     },
     {
       icon: PenTool,
       title: 'Exercícios',
       description: 'Listas de exercícios práticos',
-      color: 'text-orange-400',
-      bgColor: 'bg-gray-800',
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-500/10',
       onClick: () => setActiveTab('exercises')
     },
     {
       icon: Wrench,
       title: 'Projetos',
       description: 'Projetos práticos para desenvolver',
-      color: 'text-emerald-400',
-      bgColor: 'bg-gray-800',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
       onClick: () => setActiveTab('projects')
     }
   ];
@@ -466,13 +466,15 @@ export default function SubjectDetail() {
                     className={`bg-card border transition-all duration-300 ${
                       item.disabled 
                         ? 'opacity-70 cursor-not-allowed hover:border-amber-400/40 bg-muted/30' 
-                        : 'hover:bg-accent cursor-pointer hover:shadow-md'
+                        : 'hover:border-primary/40 hover:bg-muted/40 cursor-pointer hover:shadow-md'
                     }`}
                     onClick={item.onClick}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <item.icon className={`w-7 h-7 ${item.color}`} />
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${item.bgColor}`}>
+                          <item.icon className={`w-6 h-6 ${item.color}`} />
+                        </div>
                         {item.disabled && (
                           <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40 gap-1">
                             <Lock className="w-3 h-3" />

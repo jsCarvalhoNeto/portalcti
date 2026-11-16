@@ -18,6 +18,17 @@ interface ResponsiveTabMenuProps {
   maxCols?: number;
 }
 
+const GRID_COLS_MAP: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+  5: 'grid-cols-5',
+  6: 'grid-cols-6',
+  7: 'grid-cols-7',
+  8: 'grid-cols-8',
+};
+
 export default function ResponsiveTabMenu({ 
   activeTab, 
   setActiveTab, 
@@ -26,6 +37,7 @@ export default function ResponsiveTabMenu({
   maxCols = 6
 }: ResponsiveTabMenuProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const gridColsClass = GRID_COLS_MAP[maxCols] || 'grid-cols-6';
 
   // Mapear ícones para os valores de tab
   const getIconForTab = (value: string) => {
@@ -49,7 +61,7 @@ export default function ResponsiveTabMenu({
     <>
       {/* Menu desktop - Tabs normais */}
       <div className="hidden md:block">
-        <TabsList className={`grid w-full grid-cols-${maxCols} max-w-4xl mx-auto mb-8 gap-3 ${className}`}>
+        <TabsList className={`grid w-full ${gridColsClass} max-w-4xl mx-auto mb-8 gap-3 ${className}`}>
           {menuItems.map((item) => {
             const Icon = item.icon || getIconForTab(item.value);
             return (

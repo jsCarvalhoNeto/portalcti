@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { BookOpen, Users, BarChart3, GraduationCap, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getTeacherNotifications } from '@/services/notificationService';
 // SubjectModal is not required here; subject details are handled in the subjects tab
 import { TeacherDashboardProvider, useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
 import TeacherSubjectsTab from '@/components/teacher/TeacherSubjectsTab';
@@ -16,17 +17,50 @@ import TeacherDashboardLayout from '@/layouts/TeacherDashboardLayout';
 
 function TeacherDashboardContent() {
   const { user, isTeacher, loading: authLoading } = useAuth();
-  const { subjects, students, setActiveTab, activeTab } = useTeacherDashboard();
+  const { subjects, students, activities, setActiveTab, activeTab } = useTeacherDashboard();
+  const [activeNotifsCount, setActiveNotifsCount] = useState(0);
 
   // Verificar se estamos em modo privado/anônimo antes de montar as estatísticas
   const isAnonymousMode = !user || !isTeacher;
+
+  useEffect(() => {
+    if (isAnonymousMode || !user?.id) {
+      setActiveNotifsCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    getTeacherNotifications(user.id)
+      .then((notifs) => {
+        if (cancelled) return;
+        const count = notifs.filter(
+          (n) => n.is_active && new Date(n.expires_at).getTime() > Date.now()
+        ).length;
+        setActiveNotifsCount(count);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveNotifsCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAnonymousMode, user?.id]);
+
+  const pendingActivitiesCount = useMemo(() => {
+    if (isAnonymousMode) return 0;
+    const now = Date.now();
+    return activities.filter(
+      (a) => !a.deadline || new Date(a.deadline).getTime() >= now
+    ).length;
+  }, [activities, isAnonymousMode]);
 
   // Stats data for teacher dashboard
   const stats = [
     { title: 'Minhas Disciplinas', value: isAnonymousMode ? '0' : subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Meus Alunos', value: isAnonymousMode ? '0' : students.length.toString(), icon: Users, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-    { title: 'Atividades Pendentes', value: '0', icon: BarChart3, color: 'text-accent', bgColor: 'bg-accent/10' },
-    { title: 'Notificações', value: '0', icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
+    { title: 'Atividades Pendentes', value: pendingActivitiesCount.toString(), icon: BarChart3, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Notificações', value: activeNotifsCount.toString(), icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
   ];
 
   if (authLoading) {

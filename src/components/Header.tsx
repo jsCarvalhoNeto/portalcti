@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from "@/components/ui/swipeable-sheet";
 import { Menu, X, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -125,101 +126,118 @@ const Header = () => {
             )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button + SwipeableSheet */}
           <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
-            >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+            <SwipeableSheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <SwipeableSheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={isMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+                  aria-expanded={isMenuOpen}
+                  className="text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
+                >
+                  {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </Button>
+              </SwipeableSheetTrigger>
+              <SwipeableSheetContent side="right" className="w-[82vw] max-w-xs bg-primary text-white border-l border-white/20 p-6">
+                <div className="flex items-center space-x-2 pb-4 border-b border-white/20">
+                  <img
+                    src={logoCurso}
+                    alt="Logo do Curso"
+                    className="w-9 h-9 rounded-lg object-contain border border-white/30"
+                  />
+                  <div>
+                    <p className="text-base font-bold text-white leading-tight">Portal Informática</p>
+                    <p className="text-xs text-white/80">Curso Técnico</p>
+                  </div>
+                </div>
+
+                <nav aria-label="Navegação mobile" className="flex flex-col space-y-2 mt-6">
+                  {navigationItems.map((item) => (
+                    item.href.startsWith('/') ? (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className="text-white hover:bg-white/15 rounded-lg px-3 py-2.5 transition-colors duration-200 font-medium"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    ) : (
+                      <a
+                        key={item.name}
+                        href={item.href}
+                        className="text-white hover:bg-white/15 rounded-lg px-3 py-2.5 transition-colors duration-200 font-medium"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {item.name}
+                      </a>
+                    )
+                  ))}
+
+                  <div className="flex flex-col space-y-2 pt-4 mt-2 border-t border-white/20">
+                    {user ? (
+                      <>
+                        {isStudent && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10"
+                            asChild
+                          >
+                            <Link to="/student" onClick={() => setIsMenuOpen(false)}>
+                              <User className="w-4 h-4 mr-2" />
+                              Área do Aluno
+                            </Link>
+                          </Button>
+                        )}
+                        {isTeacher && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10"
+                            asChild
+                          >
+                            <Link to="/teacher" onClick={() => setIsMenuOpen(false)}>
+                              <User className="w-4 h-4 mr-2" />
+                              Painel do Professor
+                            </Link>
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10"
+                            asChild
+                          >
+                            <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                              <User className="w-4 h-4 mr-2" />
+                              Painel Admin
+                            </Link>
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            signOut();
+                          }}
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Sair
+                        </Button>
+                      </>
+                    ) : (
+                      <Button className="w-full justify-start bg-white/25 text-white border border-white/50 hover:bg-white/35" asChild>
+                        <Link to="/auth" onClick={() => setIsMenuOpen(false)}>Fazer Login</Link>
+                      </Button>
+                    )}
+                  </div>
+                </nav>
+              </SwipeableSheetContent>
+            </SwipeableSheet>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-white/30 animate-fade-in bg-primary/90 backdrop-blur-md">
-            <nav className="flex flex-col space-y-4">
-              {navigationItems.map((item) => (
-                item.href.startsWith('/') ? (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="text-white hover:text-white/80 transition-colors duration-200 font-medium py-2 drop-shadow-sm"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ) : (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className="text-white hover:text-white/80 transition-colors duration-200 font-medium py-2 drop-shadow-sm"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {item.name}
-                  </a>
-                )
-              ))}
-              <div className="flex flex-col space-y-2 pt-4 border-t border-white/30">
-                {user ? (
-                  <>
-                    {isStudent && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
-                        asChild
-                      >
-                        <Link to="/student">
-                          <User className="w-4 h-4 mr-2" />
-                          Área do Aluno
-                        </Link>
-                      </Button>
-                    )}
-                    {isTeacher && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
-                        asChild
-                      >
-                        <Link to="/teacher">
-                          <User className="w-4 h-4 mr-2" />
-                          Painel do Professor
-                        </Link>
-                      </Button>
-                    )}
-                    {isAdmin && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
-                        asChild
-                      >
-                        <Link to="/admin">
-                          <User className="w-4 h-4 mr-2" />
-                          Painel Admin
-                        </Link>
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start border-white/40 text-white hover:bg-white/20 bg-white/10 backdrop-blur-sm"
-                      onClick={signOut}
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sair
-                    </Button>
-                  </>
-                ) : (
-                  <Button className="w-full justify-start bg-white/25 backdrop-blur-sm text-white border border-white/50 hover:bg-white/35 hover:border-white/70" asChild>
-                    <Link to="/auth">Fazer Login</Link>
-                  </Button>
-                )}
-              </div>
-            </nav>
-          </div>
-        )}
       </div>
     </header>
   );

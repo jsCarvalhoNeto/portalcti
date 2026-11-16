@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu, Bell } from 'lucide-react';
+import { BookOpen, LogOut, Home, Users, BarChart3, Settings, Calendar, GraduationCap, Gamepad, Menu, Bell, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -137,7 +137,7 @@ export default function TeacherDashboardLayout({
                   navigate('/teacher');
                 }}
               >
-                <Menu className="w-4 h-4 lg:mr-2" />
+                <Wrench className="w-4 h-4 lg:mr-2" />
                 <span className="hidden lg:inline">Utilitários</span>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>

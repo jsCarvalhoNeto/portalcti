@@ -1,58 +1,64 @@
-import { Toaster } from "@/components/ui/toaster";
+import { Suspense, lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Subjects from "./pages/Subjects";
-import SubjectDetail from "./pages/SubjectDetail";
-import StudentDashboard from "./pages/StudentDashboard";
-import TeacherDashboard from "./pages/TeacherDashboard";
-import TeacherAchievements from './pages/TeacherAchievements';
-import TeacherDailyChallenges from './pages/TeacherDailyChallenges';
-import Achievements from './pages/Achievements';
-import AdminDashboard from "./pages/AdminDashboard";
-import TeacherSubjectEditor from "./pages/TeacherSubjectEditor";
-import InteractiveActivities from "./pages/InteractiveActivities";
-import ActivityFiles from "./pages/ActivityFiles";
-import GoogleDriveTest from "./pages/GoogleDriveTest";
-import MemoryGame from "./pages/logic-programming/MemoryGame";
-import HtmlCssFormActivity from "./pages/html-css/HtmlCssFormActivity";
-import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
-import PollVotingPage from './pages/PollVotingPage';
-import QuickVotePublicPage from './pages/QuickVotePublicPage';
-import EventsPage from './components/pages/EventsPage';
-import EventRegistration from './pages/EventRegistration';
-import EventThematicAxes from './pages/EventThematicAxes';
-import EventTeamForm from './pages/EventTeamForm';
-import EventConfirmation from './pages/EventConfirmation';
-import StudentCareer from './pages/StudentCareer';
-import PublicCareerProfile from './pages/PublicCareerProfile';
-import ThermometerVotePage from './pages/ThermometerVotePage';
-import WordCloudVotePage from './pages/WordCloudVotePage';
-import HelpQueueStudentPage from './pages/HelpQueueStudentPage';
-import TeamRegistrationPage from './pages/TeamRegistrationPage';
-import StudentPickerJoinPage from './pages/StudentPickerJoinPage';
-import PublicEducationalGamePage from './pages/PublicEducationalGamePage';
-import ShirtOrderStudentPage from './pages/ShirtOrderStudentPage';
 
-// Adicionar esta interface se não existir
-interface PollData {
-  id: string;
-  title: string;
-  options: Array<{
-    id: string;
-    text: string;
-    votes: number;
-    voters: string[];
-  }>;
-  isActive: boolean;
-  createdAt: string;
-}
+const Subjects = lazy(() => import("./pages/Subjects"));
+const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
+const TeacherDashboard = lazy(() => import("./pages/TeacherDashboard"));
+const TeacherAchievements = lazy(() => import("./pages/TeacherAchievements"));
+const TeacherDailyChallenges = lazy(() => import("./pages/TeacherDailyChallenges"));
+const Achievements = lazy(() => import("./pages/Achievements"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const TeacherSubjectEditor = lazy(() => import("./pages/TeacherSubjectEditor"));
+const InteractiveActivities = lazy(() => import("./pages/InteractiveActivities"));
+const ActivityFiles = lazy(() => import("./pages/ActivityFiles"));
+const GoogleDriveTest = lazy(() => import("./pages/GoogleDriveTest"));
+const MemoryGame = lazy(() => import("./pages/logic-programming/MemoryGame"));
+const HtmlCssFormActivity = lazy(() => import("./pages/html-css/HtmlCssFormActivity"));
+const Gamification = lazy(() => import("./pages/Gamification"));
+const PollVotingPage = lazy(() => import("./pages/PollVotingPage"));
+const QuickVotePublicPage = lazy(() => import("./pages/QuickVotePublicPage"));
+const EventsPage = lazy(() => import("./components/pages/EventsPage"));
+const EventRegistration = lazy(() => import("./pages/EventRegistration"));
+const EventThematicAxes = lazy(() => import("./pages/EventThematicAxes"));
+const EventTeamForm = lazy(() => import("./pages/EventTeamForm"));
+const EventConfirmation = lazy(() => import("./pages/EventConfirmation"));
+const StudentCareer = lazy(() => import("./pages/StudentCareer"));
+const PublicCareerProfile = lazy(() => import("./pages/PublicCareerProfile"));
+const ThermometerVotePage = lazy(() => import("./pages/ThermometerVotePage"));
+const WordCloudVotePage = lazy(() => import("./pages/WordCloudVotePage"));
+const HelpQueueStudentPage = lazy(() => import("./pages/HelpQueueStudentPage"));
+const TeamRegistrationPage = lazy(() => import("./pages/TeamRegistrationPage"));
+const StudentPickerJoinPage = lazy(() => import("./pages/StudentPickerJoinPage"));
+const PublicEducationalGamePage = lazy(() => import("./pages/PublicEducationalGamePage"));
+const ShirtOrderStudentPage = lazy(() => import("./pages/ShirtOrderStudentPage"));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-background p-6 sm:p-10">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+      </div>
+      <Skeleton className="h-72 w-full rounded-xl" />
+    </div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -61,10 +67,10 @@ const App = () => (
     <ErrorBoundary fallbackRoute="/eventos">
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/disciplinas" element={<Subjects />} />
@@ -123,7 +129,8 @@ const App = () => (
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

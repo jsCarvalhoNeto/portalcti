@@ -35,8 +35,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import StudentOverviewTab from '@/components/student/StudentOverviewTab';
+import StudentSubjectsTab from '@/components/student/StudentSubjectsTab';
 import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
 import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
 import StudentCalendarTab from '@/components/student/StudentCalendarTab';
@@ -47,11 +48,8 @@ import * as gamificationService from '@/services/gamificationService';
 import { subjectService } from '@/services/subjectService';
 import { enrollmentService } from '@/services/enrollmentService';
 import { getStudentActivities } from '@/services/activityService';
-import StudentNotificationBanner from '@/components/notifications/StudentNotificationBanner';
 import { getActiveNotificationsForStudent, NotificationItem } from '@/services/notificationService';
 import { SwipeableSheet, SwipeableSheetContent, SwipeableSheetTrigger } from '@/components/ui/swipeable-sheet';
-import BadgeGrid from '@/components/badges/BadgeGrid';
-import TopStudentsCard from '@/components/student/TopStudentsCard';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
@@ -573,425 +571,37 @@ export default function StudentDashboard() {
           </div>
 
           <TabsContent value="overview" className="space-y-8">
-            {/* Banner Dinâmico de Notificações / Avisos / Censo */}
-            {notifications.length > 0 && (
-              <StudentNotificationBanner
-                notifications={notifications}
-                studentId={user?.id}
-                onNotificationDismissed={(dismissedId) => {
-                  setNotifications(prev => prev.filter(n => n.id !== dismissedId));
-                }}
-              />
-            )}
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => {
-                if (stat.title === 'Progresso Geral') {
-                  return (
-                    <Tooltip key={index}>
-                      <TooltipTrigger asChild>
-                        <Link to="/gamification" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer">
-                          <Card className="hover:shadow-glow transition-all duration-300 hover:scale-[1.01]">
-                            <CardContent className="p-6">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-2xl font-bold">{totalPoints}</p>
-                                  <p className="text-sm text-muted-foreground">Pontos acumulados</p>
-                                </div>
-                                <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                                  <Gamepad className={`w-6 h-6 ${stat.color}`} />
-                                </div>
-                              </div>
-
-                              <div className="mt-3">
-                                <div className="text-xs text-muted-foreground">Progresso para próximo troféu</div>
-                                <div className="w-full bg-muted rounded-full h-2 mt-1 overflow-hidden">
-                                  <div className="bg-primary h-2" style={{ width: `${progressPercent}%` }} />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Ver histórico de pontos
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                }
-
-                const isClickable = stat.title === 'Minhas Disciplinas' || stat.title === 'Atividades Pendentes';
-                const handleClick = () => {
-                  if (stat.title === 'Minhas Disciplinas') setActiveTab('subjects');
-                  if (stat.title === 'Atividades Pendentes') setActiveTab('activities');
-                };
-
-                return (
-                  <Card 
-                    key={index} 
-                    className={`hover:shadow-glow transition-all duration-300 ${isClickable ? 'cursor-pointer hover:scale-[1.01]' : ''}`}
-                    onClick={handleClick}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-2xl font-bold">{stat.value}</p>
-                          <p className="text-sm text-muted-foreground">{stat.title}</p>
-                        </div>
-                        <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                    Minhas Disciplinas
-                  </CardTitle>
-                  <CardDescription>
-                    Acesse materiais, tarefas e informações das disciplinas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" onClick={() => setActiveTab('subjects')}>
-                    Acessar Disciplinas
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-accent" />
-                    Calendário Acadêmico
-                  </CardTitle>
-                  <CardDescription>
-                    Veja datas importantes e prazos acadêmicos
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('calendar')}>
-                    Ver Calendário
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-secondary-foreground" />
-                    Configurações
-                  </CardTitle>
-                  <CardDescription>
-                    Configure seu perfil e preferências
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
-                    Configurações
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Medals quick view (overview) */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Medalhas</CardTitle>
-                  <CardDescription>Conquistas recentes</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {unlockedBadges && unlockedBadges.length > 0 ? (
-                    <BadgeGrid badges={unlockedBadges.slice(0, 6)} cols={3} compact />
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Nenhuma medalha ainda.</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Medalhas por Disciplina</CardTitle>
-                  <CardDescription>Progresso por disciplina</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {unlockedBySubject && unlockedBySubject.length > 0 ? (
-                    <div className="space-y-3">
-                      {unlockedBySubject.map((s: any) => (
-                        <div key={s.subject_id} className="p-2 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <SubjectName subjectId={s.subject_id} subjectNameFromApi={s.subject_name} />
-                            <div className="text-xs text-muted-foreground">{s.total_points} pts</div>
-                          </div>
-                          <BadgeGrid badges={s.unlocked_badges || []} cols={6} compact subjectName={subjectNamesMap[String(s.subject_id)] || s.subject_name} subjectId={s.subject_id} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Nenhuma conquista por disciplina.</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top Students Leaderboard */}
-            <TopStudentsCard limit={10} />
-
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Atividades Recentes</CardTitle>
-                <CardDescription>
-                  Últimas atualizações e notificações importantes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {notifications.length > 0 ? (
-                    notifications.map((notif, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                          <BookOpen className="w-4 h-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-primary">{notif.badge_text || 'Aviso'}</span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {new Date(notif.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <p className="text-sm font-medium truncate">{notif.title}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{notif.message}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="space-y-4">
-                      {[
-                        { action: 'Nova atividade lançada na disciplina Desenvolvimento Web', time: 'Hoje às 14:30', icon: BookOpen, color: 'text-green-600' },
-                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: Gamepad, color: 'text-blue-60' },
-                        { action: 'Novo material de aula disponível para Programação', time: '2 dias atrás', icon: BookOpen, color: 'text-orange-600' }
-                      ].map((activity, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                          <div className="w-8 h-8 bg-background rounded-full flex items-center justify-center">
-                            <activity.icon className={`w-4 h-4 ${activity.color}`} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{activity.action}</p>
-                            <p className="text-xs text-muted-foreground">{activity.time}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <StudentOverviewTab
+              userId={user?.id}
+              notifications={notifications}
+              onNotificationDismissed={(dismissedId) => {
+                setNotifications(prev => prev.filter(n => n.id !== dismissedId));
+              }}
+              stats={stats}
+              totalPoints={totalPoints}
+              progressPercent={progressPercent}
+              setActiveTab={setActiveTab}
+              unlockedBadges={unlockedBadges}
+              unlockedBySubject={unlockedBySubject}
+              subjectNamesMap={subjectNamesMap}
+              renderSubjectName={(subjectId, subjectNameFromApi) => (
+                <SubjectName subjectId={subjectId} subjectNameFromApi={subjectNameFromApi} />
+              )}
+            />
           </TabsContent>
 
           <TabsContent value="subjects" className="space-y-6">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-xl">Minhas Disciplinas</CardTitle>
-                    <CardDescription>
-                      Acesse materiais de aula, conteúdos, atividades e acompanhe seu desempenho
-                    </CardDescription>
-                  </div>
-                  {/* Campo de Busca Rápida */}
-                  <div className="relative w-full sm:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Buscar disciplina ou professor..."
-                      value={subjectSearchQuery}
-                      onChange={(e) => setSubjectSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-muted/50 border border-border/70 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:bg-background transition-all"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                {loadingSubjects ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p className="text-xs">Carregando suas disciplinas...</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredSubjects.map((subject) => {
-                      const cardColor = getSubjectColor(subject);
-                      const SubjectIcon = getSubjectIcon(subject.name);
-
-                      return (
-                        <Card
-                          key={subject.id}
-                          className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border border-border/70 bg-card flex flex-col justify-between rounded-xl cursor-pointer"
-                          onClick={() => navigate(`/disciplinas/${subject.id}`)}
-                        >
-                          {/* Linha superior com gradiente dinâmico da disciplina */}
-                          <div 
-                            className="h-1 w-full opacity-70 group-hover:opacity-100 transition-all duration-300"
-                            style={{
-                              background: `linear-gradient(90deg, transparent, ${cardColor}, transparent)`
-                            }}
-                          />
-
-                          <CardHeader className="pb-3 pt-4">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              {/* Ícone contextualizado com fundo translúcido */}
-                              <div 
-                                className="p-2.5 rounded-xl transition-transform group-hover:scale-110 duration-200"
-                                style={{
-                                  backgroundColor: `${cardColor}18`,
-                                  color: cardColor
-                                }}
-                              >
-                                <SubjectIcon className="w-5 h-5" />
-                              </div>
-
-                              {/* Ações de topo: Personalizar cor e Badge de Semestre / Status */}
-                              <div className="flex items-center gap-1.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePersonalizeColor(subject);
-                                  }}
-                                  title="Personalizar cor da disciplina"
-                                >
-                                  <Palette className="h-3.5 w-3.5" />
-                                </Button>
-
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] font-medium py-0.5 px-2 flex items-center gap-1.5 transition-colors"
-                                  style={{
-                                    backgroundColor: `${cardColor}12`,
-                                    color: cardColor,
-                                    borderColor: `${cardColor}30`
-                                  }}
-                                >
-                                  <span 
-                                    className="w-1.5 h-1.5 rounded-full animate-pulse" 
-                                    style={{ backgroundColor: cardColor }}
-                                  />
-                                  {subject.semester ? `Semestre: ${subject.semester}` : 'Matriculado'}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            {/* Título e Professor */}
-                            <CardTitle className="text-base font-semibold group-hover:text-primary transition-colors line-clamp-1">
-                              {subject.name}
-                            </CardTitle>
-
-                            {subject.teacher_name && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                                <UserCheck className="w-3.5 h-3.5 text-primary/80" />
-                                <span>Prof. {subject.teacher_name}</span>
-                              </div>
-                            )}
-
-                            <CardDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1.5 min-h-[32px]">
-                              {subject.description || 'Acesse o plano de aula, materiais complementares, exercícios e avaliações.'}
-                            </CardDescription>
-
-                            {/* Metadados rápidos */}
-                            <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px] text-muted-foreground">
-                              <span className="bg-muted/70 px-2 py-0.5 rounded font-mono">
-                                ID: {subject.id}
-                              </span>
-                              {subject.schedule && (
-                                <span className="flex items-center gap-1 bg-muted/70 px-2 py-0.5 rounded">
-                                  <Clock className="w-3 h-3 text-muted-foreground" />
-                                  {subject.schedule}
-                                </span>
-                              )}
-                            </div>
-                          </CardHeader>
-
-                          {/* Botões de Ação na base */}
-                          <CardContent className="pt-0 pb-4 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200 gap-1.5 h-9"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/disciplinas/${subject.id}`);
-                                }}
-                              >
-                                <BookOpen className="w-3.5 h-3.5" />
-                                Conteúdo
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="w-full text-xs font-medium hover:bg-muted/80 transition-all duration-200 gap-1.5 h-9"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTab('grades');
-                                }}
-                              >
-                                <GraduationCap className="w-3.5 h-3.5" />
-                                Notas
-                              </Button>
-                            </div>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full text-xs font-medium hover:bg-muted border-border/80 transition-all duration-200 gap-1.5 h-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveTab('activities');
-                              }}
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              Ver Atividades da Turma
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-
-                    {filteredSubjects.length === 0 && !loadingSubjects && (
-                      <div className="col-span-full text-center py-10 px-4 bg-muted/20 rounded-xl border border-dashed border-border/80 text-muted-foreground space-y-3">
-                        <BookOpen className="w-8 h-8 mx-auto opacity-40" />
-                        <p className="font-medium text-sm">
-                          {subjectSearchQuery ? 'Nenhuma disciplina encontrada para esta busca.' : 'Nenhuma disciplina encontrada.'}
-                        </p>
-                        {subjectSearchQuery && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSubjectSearchQuery('')}
-                          >
-                            Limpar Busca
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <StudentSubjectsTab
+              filteredSubjects={filteredSubjects}
+              loadingSubjects={loadingSubjects}
+              subjectSearchQuery={subjectSearchQuery}
+              setSubjectSearchQuery={setSubjectSearchQuery}
+              getSubjectColor={getSubjectColor}
+              getSubjectIcon={getSubjectIcon}
+              onPersonalizeColor={handlePersonalizeColor}
+              onNavigateToSubject={(subjectId) => navigate(`/disciplinas/${subjectId}`)}
+              setActiveTab={setActiveTab}
+            />
           </TabsContent>
 
           <TabsContent value="grades" className="space-y-8">
