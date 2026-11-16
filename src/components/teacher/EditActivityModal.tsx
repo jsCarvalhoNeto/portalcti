@@ -20,7 +20,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Zap } from 'lucide-react';
+import { Zap, Maximize2, Minimize2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { htmlToMarkdown } from '@/utils/markdownUtils';
@@ -75,6 +75,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
   const [autoGradeValue, setAutoGradeValue] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Atualiza os campos sempre que a atividade for carregada ou o modal for aberto
   useEffect(() => {
@@ -221,16 +222,47 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setIsFullscreen(false);
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[850px] sm:max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Atividade</DialogTitle>
-          <DialogDescription>
-            Atualize as informações da atividade abaixo.
-          </DialogDescription>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className={`flex flex-col overflow-hidden transition-all duration-200 ${
+          isFullscreen
+            ? 'w-screen h-screen max-w-none max-h-none sm:max-w-none sm:max-h-none rounded-none'
+            : 'sm:max-w-[850px] sm:max-h-[90vh]'
+        }`}
+      >
+        <DialogHeader className="flex-shrink-0">
+          <div className="flex items-start justify-between gap-3 pr-8">
+            <div>
+              <DialogTitle>Editar Atividade</DialogTitle>
+              <DialogDescription>
+                Atualize as informações da atividade abaixo.
+              </DialogDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullscreen((prev) => !prev)}
+              title={isFullscreen ? 'Restaurar tamanho' : 'Ampliar janela'}
+              className="h-8 w-8 p-0 shrink-0"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-3.5 h-3.5" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-1">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
               Nome
@@ -334,8 +366,8 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
                 value={typeof description === 'string' ? description : ''}
                 onChange={(val) => setDescription(val)}
                 placeholder="Cole ou digite aqui a descrição em Markdown da atividade..."
-                minHeight="min-h-[200px]"
-                maxHeight="max-h-[360px]"
+                minHeight={isFullscreen ? 'min-h-[420px]' : 'min-h-[200px]'}
+                maxHeight={isFullscreen ? 'max-h-[65vh]' : 'max-h-[360px]'}
               />
             </div>
           </div>
@@ -415,7 +447,7 @@ export default function EditActivityModal({ isOpen, onOpenChange, activity }: Ed
             </div>
           </div>
         </div>
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex justify-between flex-shrink-0 pt-2 border-t">
           <Button
             type="button"
             variant="destructive"
