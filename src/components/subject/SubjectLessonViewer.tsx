@@ -122,6 +122,7 @@ export default function SubjectLessonViewer({
       setShowAiAssistant(false);
     } else {
       setIsPresentationMode(false);
+      setIsFullscreen(false);
       setZoomLevel(100);
       setIsLaserActive(false);
       setShowAiAssistant(false);
@@ -156,7 +157,6 @@ export default function SubjectLessonViewer({
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isDocFs = Boolean(document.fullscreenElement);
-      setIsFullscreen(isDocFs);
       if (!isDocFs && isPresentationMode) {
         setIsPresentationMode(false);
         setIsLaserActive(false);
@@ -311,12 +311,8 @@ export default function SubjectLessonViewer({
     });
   };
 
-  const toggleFullscreen = async () => {
-    if (isPresentationMode) {
-      exitPresentationMode();
-    } else {
-      enterPresentationMode();
-    }
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
   };
 
   const handleCopy = () => {
@@ -695,7 +691,7 @@ export default function SubjectLessonViewer({
           isPresentationMode
             ? '!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !rounded-none z-[100] !border-none !top-0 !left-0 !translate-x-0 !translate-y-0 [&>button:last-child]:hidden'
             : isFullscreen
-              ? 'w-screen h-screen max-w-none max-h-none rounded-none'
+              ? '!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !rounded-none !top-0 !left-0 !translate-x-0 !translate-y-0'
               : 'max-w-4xl max-h-[92vh]'
         }`}
       >
@@ -1017,10 +1013,14 @@ export default function SubjectLessonViewer({
                     variant="outline"
                     size="sm"
                     onClick={toggleFullscreen}
-                    title="Modo Projetor / Tela Cheia"
+                    title={isFullscreen ? 'Restaurar tamanho da janela' : 'Ampliar janela'}
                     className="h-8 w-8 p-0"
                   >
-                    <Maximize2 className="w-3.5 h-3.5" />
+                    {isFullscreen ? (
+                      <Minimize2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    )}
                   </Button>
                 </div>
               </div>
