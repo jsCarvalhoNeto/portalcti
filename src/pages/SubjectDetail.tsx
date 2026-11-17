@@ -19,7 +19,8 @@ import {
   Megaphone,
   Lock,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService } from '@/services/subjectService';
@@ -36,6 +37,7 @@ import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
 import SubjectExercisesPanel from '@/components/subject/SubjectExercisesPanel';
 import SubjectProjectsPanel from '@/components/subject/SubjectProjectsPanel';
+import SubjectQaForumPanel from '@/components/subject/SubjectQaForumPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -260,6 +262,7 @@ export default function SubjectDetail() {
     { value: 'projects', label: getSectionLabel('projects'), icon: FolderOpen },
     { value: 'evaluations', label: getSectionLabel('evaluations'), icon: ClipboardList },
     { value: 'resources', label: getSectionLabel('resources'), icon: Settings },
+    { value: 'duvidas', label: 'Dúvidas', icon: MessageSquare },
   ];
 
   const renderContentSection = (sectionType: string) => {
@@ -567,6 +570,15 @@ export default function SubjectDetail() {
               subjectId={id || ''}
               subjectName={subject.name}
               canManage={false}
+            />
+          </TabsContent>
+
+          {/* Mural de Dúvidas tab */}
+          <TabsContent value="duvidas" className="mt-0">
+            <SubjectQaForumPanel
+              subjectId={id || ''}
+              subjectName={subject.name}
+              canManage={Boolean(isTeacher || isAdmin)}
             />
           </TabsContent>
         </main>

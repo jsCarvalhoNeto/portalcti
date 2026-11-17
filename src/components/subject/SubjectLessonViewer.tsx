@@ -44,13 +44,12 @@ import {
   CircleDot,
   QrCode
 } from 'lucide-react';
-import { SubjectLesson, subjectLessonService } from '@/services/subjectLessonService';
+import { SubjectLesson } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
 import { useToast } from '@/hooks/use-toast';
 import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 import TextHighlightToolbar from './TextHighlightToolbar';
 import LaserPointerOverlay from './LaserPointerOverlay';
-import LessonPlanAiAssistant from './LessonPlanAiAssistant';
 import AttendanceUtility from '@/components/teacher/utilities/AttendanceUtility';
 import {
   HIGHLIGHT_COLORS,
@@ -94,7 +93,6 @@ export default function SubjectLessonViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'plan'>(initialTab);
-  const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
@@ -122,40 +120,13 @@ export default function SubjectLessonViewer({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
-      setShowAiAssistant(false);
     } else {
       setIsPresentationMode(false);
       setIsFullscreen(false);
       setZoomLevel(100);
       setIsLaserActive(false);
-      setShowAiAssistant(false);
     }
   }, [isOpen, initialTab, lesson?.id]);
-
-  const handleApplyAiText = async (newText: string, target: 'plan' | 'content') => {
-    if (!lesson) return;
-    try {
-      const updatePayload =
-        target === 'content' ? { content: newText } : { lesson_plan: newText };
-      const updated = await subjectLessonService.update(String(lesson.id), updatePayload);
-      onLessonUpdated?.(updated);
-      toast({
-        title: target === 'content' ? 'Conteúdo da Aula Atualizado' : 'Plano de Aula Atualizado',
-        description:
-          target === 'content'
-            ? 'As alterações no conteúdo da aula foram salvas com sucesso.'
-            : 'As alterações no plano de aula foram salvas com sucesso.',
-      });
-    } catch (error) {
-      console.error('Erro ao salvar alteração da IA:', error);
-      toast({
-        title: 'Erro ao salvar',
-        description: 'Não foi possível salvar as alterações.',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -170,6 +141,13 @@ export default function SubjectLessonViewer({
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [isPresentationMode]);
+
+  useEffect(() => {
+    if (isLaserActive) {
+      window.getSelection()?.removeAllRanges();
+      setHighlightToolbar(null);
+    }
+  }, [isLaserActive]);
 
   // Atalhos de teclado no Modo Projetor (ESC para sair, L para Laser, + para Zoom In, - para Zoom Out, 0 para 100%)
   useEffect(() => {
@@ -449,6 +427,7 @@ export default function SubjectLessonViewer({
 
   // Manipulador para capturar seleção de texto e exibir a toolbar flutuante
   const handleMouseUp = () => {
+    if (isLaserActive) return;
     setTimeout(() => {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
@@ -486,6 +465,7 @@ export default function SubjectLessonViewer({
 
   // Clique no container para interceptar marcações existentes e botões de código
   const handleContainerClick = (e: React.MouseEvent) => {
+    if (isLaserActive) return;
     const target = e.target as HTMLElement;
 
     // Se clicar em um botão de copiar código
@@ -876,11 +856,14 @@ export default function SubjectLessonViewer({
             <div 
               ref={contentContainerRef}
               className={`flex-1 overflow-y-auto p-6 sm:p-10 md:p-14 lg:p-16 bg-background relative selection:bg-primary/20 ${
-                isLaserActive ? 'cursor-none' : ''
+                isLaserActive ? 'cursor-none select-none' : ''
               }`}
               onMouseUp={handleMouseUp}
               onTouchEnd={handleMouseUp}
               onClick={handleContainerClick}
+              onDragStart={(e) => {
+                if (isLaserActive) e.preventDefault();
+              }}
             >
               <div 
                 className={`mx-auto transition-all duration-150 origin-top ${isWideLayout ? 'max-w-none w-full px-2' : 'max-w-4xl'}`}
@@ -1060,28 +1043,12 @@ export default function SubjectLessonViewer({
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={showAiAssistant ? 'default' : 'outline'}
-                      onClick={() => setShowAiAssistant((prev) => !prev)}
-                      className={`h-7 text-xs gap-1.5 ${
-                        showAiAssistant
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                          : 'border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
-                      }`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      {showAiAssistant ? 'Ocultar Assistente IA' : 'Assistente IA'}
-                    </Button>
-                    {activeTab === 'plan' && (
-                      <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Exclusivo para o Professor</span>
-                      </div>
-                    )}
-                  </div>
+                  {activeTab === 'plan' && (
+                    <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Exclusivo para o Professor</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1147,16 +1114,6 @@ export default function SubjectLessonViewer({
             >
               {activeTab === 'plan' ? (
                 <div className="space-y-5">
-                  {showAiAssistant && (
-                    <LessonPlanAiAssistant
-                      lesson={lesson}
-                      subjectName={subjectName}
-                      target="plan"
-                      onApplyLessonPlan={(newPlan) => handleApplyAiText(newPlan, 'plan')}
-                      onClose={() => setShowAiAssistant(false)}
-                    />
-                  )}
-
                   {defaultPlanHtml ? (
                     <div className="space-y-4">
                       <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-3">
@@ -1192,17 +1149,6 @@ export default function SubjectLessonViewer({
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center justify-center gap-2">
-                        {!showAiAssistant && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowAiAssistant(true)}
-                            className="border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-semibold text-xs gap-1.5"
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Gerar com IA
-                          </Button>
-                        )}
                         {onEdit && (
                           <Button
                             type="button"
@@ -1221,21 +1167,10 @@ export default function SubjectLessonViewer({
                   )}
                 </div>
               ) : (
-                <div className="space-y-5">
-                  {isTeacher && showAiAssistant && (
-                    <LessonPlanAiAssistant
-                      lesson={lesson}
-                      subjectName={subjectName}
-                      target="content"
-                      onApplyLessonPlan={(newContent) => handleApplyAiText(newContent, 'content')}
-                      onClose={() => setShowAiAssistant(false)}
-                    />
-                  )}
-                  <div 
-                    className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
-                    dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
-                  />
-                </div>
+                <div 
+                  className="markdown-rendered prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed break-words"
+                  dangerouslySetInnerHTML={{ __html: currentHtml || defaultContentHtml }}
+                />
               )}
             </div>
 

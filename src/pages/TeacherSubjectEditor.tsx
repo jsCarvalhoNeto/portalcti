@@ -20,7 +20,8 @@ import {
   Edit3,
   Gamepad2,
   Wrench,
-  Megaphone
+  Megaphone,
+  MessageSquare
 } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { subjectService, Subject } from '@/services/subjectService';
@@ -36,6 +37,7 @@ import SubjectResourcesPanel from '@/components/subject/SubjectResourcesPanel';
 import SubjectEvaluationsPanel from '@/components/subject/SubjectEvaluationsPanel';
 import SubjectExercisesPanel from '@/components/subject/SubjectExercisesPanel';
 import SubjectProjectsPanel from '@/components/subject/SubjectProjectsPanel';
+import SubjectQaForumPanel from '@/components/subject/SubjectQaForumPanel';
 
 interface QuickAccessItem {
   icon: any;
@@ -331,6 +333,7 @@ export default function TeacherSubjectEditor() {
     { value: 'projetos', label: 'Projetos', icon: FolderOpen },
     { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardList },
     { value: 'recursos', label: 'Recursos', icon: Settings },
+    { value: 'duvidas', label: 'Dúvidas', icon: MessageSquare },
   ];
 
   const editorTabs = navItems.filter(item => item.value !== 'inicio');
@@ -508,6 +511,12 @@ export default function TeacherSubjectEditor() {
                   subjectId={id || ''}
                   subjectName={subject.name}
                   subjectGrade={subject.grade}
+                  canManage={true}
+                />
+              ) : item.value === 'duvidas' ? (
+                <SubjectQaForumPanel
+                  subjectId={id || ''}
+                  subjectName={subject.name}
                   canManage={true}
                 />
               ) : (

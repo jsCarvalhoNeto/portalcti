@@ -642,3 +642,58 @@ export async function awardAttendance(
     return null;
   }
 }
+
+
+export const FORUM_SOLUTION_POINTS = 15;
+
+/**
+ * Atribui pontos de gamificação quando a resposta de um aluno no fórum de dúvidas é marcada como Solução pelo professor
+ */
+export async function awardForumSolution(
+  helperUserId: string,
+  answerId: string,
+  points: number = FORUM_SOLUTION_POINTS,
+  subjectId?: string | number | null
+): Promise<AwardResult | null> {
+  try {
+    if (!helperUserId || !answerId) return null;
+
+    // Evitar pontuação duplicada para a mesma resposta
+    const { data: existing } = await supabase
+      .from('gamification_points')
+      .select('id')
+      .eq('user_id', helperUserId)
+      .eq('source', 'forum_solution')
+      .eq('source_id', answerId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      return { ok: true, awarded: 0, message: 'Pontos já concedidos por esta solução.' };
+    }
+
+    const pointsToAward = Number(points) > 0 ? Number(points) : FORUM_SOLUTION_POINTS;
+
+    const { error } = await supabase
+      .from('gamification_points')
+      .insert({
+        user_id: helperUserId,
+        source: 'forum_solution',
+        source_id: answerId,
+        subject_id: subjectId ? Number(subjectId) : null,
+        points: pointsToAward,
+      });
+
+    if (error) throw error;
+
+    const result: AwardResult = {
+      ok: true,
+      awarded: pointsToAward,
+      message: `Resposta marcada como solução! +${pointsToAward} pontos na gamificação.`,
+    };
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: result })); } catch (e) { /* noop */ }
+    return result;
+  } catch (err) {
+    console.error('Erro ao premiar solução no fórum:', err);
+    return null;
+  }
+}

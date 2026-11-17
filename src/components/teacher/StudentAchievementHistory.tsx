@@ -118,6 +118,8 @@ export default function StudentAchievementHistory({
         return 'Ajuste manual';
       case 'attendance':
         return 'Presença em aula';
+      case 'forum_solution':
+        return 'Solução no fórum de dúvidas';
       case 'daily_challenge':
         return 'Desafio diário';
       case 'interactive_activity':

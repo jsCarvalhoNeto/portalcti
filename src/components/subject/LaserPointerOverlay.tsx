@@ -74,9 +74,14 @@ export default function LaserPointerOverlay({
       currentPosRef.current.isInside = false;
     };
 
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+    };
+
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('mousedown', handleMouseDown, { passive: true });
     window.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('selectstart', handleSelectStart);
 
     // Loop de renderização com rastro luminoso
     const TRAIL_DURATION = 420; // Duração do rastro em milissegundos
@@ -194,6 +199,7 @@ export default function LaserPointerOverlay({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('selectstart', handleSelectStart);
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }

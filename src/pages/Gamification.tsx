@@ -437,6 +437,7 @@ export default function Gamification() {
                           'access': 'Acesso ao Sistema',
                           'adjustment': 'Ajuste Manual',
                           'attendance': 'Presença em Aula',
+                          'forum_solution': 'Solução no Fórum de Dúvidas',
                           'daily_challenge': 'Desafio Diário',
                           'interactive_activity': 'Atividade Interativa'
                         };
