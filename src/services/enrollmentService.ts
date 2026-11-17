@@ -194,4 +194,43 @@ export const enrollmentService = {
       throw new Error(error.message || 'Falha ao matricular nas disciplinas da série');
     }
   },
+
+  /**
+   * Busca os estudantes matriculados em uma disciplina específica
+   */
+  getSubjectStudents: async (
+    subjectId: number
+  ): Promise<Array<{ id: string; student_id: string; full_name: string; email: string; grade?: string }>> => {
+    try {
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('enrollments')
+        .select('student_id')
+        .eq('subject_id', Number(subjectId));
+
+      if (enrollError) throw enrollError;
+      const studentIds = Array.from(
+        new Set((enrollments || []).map((e: any) => e.student_id).filter(Boolean))
+      );
+      if (studentIds.length === 0) return [];
+
+      const { data: profilesData, error: profError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, grade')
+        .in('id', studentIds)
+        .order('full_name', { ascending: true });
+
+      if (profError) throw profError;
+
+      return (profilesData || []).map((p: any) => ({
+        id: p.id,
+        student_id: p.id,
+        full_name: p.full_name || 'Aluno',
+        email: p.email || '',
+        grade: p.grade || '',
+      }));
+    } catch (error: any) {
+      console.warn('Erro ao buscar alunos matriculados na disciplina:', error);
+      return [];
+    }
+  },
 };
