@@ -44,6 +44,7 @@ import ClassTimelineUtility from '@/components/teacher/utilities/ClassTimelineUt
 import WhiteboardUtility from '@/components/teacher/utilities/WhiteboardUtility';
 import TeamLiveRegistrationUtility from '@/components/teacher/utilities/TeamLiveRegistrationUtility';
 import ShirtOrdersUtility from '@/components/teacher/utilities/ShirtOrdersUtility';
+import AttendanceUtility from '@/components/teacher/utilities/AttendanceUtility';
 
 // Utilitários de Prática Técnica & Programação
 import ClassCodeBoardUtility from '@/components/teacher/utilities/ClassCodeBoardUtility';
@@ -342,6 +343,19 @@ const UTILITIES: UtilityItem[] = [
     borderClass: 'hover:border-teal-500/50',
     bgLightClass: 'bg-teal-50 dark:bg-teal-950/30',
     badge: { label: 'Conversão', className: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' }
+  },
+  {
+    id: 'chamada-inteligente',
+    component: AttendanceUtility,
+    name: 'Chamada Inteligente (QR / Código)',
+    description: 'Abra uma chamada com código de 6 dígitos ou QR Code para os alunos confirmarem presença e ganharem +20 pontos na gamificação.',
+    category: 'dynamics',
+    icon: UserCheck,
+    colorClass: 'text-emerald-600 dark:text-emerald-400',
+    borderClass: 'hover:border-emerald-500/50',
+    bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/30',
+    badge: { label: '+20 pts Gamificação', icon: Radio, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+    highlight: true
   }
 ];
 

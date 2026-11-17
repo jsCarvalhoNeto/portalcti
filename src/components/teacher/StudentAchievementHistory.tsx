@@ -99,6 +99,8 @@ export default function StudentAchievementHistory({
         return <Star className="w-4 h-4" />;
       case 'adjustment':
         return <Award className="w-4 h-4" />;
+      case 'attendance':
+        return <Trophy className="w-4 h-4 text-emerald-500" />;
       default:
         return <Trophy className="w-4 h-4" />;
     }
@@ -114,6 +116,12 @@ export default function StudentAchievementHistory({
         return 'Participação em jogo';
       case 'adjustment':
         return 'Ajuste manual';
+      case 'attendance':
+        return 'Presença em aula';
+      case 'daily_challenge':
+        return 'Desafio diário';
+      case 'interactive_activity':
+        return 'Atividade interativa';
       default:
         return source;
     }

@@ -435,7 +435,10 @@ export default function Gamification() {
                           'game': 'Atividade de Jogo',
                           'submission': 'Submissão de Atividade', 
                           'access': 'Acesso ao Sistema',
-                          'adjustment': 'Ajuste Manual'
+                          'adjustment': 'Ajuste Manual',
+                          'attendance': 'Presença em Aula',
+                          'daily_challenge': 'Desafio Diário',
+                          'interactive_activity': 'Atividade Interativa'
                         };
                         
                         let description = sourceMap[source] || source;

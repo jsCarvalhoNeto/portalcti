@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { BookOpen, Calendar, Gamepad, Settings } from 'lucide-react';
+import { BookOpen, Calendar, Gamepad, Settings, QrCode } from 'lucide-react';
 import StudentNotificationBanner from '@/components/notifications/StudentNotificationBanner';
 import BadgeGrid from '@/components/badges/BadgeGrid';
 import TopStudentsCard from '@/components/student/TopStudentsCard';
@@ -122,7 +122,25 @@ export default function StudentOverviewTab({
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover:shadow-glow transition-all duration-300 border-emerald-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-emerald-500" />
+              Registrar Presença
+            </CardTitle>
+            <CardDescription>
+              Informe o código da aula e ganhe +20 pts na gamificação
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/chamada">
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                Fazer Check-in (+20 pts)
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
         <Card className="hover:shadow-glow transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

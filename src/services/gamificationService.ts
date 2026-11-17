@@ -572,3 +572,73 @@ export async function getCompletedInteractiveActivities(
     return [];
   }
 }
+
+
+export const ATTENDANCE_POINTS_DEFAULT = 20;
+
+/**
+ * Atribui pontos de gamificação por presença registrada em chamada (padrão: 20 pontos)
+ */
+export async function awardAttendance(
+  userId: string,
+  sessionId: string,
+  points: number = ATTENDANCE_POINTS_DEFAULT,
+  subjectId?: string | number | null
+): Promise<AwardResult | null> {
+  try {
+    if (!userId || !sessionId) return null;
+
+    // Verificar se o aluno está matriculado na disciplina (quando a chamada for vinculada a uma disciplina)
+    if (subjectId) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', userId)
+        .eq('subject_id', Number(subjectId))
+        .maybeSingle();
+
+      if (!enrollment) {
+        console.warn(`[Gamification] Usuário ${userId} não matriculado na disciplina ${subjectId}. Pontos de presença não atribuídos.`);
+        return { ok: true, awarded: 0, message: 'Presença registrada, mas pontos não atribuídos pois você não está matriculado nesta disciplina.' };
+      }
+    }
+
+    // Evitar pontuação duplicada para a mesma sessão de chamada
+    const { data: existing } = await supabase
+      .from('gamification_points')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source', 'attendance')
+      .eq('source_id', sessionId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      return { ok: true, awarded: 0, message: 'Pontos de presença já concedidos para esta aula.' };
+    }
+
+    const pointsToAward = Number(points) > 0 ? Number(points) : ATTENDANCE_POINTS_DEFAULT;
+
+    const { error } = await supabase
+      .from('gamification_points')
+      .insert({
+        user_id: userId,
+        source: 'attendance',
+        source_id: sessionId,
+        subject_id: subjectId ? Number(subjectId) : null,
+        points: pointsToAward
+      });
+
+    if (error) throw error;
+
+    const result: AwardResult = {
+      ok: true,
+      awarded: pointsToAward,
+      message: `Presença confirmada! +${pointsToAward} pontos na gamificação.`
+    };
+    try { (window as any).dispatchEvent(new CustomEvent('gamification:update', { detail: result })); } catch (e) { /* noop */ }
+    return result;
+  } catch (err) {
+    console.error('Erro ao premiar presença na gamificação:', err);
+    return null;
+  }
+}

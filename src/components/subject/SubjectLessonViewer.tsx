@@ -41,7 +41,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  CircleDot
+  CircleDot,
+  QrCode
 } from 'lucide-react';
 import { SubjectLesson, subjectLessonService } from '@/services/subjectLessonService';
 import { markdownToHtml, sanitizeHtml } from '@/utils/markdownUtils';
@@ -50,6 +51,7 @@ import { exportLessonToPdf } from '@/utils/lessonPdfExport';
 import TextHighlightToolbar from './TextHighlightToolbar';
 import LaserPointerOverlay from './LaserPointerOverlay';
 import LessonPlanAiAssistant from './LessonPlanAiAssistant';
+import AttendanceUtility from '@/components/teacher/utilities/AttendanceUtility';
 import {
   HIGHLIGHT_COLORS,
   getColorById,
@@ -93,6 +95,7 @@ export default function SubjectLessonViewer({
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'plan'>(initialTab);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1268,6 +1271,16 @@ export default function SubjectLessonViewer({
                       Editar Aula
                     </Button>
                   )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAttendanceOpen(true)}
+                    className="text-xs gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    Chamada (+20 pts)
+                  </Button>
                   {onDelete && (
                     <Button
                       type="button"
@@ -1319,6 +1332,21 @@ export default function SubjectLessonViewer({
           </>
         )}
       </DialogContent>
+
+      {isTeacher && lesson && (
+        <Dialog open={isAttendanceOpen} onOpenChange={setIsAttendanceOpen}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chamada da Aula: {lesson.title}</DialogTitle>
+            </DialogHeader>
+            <AttendanceUtility
+              defaultSubjectId={lesson.subject_id}
+              defaultLessonId={String(lesson.id)}
+              defaultTitle={lesson.title}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

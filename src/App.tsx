@@ -41,6 +41,7 @@ const TeamRegistrationPage = lazy(() => import("./pages/TeamRegistrationPage"));
 const StudentPickerJoinPage = lazy(() => import("./pages/StudentPickerJoinPage"));
 const PublicEducationalGamePage = lazy(() => import("./pages/PublicEducationalGamePage"));
 const ShirtOrderStudentPage = lazy(() => import("./pages/ShirtOrderStudentPage"));
+const AttendanceCheckInPage = lazy(() => import("./pages/AttendanceCheckInPage"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-background p-6 sm:p-10">
@@ -117,6 +118,10 @@ const App = () => (
               <Route path="/sorteio" element={<StudentPickerJoinPage />} />
               <Route path="/sorteio/:code" element={<StudentPickerJoinPage />} />
               <Route path="/jogos/:shareCode" element={<PublicEducationalGamePage />} />
+
+              {/* Rotas para Chamada Inteligente / Frequência por Código ou QR Code */}
+              <Route path="/chamada" element={<AttendanceCheckInPage />} />
+              <Route path="/chamada/:code" element={<AttendanceCheckInPage />} />
 
               {/* Rotas para o Censo/Pedido de Camisas do Curso */}
               <Route path="/camisas" element={<ShirtOrderStudentPage />} />

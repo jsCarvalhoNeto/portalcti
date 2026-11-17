@@ -18,11 +18,13 @@ import {
   Laptop,
   Layers,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubjectColorEditModal from './SubjectColorEditModal';
+import CloneSubjectModal from './CloneSubjectModal';
 
 export default function TeacherSubjectsTab() {
   const { subjects, loading, error, refetch } = useTeacherDashboard();
@@ -30,6 +32,8 @@ export default function TeacherSubjectsTab() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showColorEditModal, setShowColorEditModal] = useState(false);
+  const [cloningSubject, setCloningSubject] = useState<Subject | null>(null);
+  const [showCloneModal, setShowCloneModal] = useState(false);
   const [userColors, setUserColors] = useState<Record<number, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -205,8 +209,22 @@ export default function TeacherSubjectsTab() {
                           <SubjectIcon className="w-5 h-5" />
                         </div>
 
-                        {/* Ações de topo: Trocar cor e Badge de Status */}
+                        {/* Ações de topo: Duplicar, Trocar cor e Badge de Status */}
                         <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-muted transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCloningSubject(subject);
+                              setShowCloneModal(true);
+                            }}
+                            title="Duplicar estrutura para nova turma"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -442,6 +460,16 @@ export default function TeacherSubjectsTab() {
         onClose={() => setShowColorEditModal(false)}
         subject={editingSubject}
         onSuccess={handleColorEditSuccess}
+      />
+
+      {/* Modal de Clonagem de Disciplina */}
+      <CloneSubjectModal
+        isOpen={showCloneModal}
+        onClose={() => setShowCloneModal(false)}
+        subject={cloningSubject}
+        onSuccess={() => {
+          refetch.subjects();
+        }}
       />
     </div>
   );
