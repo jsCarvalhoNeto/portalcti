@@ -10,6 +10,11 @@ export interface SubjectResource {
   download_url?: string;
   url?: string;
   file_path?: string;
+  edition?: string;
+  release_year?: string;
+  format?: string;
+  file_size?: string;
+  language?: string;
   order_index?: number;
   is_active?: boolean;
   created_at?: string;
@@ -25,6 +30,11 @@ export type CreateResourceData = {
   download_url?: string;
   url?: string;
   file_path?: string;
+  edition?: string;
+  release_year?: string;
+  format?: string;
+  file_size?: string;
+  language?: string;
   order_index?: number;
   is_active?: boolean;
 };
@@ -33,15 +43,39 @@ export type UpdateResourceData = Partial<CreateResourceData>;
 
 const STORAGE_KEY_PREFIX = 'subject_resources_';
 
+interface ResourceMeta {
+  cover_url?: string;
+  download_url?: string;
+  edition?: string;
+  release_year?: string;
+  format?: string;
+  file_size?: string;
+  language?: string;
+}
+
 /**
- * Utilitários para empacotar e desempacotar metadados adicionais (como cover_url e download_url)
+ * Utilitários para empacotar e desempacotar metadados adicionais (como cover_url, download_url e metadados de livros)
  * garantindo compatibilidade total com o schema do banco de dados e PostgREST.
  */
-function packDescription(desc: string = '', coverUrl?: string, downloadUrl?: string): string {
+function packDescription(desc: string = '', extraMeta: ResourceMeta = {}): string {
   const cleanDesc = desc.replace(/^<!--meta:(.*?)-->\s*\n?/, '').trim();
   const meta: Record<string, string> = {};
-  if (coverUrl && coverUrl.trim()) meta.cover_url = coverUrl.trim();
-  if (downloadUrl && downloadUrl.trim()) meta.download_url = downloadUrl.trim();
+  const keys: (keyof ResourceMeta)[] = [
+    'cover_url',
+    'download_url',
+    'edition',
+    'release_year',
+    'format',
+    'file_size',
+    'language'
+  ];
+
+  for (const key of keys) {
+    const val = extraMeta[key];
+    if (val && val.trim()) {
+      meta[key] = val.trim();
+    }
+  }
 
   if (Object.keys(meta).length > 0) {
     return `<!--meta:${JSON.stringify(meta)}-->\n${cleanDesc}`;
@@ -53,6 +87,11 @@ function unpackResource(item: any): SubjectResource {
   let description = item.description || '';
   let cover_url = item.cover_url || '';
   let download_url = item.download_url || item.file_path || '';
+  let edition = item.edition || '';
+  let release_year = item.release_year || '';
+  let format = item.format || '';
+  let file_size = item.file_size || '';
+  let language = item.language || '';
 
   const metaMatch = description.match(/^<!--meta:(.*?)-->\s*\n?/);
   if (metaMatch) {
@@ -60,6 +99,11 @@ function unpackResource(item: any): SubjectResource {
       const meta = JSON.parse(metaMatch[1]);
       if (!cover_url && meta.cover_url) cover_url = meta.cover_url;
       if (!download_url && meta.download_url) download_url = meta.download_url;
+      if (!edition && meta.edition) edition = meta.edition;
+      if (!release_year && meta.release_year) release_year = meta.release_year;
+      if (!format && meta.format) format = meta.format;
+      if (!file_size && meta.file_size) file_size = meta.file_size;
+      if (!language && meta.language) language = meta.language;
       description = description.replace(metaMatch[0], '').trim();
     } catch {
       // Ignora erro de parse e mantém descrição original
@@ -77,6 +121,11 @@ function unpackResource(item: any): SubjectResource {
     download_url: download_url || undefined,
     url: item.url || undefined,
     file_path: item.file_path || download_url || undefined,
+    edition: edition || undefined,
+    release_year: release_year || undefined,
+    format: format || undefined,
+    file_size: file_size || undefined,
+    language: language || undefined,
     order_index: item.order_index ?? 0,
     is_active: item.is_active ?? true,
     created_at: item.created_at,
@@ -147,7 +196,15 @@ export const subjectResourceService = {
    */
   create: async (data: CreateResourceData): Promise<SubjectResource> => {
     const numSubjectId = Number(data.subject_id);
-    const packedDescription = packDescription(data.description, data.cover_url, data.download_url);
+    const packedDescription = packDescription(data.description, {
+      cover_url: data.cover_url,
+      download_url: data.download_url,
+      edition: data.edition,
+      release_year: data.release_year,
+      format: data.format,
+      file_size: data.file_size,
+      language: data.language
+    });
 
     // Payload compatível com colunas padrão do banco
     const payload: any = {
@@ -174,9 +231,14 @@ export const subjectResourceService = {
       }
 
       const created = unpackResource(inserted);
-      // Garantir cover_url e download_url
+      // Garantir cover_url, download_url e metadados de livro
       if (data.cover_url) created.cover_url = data.cover_url;
       if (data.download_url) created.download_url = data.download_url;
+      if (data.edition) created.edition = data.edition;
+      if (data.release_year) created.release_year = data.release_year;
+      if (data.format) created.format = data.format;
+      if (data.file_size) created.file_size = data.file_size;
+      if (data.language) created.language = data.language;
 
       subjectResourceService.saveToLocalStorage(numSubjectId, created);
       return created;
@@ -192,6 +254,11 @@ export const subjectResourceService = {
         cover_url: data.cover_url,
         download_url: data.download_url,
         url: data.url,
+        edition: data.edition,
+        release_year: data.release_year,
+        format: data.format,
+        file_size: data.file_size,
+        language: data.language,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -216,11 +283,27 @@ export const subjectResourceService = {
       updatePayload.file_path = data.download_url && data.download_url.trim() !== '' ? data.download_url.trim() : null;
     }
 
-    if (data.description !== undefined || data.cover_url !== undefined || data.download_url !== undefined) {
+    if (
+      data.description !== undefined ||
+      data.cover_url !== undefined ||
+      data.download_url !== undefined ||
+      data.edition !== undefined ||
+      data.release_year !== undefined ||
+      data.format !== undefined ||
+      data.file_size !== undefined ||
+      data.language !== undefined
+    ) {
       updatePayload.description = packDescription(
         data.description !== undefined ? data.description : '',
-        data.cover_url,
-        data.download_url
+        {
+          cover_url: data.cover_url,
+          download_url: data.download_url,
+          edition: data.edition,
+          release_year: data.release_year,
+          format: data.format,
+          file_size: data.file_size,
+          language: data.language
+        }
       );
     }
 
@@ -240,6 +323,11 @@ export const subjectResourceService = {
       const updatedItem = unpackResource(updated);
       if (data.cover_url !== undefined) updatedItem.cover_url = data.cover_url;
       if (data.download_url !== undefined) updatedItem.download_url = data.download_url;
+      if (data.edition !== undefined) updatedItem.edition = data.edition;
+      if (data.release_year !== undefined) updatedItem.release_year = data.release_year;
+      if (data.format !== undefined) updatedItem.format = data.format;
+      if (data.file_size !== undefined) updatedItem.file_size = data.file_size;
+      if (data.language !== undefined) updatedItem.language = data.language;
 
       const targetSubId = numSubjectId || updatedItem.subject_id;
       if (targetSubId) {

@@ -76,6 +76,14 @@ export default function SubjectResourceEditor({
   const [coverUrl, setCoverUrl] = useState('');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [url, setUrl] = useState('');
+
+  // Metadados específicos para livros
+  const [edition, setEdition] = useState('');
+  const [releaseYear, setReleaseYear] = useState('');
+  const [format, setFormat] = useState('');
+  const [customFormat, setCustomFormat] = useState('');
+  const [fileSize, setFileSize] = useState('');
+  const [language, setLanguage] = useState('');
   
   // Abas de imagem de capa (URL ou Upload)
   const [coverTab, setCoverTab] = useState<'url' | 'upload'>('url');
@@ -93,6 +101,27 @@ export default function SubjectResourceEditor({
         setCoverUrl(resource.cover_url || '');
         setDownloadUrl(resource.download_url || resource.file_path || '');
         setUrl(resource.url || '');
+        setEdition(resource.edition || '');
+        setReleaseYear(resource.release_year || '');
+
+        const rawFormat = (resource.format || '').trim();
+        const lowerFormat = rawFormat.toLowerCase();
+        if (!rawFormat) {
+          setFormat('');
+          setCustomFormat('');
+        } else if (['pdf', 'epub', 'azw3'].includes(lowerFormat)) {
+          setFormat(lowerFormat);
+          setCustomFormat('');
+        } else if (lowerFormat === 'outro') {
+          setFormat('outro');
+          setCustomFormat('');
+        } else {
+          setFormat('outro');
+          setCustomFormat(rawFormat);
+        }
+
+        setFileSize(resource.file_size || '');
+        setLanguage(resource.language || '');
       } else {
         setTitle('');
         setResourceType('livro');
@@ -100,6 +129,12 @@ export default function SubjectResourceEditor({
         setCoverUrl('');
         setDownloadUrl('');
         setUrl('');
+        setEdition('');
+        setReleaseYear('');
+        setFormat('');
+        setCustomFormat('');
+        setFileSize('');
+        setLanguage('');
       }
     }
   }, [isOpen, resource]);
@@ -166,6 +201,12 @@ export default function SubjectResourceEditor({
 
     try {
       setIsSaving(true);
+      const isBook = resourceType === 'livro';
+      const resolvedFormat =
+        format === 'outro'
+          ? customFormat.trim() || 'outro'
+          : format.trim() || undefined;
+
       const payload: CreateResourceData = {
         subject_id: Number(subjectId),
         title: title.trim(),
@@ -173,7 +214,12 @@ export default function SubjectResourceEditor({
         description: description.trim(),
         cover_url: coverUrl.trim() || undefined,
         download_url: downloadUrl.trim() || undefined,
-        url: url.trim() || undefined
+        url: url.trim() || undefined,
+        edition: isBook ? edition.trim() || undefined : undefined,
+        release_year: isBook ? releaseYear.trim() || undefined : undefined,
+        format: isBook ? resolvedFormat : undefined,
+        file_size: isBook ? fileSize.trim() || undefined : undefined,
+        language: isBook ? language.trim() || undefined : undefined
       };
 
       await onSave(payload);
@@ -354,6 +400,110 @@ export default function SubjectResourceEditor({
               </div>
             </div>
           </div>
+
+          {/* Metadados do Livro */}
+          {resourceType === 'livro' && (
+            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+              <Label className="text-xs font-bold flex items-center gap-2 text-foreground">
+                <BookOpen className="w-4 h-4 text-primary" />
+                Metadados do Livro
+                <span className="text-[11px] font-normal text-muted-foreground">(Opcional)</span>
+              </Label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Edição */}
+                <div className="space-y-1">
+                  <Label htmlFor="res-edition" className="text-xs font-semibold">
+                    Edição
+                  </Label>
+                  <Input
+                    id="res-edition"
+                    placeholder="Ex: 8ª Edição"
+                    value={edition}
+                    onChange={(e) => setEdition(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                {/* Ano de Lançamento */}
+                <div className="space-y-1">
+                  <Label htmlFor="res-year" className="text-xs font-semibold">
+                    Ano de Lançamento
+                  </Label>
+                  <Input
+                    id="res-year"
+                    inputMode="numeric"
+                    placeholder="Ex: 2024"
+                    value={releaseYear}
+                    onChange={(e) => setReleaseYear(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                {/* Formato */}
+                <div className="space-y-1">
+                  <Label htmlFor="res-format" className="text-xs font-semibold">
+                    Formato
+                  </Label>
+                  <Select value={format} onValueChange={setFormat}>
+                    <SelectTrigger id="res-format" className="h-9 text-xs">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="epub">EPUB</SelectItem>
+                      <SelectItem value="azw3">AZW3</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Campo customizado se Formato = Outro */}
+                {format === 'outro' && (
+                  <div className="space-y-1">
+                    <Label htmlFor="res-custom-format" className="text-xs font-semibold">
+                      Qual formato?
+                    </Label>
+                    <Input
+                      id="res-custom-format"
+                      placeholder="Ex: MOBI, DJVU..."
+                      value={customFormat}
+                      onChange={(e) => setCustomFormat(e.target.value)}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                )}
+
+                {/* Tamanho */}
+                <div className="space-y-1">
+                  <Label htmlFor="res-size" className="text-xs font-semibold">
+                    Tamanho
+                  </Label>
+                  <Input
+                    id="res-size"
+                    placeholder="Ex: 15 MB"
+                    value={fileSize}
+                    onChange={(e) => setFileSize(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                {/* Idioma */}
+                <div className="space-y-1">
+                  <Label htmlFor="res-language" className="text-xs font-semibold">
+                    Idioma
+                  </Label>
+                  <Input
+                    id="res-language"
+                    placeholder="Ex: Português"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Descrição */}
           <div className="space-y-1.5">

@@ -23,7 +23,10 @@ import {
   BookMarked,
   Library,
   FileDown,
-  Info
+  Info,
+  Calendar,
+  HardDrive,
+  Languages
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import subjectResourceService, { SubjectResource, CreateResourceData } from '@/services/subjectResourceService';
@@ -214,7 +217,10 @@ export default function SubjectResourcesPanel({
         const query = searchQuery.toLowerCase().trim();
         const matchTitle = res.title.toLowerCase().includes(query);
         const matchDesc = res.description ? res.description.toLowerCase().includes(query) : false;
-        if (!matchTitle && !matchDesc) {
+        const matchMeta = [res.edition, res.release_year, res.format, res.language]
+          .filter(Boolean)
+          .some((val) => val!.toLowerCase().includes(query));
+        if (!matchTitle && !matchDesc && !matchMeta) {
           return false;
         }
       }
@@ -449,6 +455,61 @@ export default function SubjectResourcesPanel({
                       <CardDescription className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
                         {resource.description}
                       </CardDescription>
+                    )}
+
+                    {/* Metadados do Livro */}
+                    {(resource.edition || resource.release_year || resource.format || resource.file_size || resource.language) && (
+                      <div className="flex flex-wrap gap-1.5 pt-2">
+                        {resource.format && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold uppercase px-1.5 py-0.5 bg-primary/10 text-primary border-primary/20"
+                            title="Formato do arquivo"
+                          >
+                            {resource.format === 'outro' ? 'Outro' : resource.format}
+                          </Badge>
+                        )}
+                        {resource.edition && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium px-1.5 py-0.5 gap-1"
+                            title="Edição"
+                          >
+                            <BookMarked className="w-2.5 h-2.5 text-muted-foreground" />
+                            {resource.edition}
+                          </Badge>
+                        )}
+                        {resource.release_year && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium px-1.5 py-0.5 gap-1"
+                            title="Ano de Lançamento"
+                          >
+                            <Calendar className="w-2.5 h-2.5 text-muted-foreground" />
+                            {resource.release_year}
+                          </Badge>
+                        )}
+                        {resource.file_size && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium px-1.5 py-0.5 gap-1"
+                            title="Tamanho do arquivo"
+                          >
+                            <HardDrive className="w-2.5 h-2.5 text-muted-foreground" />
+                            {resource.file_size}
+                          </Badge>
+                        )}
+                        {resource.language && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium px-1.5 py-0.5 gap-1"
+                            title="Idioma"
+                          >
+                            <Languages className="w-2.5 h-2.5 text-muted-foreground" />
+                            {resource.language}
+                          </Badge>
+                        )}
+                      </div>
                     )}
                   </CardHeader>
                 </div>
